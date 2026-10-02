@@ -1,0 +1,11 @@
+{
+  "name": "Assinaturas BBDI",
+  "short_name": "Assinaturas",
+  "description": "Aplicativo de assinaturas da Central de Expedição BBDI",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#EEF1EC",
+  "theme_color": "#121A24",
+  "orientation": "any"
+}
