@@ -2281,6 +2281,43 @@
 })();
 </script>
 <!-- NETLIFY V1 — acesso móvel restrito à assinatura -->
+
+<style id="ce-assinatura-mobile-simples">
+@media (max-width: 760px){
+  body.ce-assinatura-only .topbar,
+  body.ce-assinatura-only .sidebar,
+  body.ce-assinatura-only nav,
+  body.ce-assinatura-only #assinatura-filtro-empresa,
+  body.ce-assinatura-only #view-assinatura .toolbar,
+  body.ce-assinatura-only #btn-voltar-lista,
+  body.ce-assinatura-only .manifest-head .no-print,
+  body.ce-assinatura-only .barcode {display:none!important}
+  body.ce-assinatura-only .main-content{padding:12px!important;margin:0!important}
+  body.ce-assinatura-only #view-assinatura{display:block!important}
+  body.ce-assinatura-only .section-title h2{font-size:22px}
+  body.ce-assinatura-only .manifest{border-radius:16px;overflow:hidden}
+  body.ce-assinatura-only .manifest-head{padding:16px!important;min-height:auto!important}
+  body.ce-assinatura-only .manifest-head .lbl{display:none}
+  body.ce-assinatura-only .manifest-head .rid{font-size:13px!important;opacity:.8}
+  body.ce-assinatura-only .manifest-transportadora .nome{font-size:21px!important}
+  body.ce-assinatura-only .manifest-meta{display:grid!important;grid-template-columns:1fr 1fr!important;gap:8px!important;padding:12px!important}
+  body.ce-assinatura-only .manifest-meta>div:first-child,
+  body.ce-assinatura-only .manifest-meta>div:nth-child(2){display:none!important}
+  body.ce-assinatura-only .manifest-meta>div{border:1px solid var(--border);border-radius:12px;padding:12px!important}
+  body.ce-assinatura-only .manifest-meta b{font-size:11px!important}
+  body.ce-assinatura-only .manifest-body{padding:12px!important}
+  body.ce-assinatura-only .grid2{grid-template-columns:1fr!important}
+  body.ce-assinatura-only .sigpad-wrap{margin-top:12px}
+  body.ce-assinatura-only #sigcanvas{min-height:220px!important}
+  body.ce-assinatura-only .btn-row{display:grid!important;grid-template-columns:110px 1fr!important;gap:8px!important}
+  body.ce-assinatura-only .btn-row .btn{width:100%;min-height:50px}
+  .ce-mobile-nfs{margin:0 0 14px;border:1px solid var(--border);border-radius:12px;padding:12px;background:var(--surface-2)}
+  .ce-mobile-nfs summary{font-weight:800;cursor:pointer}
+  .ce-mobile-nfs-lista{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+  .ce-mobile-nfs-lista span{padding:6px 9px;border:1px solid var(--border);border-radius:8px;font-size:12px;font-weight:700;background:var(--surface)}
+}
+</style>
+
 </head>
 <body><div class="app-shell">
 
@@ -6411,18 +6448,26 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
         <tbody>${linhas || '<tr><td colspan="8" class="empty">Nenhuma NF postada neste romaneio.</td></tr>'}</tbody>
       </table></div>`;
     }else{
-      const linhas = itens.map(p=>`<tr>
-        <td class="mono" style="font-weight:700;">${escapeHtml(p.nf||'—')}</td>
-        <td>${escapeHtml(p.cliente_nome||'—')}</td>
-        <td class="mono" style="font-weight:700;white-space:nowrap;">${escapeHtml(ceMoedaBR(p.valor_nf))}</td>
-        <td class="mono" style="font-size:10.5px;">${escapeHtml(p.chave||'—')}</td>
-        <td class="mono">${escapeHtml(p.rastreio||'—')}</td>
-        <td class="mono">${p.volumes||1}</td>
-      </tr>`).join('');
-      tabela = `<table class="manifest-itens-padrao manifest-itens-postagens" style="margin-top:8px;">
-        <thead><tr><th>NF</th><th>Cliente</th><th>Valor NF</th><th>Chave</th><th>Rastreio</th><th>Volume</th></tr></thead>
-        <tbody>${linhas || '<tr><td colspan="6" class="empty">Sem itens</td></tr>'}</tbody>
-      </table>`;
+      if(!consulta){
+        const nfsResumo=[...new Set(itens.map(p=>String(p.nf||'').replace(/^0+/,'')).filter(Boolean))];
+        tabela = `<details class="ce-mobile-nfs">
+          <summary>Ver NFs (${nfsResumo.length})</summary>
+          <div class="ce-mobile-nfs-lista">${nfsResumo.length ? nfsResumo.map(n=>`<span>${escapeHtml(n)}</span>`).join('') : '<span>Sem NFs</span>'}</div>
+        </details>`;
+      }else{
+        const linhas = itens.map(p=>`<tr>
+          <td class="mono" style="font-weight:700;">${escapeHtml(p.nf||'—')}</td>
+          <td>${escapeHtml(p.cliente_nome||'—')}</td>
+          <td class="mono" style="font-weight:700;white-space:nowrap;">${escapeHtml(ceMoedaBR(p.valor_nf))}</td>
+          <td class="mono" style="font-size:10.5px;">${escapeHtml(p.chave||'—')}</td>
+          <td class="mono">${escapeHtml(p.rastreio||'—')}</td>
+          <td class="mono">${p.volumes||1}</td>
+        </tr>`).join('');
+        tabela = `<table class="manifest-itens-padrao manifest-itens-postagens" style="margin-top:8px;">
+          <thead><tr><th>NF</th><th>Cliente</th><th>Valor NF</th><th>Chave</th><th>Rastreio</th><th>Volume</th></tr></thead>
+          <tbody>${linhas || '<tr><td colspan="6" class="empty">Sem itens</td></tr>'}</tbody>
+        </table>`;
+      }
     }
 
     // ---- bloco de retirada / assinatura ----
@@ -11922,6 +11967,21 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
     }
   }catch(e){}
 })();
+</script>
+
+
+<script id="ce-assinatura-mobile-route">
+document.addEventListener('DOMContentLoaded',()=>{
+  document.body.classList.add('ce-assinatura-only');
+  setTimeout(()=>{
+    try{
+      document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+      const v=document.getElementById('view-assinatura');
+      if(v){v.classList.add('active');v.style.display='block'}
+      if(typeof renderListaAbertos==='function') renderListaAbertos();
+    }catch(e){console.warn(e)}
+  },500);
+});
 </script>
 
 </body>
