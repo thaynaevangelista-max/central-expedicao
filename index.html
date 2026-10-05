@@ -1,6 +1,8 @@
 <!DOCTYPE html>
+<!-- V169: Painel de Operação com Resumo da Operação + Painel dos Colaboradores e filtro de transporte -->
 <!-- V163: Via Leitor — botões azuis juntos; filtro de coluna na linha dos filtros (somente layout) -->
 <!-- V162: Painel da Operação com metas diárias por colaborador (public.metas_operacao) -->
+<!-- V171: Planilha Antiga com lote Supabase padronizado; finalização opcional e coleta obrigatória -->
 <!-- V161: nova aba "Painel da Operação" (somente consulta; xmls + postagens) -->
 <!-- V160: Gerar relatório corrigido (função e botão no mesmo escopo; xlsx a partir de postagens.coleta_em) -->
 <!-- V149: postagens Supabase + renovação automática JWT + relatório autenticado -->
@@ -2290,8 +2292,14 @@
 @media(max-width:850px){.via-exp-filtros .ce-via-colfilters{grid-column:1/-1;flex-wrap:wrap}}
 .via-exp-table thead th[data-sort]{cursor:pointer;user-select:none}
 .via-exp-table thead th.ce-sort-asc::after{content:" ▲";font-size:8px}.via-exp-table thead th.ce-sort-desc::after{content:" ▼";font-size:8px}
+
+.ce-pn-tabs{display:flex;gap:6px;margin:0 0 10px;border-bottom:1px solid #d4dcda;padding-bottom:8px}
+.ce-pn-tab{height:34px;border:1px solid #bcc8cf;background:#fff;color:#314654;border-radius:5px;padding:0 16px;font-size:11px;font-weight:800;cursor:pointer}
+.ce-pn-tab.on{background:#164764;border-color:#164764;color:#fff}
+.ce-pn-subtitle{font-size:12px;font-weight:800;color:#102536;margin:0 0 8px}
 @media(max-width:1100px){.ce-hp-filtros{grid-template-columns:repeat(3,minmax(130px,1fr))!important}.ce-hp-rel-wrap{min-width:260px!important}}
 </style>
+<!-- V172: HORA FAT exibida em America/Sao_Paulo; dados no Supabase permanecem UTC -->
 </head>
 <body><div class="app-shell">
 
@@ -2817,6 +2825,40 @@
       <table class="ce-xml-result-table">
         <thead><tr><th>ARQUIVO</th><th>FILIAL</th><th>NF</th><th>CHAVE</th><th>STATUS</th><th>DETALHE</th></tr></thead>
         <tbody id="ce-xml-resultados"><tr><td colspan="6" class="empty">O resultado da importação aparecerá aqui.</td></tr></tbody>
+      </table>
+    </div>
+
+
+    <div class="card ce-antiga-card" style="margin-top:16px;">
+      <div class="ce-xml-upload-head">
+        <div>
+          <strong>Planilha Antiga</strong>
+          <p>Importe o relatório antigo de coletas. Os registros são gravados diretamente no Supabase como já coletados, sem criar romaneio ou assinatura.</p>
+        </div>
+        <span class="badge badge-romaneio">Excel ou CSV</span>
+      </div>
+      <div class="grid2" style="align-items:end;">
+        <div class="field">
+          <label>Arquivo da planilha antiga</label>
+          <input id="ce-antiga-file" type="file" accept=".xlsx,.xls,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel">
+        </div>
+        <div class="field">
+          <label>Registros encontrados</label>
+          <div id="ce-antiga-contagem" style="height:38px;display:flex;align-items:center;font-weight:800;">0</div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" type="button" id="ce-antiga-analisar">Analisar planilha</button>
+        <button class="btn btn-primary" type="button" id="ce-antiga-importar" disabled>Importar como coletados</button>
+        <button class="btn btn-ghost" type="button" id="ce-antiga-limpar">Limpar</button>
+        <span id="ce-antiga-status" style="font-size:12px;color:var(--muted);align-self:center;">Nenhum arquivo analisado.</span>
+      </div>
+    </div>
+
+    <div class="card" id="ce-antiga-preview-card" style="padding:0;overflow:auto;display:none;margin-top:12px;">
+      <table class="ce-xml-result-table">
+        <thead><tr><th>DATA</th><th>NF</th><th>FINALIZAÇÃO</th><th>COLETA</th><th>EMBALADOR</th><th>TRANSPORTE</th><th>FILIAL</th><th>VOLUME</th><th>VALIDAÇÃO</th></tr></thead>
+        <tbody id="ce-antiga-preview"></tbody>
       </table>
     </div>
   </section>
@@ -10341,7 +10383,7 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
  const TRA=o=>get(o,['Transportadora','TRANSPORTADORA','transportadora','Transporte','TRANSPORTE']);
  const CHA=o=>get(o,['Chave','CHAVE','chave','ChaveNFe','CHAVE_NFE','Chave NF-e']);
  const DF=o=>get(o,['DataSaidaEntrada','data_saida_entrada','DataEmissao','DT. EMISSÃO','DtEmissao','DATA_FATURAMENTO','DataFaturamento','data_faturamento']);
- const HF=o=>{const direto=get(o,['HoraAutorizacao','hora_autorizacao','HorarioAutorizacao','horario_autorizacao','Hora']);if(direto)return direto;const ds=get(o,['DataSaidaEntrada','data_saida_entrada','DataEmissao','data_emissao','DataAutorizacaoSefaz','data_autorizacao']);const m=String(ds||'').match(/[T ](\d{2}):(\d{2})(?::(\d{2}))?/);return m?`${m[1]}:${m[2]}${m[3]?':'+m[3]:''}`:'';};
+ const HF=o=>{const ds=get(o,['DataSaidaEntrada','data_saida_entrada','DataEmissao','data_emissao','DataAutorizacaoSefaz','data_autorizacao']);if(ds&&/^\d{4}-\d{2}-\d{2}T/.test(String(ds))){try{const d=new Date(ds);if(!isNaN(d))return d.toLocaleTimeString('pt-BR',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});}catch(e){}}const direto=get(o,['HoraAutorizacao','hora_autorizacao','HorarioAutorizacao','horario_autorizacao','Hora']);if(direto)return direto;const m=String(ds||'').match(/[T ](\d{2}):(\d{2})(?::(\d{2}))?/);return m?`${m[1]}:${m[2]}${m[3]?':'+m[3]:''}`:'';};
  const dataBR=v=>{const x=String(v||'').trim();if(!x)return '—';const m=x.match(/^(\d{4})-(\d{2})-(\d{2})/);return m?`${m[3]}/${m[2]}/${m[1]}`:x;};
  const horaBR=v=>{const x=String(v||'').trim();if(!x)return '—';const m=x.match(/(\d{2}):(\d{2})(?::(\d{2}))?/);return m?`${m[1]}:${m[2]}${m[3]?':'+m[3]:''}`:x;};
  const dataHoraBR=v=>{const x=String(v||'').trim();if(!x)return '—';try{if(/^\d{4}-\d{2}-\d{2}T/.test(x)){const d=new Date(x);if(!isNaN(d))return d.toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).replace(',','');}}catch(e){} const m=x.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?/);if(m)return `${m[3]}/${m[2]}/${m[1]}${m[4]?' '+m[4]+':'+m[5]+':'+(m[6]||'00'):''}`;return x;};
@@ -10653,7 +10695,7 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
          data_emissao:x.data_emissao||orig.data_emissao||'',
          DataAutorizacaoSefaz:x.data_autorizacao||orig.data_autorizacao||'',
          ChaveNFe:x.chave_nfe||orig.chave_nfe||'',
-         HoraAutorizacao:mh?`${mh[1]}:${mh[2]}${mh[3]?':'+mh[3]:''}`:'',
+         HoraAutorizacao:(()=>{try{const d=new Date(ds);if(ds&&/^\d{4}-\d{2}-\d{2}T/.test(ds)&&!isNaN(d))return d.toLocaleTimeString('pt-BR',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});}catch(e){}return mh?`${mh[1]}:${mh[2]}${mh[3]?':'+mh[3]:''}`:'';})(),
          DataLimite:x.data_limite||orig.data_limite||'',
          Volume:x.volume??orig.volume??''
        };
@@ -12244,6 +12286,8 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
 .ce-xml-upload-head strong{font-size:14px}.ce-xml-upload-head p{font-size:12px;color:var(--muted);margin:5px 0 0;line-height:1.45}
 .ce-xml-result-table{width:100%;border-collapse:collapse;font-size:11px;white-space:nowrap}.ce-xml-result-table th{background:#e5e8ea;color:#243744;text-align:left;padding:7px;border-bottom:1px solid #aeb7be}
 .ce-xml-result-table td{padding:7px;border-bottom:1px solid #e4e6e8}.ce-xml-ok{color:#147a4b;font-weight:800}.ce-xml-erro{color:#b42318;font-weight:800}.ce-xml-ignorado{color:#8a5a10;font-weight:800}
+.ce-antiga-card{border-top:3px solid var(--primary,#1f6f5f)}
+#ce-antiga-preview-card{max-height:420px}
 </style>
 <script id="ce-xml-upload-script">
 (function(){
@@ -12294,6 +12338,109 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
 })();
 </script>
 
+
+<script id="ce-planilha-antiga-upload-script">
+(function(){
+  const $=id=>document.getElementById(id);
+  let linhas=[];
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const norm=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase().replace(/\s+/g,' ');
+  const soDig=v=>String(v??'').replace(/\D/g,'');
+  function filial(v){let n=soDig(v); if(n==='101'||n==='0101')return '0101'; if(n==='102'||n==='0102')return '0102'; if(n==='1020')return '1020'; return n.padStart(4,'0');}
+  function dataBR(v){
+    if(v instanceof Date && !isNaN(v)) return [String(v.getDate()).padStart(2,'0'),String(v.getMonth()+1).padStart(2,'0'),v.getFullYear()].join('/');
+    if(typeof v==='number' && window.XLSX){const d=XLSX.SSF.parse_date_code(v);if(d)return `${String(d.d).padStart(2,'0')}/${String(d.m).padStart(2,'0')}/${d.y}`;}
+    const t=String(v??'').trim(); const m=t.match(/(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/); return m?`${m[1].padStart(2,'0')}/${m[2].padStart(2,'0')}/${m[3]}`:t;
+  }
+  function hora(v){
+    if(v===null||v===undefined||v==='')return '';
+    if(typeof v==='number'){let sec=Math.round((v%1)*86400)%86400;return `${String(Math.floor(sec/3600)).padStart(2,'0')}:${String(Math.floor(sec%3600/60)).padStart(2,'0')}:${String(sec%60).padStart(2,'0')}`;}
+    const m=String(v).trim().match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);return m?`${m[1].padStart(2,'0')}:${m[2]}:${m[3]||'00'}`:'';
+  }
+  function isoSP(d,h){if(!d||!h)return null;const m=d.match(/(\d{2})\/(\d{2})\/(\d{4})/);if(!m)return null;return `${m[3]}-${m[2]}-${m[1]}T${h}-03:00`;}
+  function achar(obj,...nomes){const entries=Object.entries(obj);for(const nome of nomes){const alvo=norm(nome);const e=entries.find(([k])=>norm(k)===alvo);if(e)return e[1];}return '';}
+  function mapear(r,i){
+    const d=dataBR(achar(r,'Data'));
+    const nf=soDig(achar(r,'Nota Fiscal','NF'));
+    const hf=hora(achar(r,'Horário de Finalização','Horario de Finalizacao'));
+    const hc=hora(achar(r,'Horário da Coleta','Horario da Coleta'));
+    const emb=String(achar(r,'Embalador')||'').trim();
+    const tr=String(achar(r,'Transporte','Transportadora')||'').trim();
+    const fil=filial(achar(r,'Código da Filial','Codigo da Filial','Filial'));
+    const vol=Math.max(1,parseInt(achar(r,'Volume')||1,10)||1);
+    const erros=[]; if(!d)erros.push('sem data');if(!nf)erros.push('sem NF');if(!hc)erros.push('sem coleta');if(!['0101','0102','1020'].includes(fil))erros.push('filial inválida');
+    return {i:i+2,data:d,nf,finalizacao:hf,coleta:hc,embalador:emb,transporte:tr,filial:fil,volume:vol,erros};
+  }
+  function render(){
+    const tb=$('ce-antiga-preview');if(!tb)return;
+    tb.innerHTML=linhas.slice(0,300).map(x=>`<tr><td>${esc(x.data)}</td><td><b>${esc(x.nf)}</b></td><td>${esc(x.finalizacao||'—')}</td><td>${esc(x.coleta)}</td><td>${esc(x.embalador||'—')}</td><td>${esc(x.transporte||'—')}</td><td>${esc(x.filial)}</td><td>${x.volume}</td><td class="${x.erros.length?'ce-xml-erro':'ce-xml-ok'}">${x.erros.length?esc(x.erros.join(', ')):'PRONTO'}</td></tr>`).join('')+(linhas.length>300?`<tr><td colspan="9" class="empty">Prévia limitada a 300 linhas. Total: ${linhas.length}.</td></tr>`:'');
+    $('ce-antiga-preview-card').style.display='block';$('ce-antiga-contagem').textContent=String(linhas.length);
+  }
+  async function analisar(){
+    const f=$('ce-antiga-file')?.files?.[0];if(!f){alert('Selecione a planilha antiga.');return}
+    if(!window.XLSX){alert('Leitor de Excel não carregou. Atualize a página e tente novamente.');return}
+    try{
+      $('ce-antiga-status').textContent='Lendo planilha...';
+      const ab=await f.arrayBuffer();const wb=XLSX.read(ab,{type:'array',cellDates:false});const ws=wb.Sheets[wb.SheetNames[0]];const dados=XLSX.utils.sheet_to_json(ws,{defval:'',raw:true});
+      linhas=dados.map(mapear).filter(x=>x.nf||x.data||x.coleta);
+      render();const ok=linhas.filter(x=>!x.erros.length).length,err=linhas.length-ok;
+      $('ce-antiga-status').textContent=`${linhas.length} registro(s) · ${ok} pronto(s) · ${err} com erro(s)`;$('ce-antiga-importar').disabled=!ok;
+    }catch(e){linhas=[];$('ce-antiga-importar').disabled=true;$('ce-antiga-status').textContent='Erro ao ler: '+e.message;alert('Não foi possível ler a planilha.\n\n'+e.message)}
+  }
+  function headers(){const key=window.CE_SUPABASE_ANON_KEY||document.querySelector('meta[name="supabase-anon-key"]')?.content||'';const token=window.CE_AUTH?.session?.access_token||key;return {apikey:key,Authorization:'Bearer '+token,'Content-Type':'application/json'};}
+  function base(){return (window.CE_SUPABASE_URL||'https://njvcostescybgwbnipec.supabase.co').replace(/\/$/,'');}
+  async function importar(){
+    const validas=linhas.filter(x=>!x.erros.length);if(!validas.length)return;
+    if(!confirm(`Importar ${validas.length} registro(s) como coletados da PLANILHA ANTIGA?\n\nNão será criado romaneio nem assinatura.`))return;
+    const btn=$('ce-antiga-importar');btn.disabled=true;$('ce-antiga-status').textContent='Verificando duplicidades no Supabase...';
+    try{
+      const H=headers(); if(!H.apikey)throw new Error('Configuração do Supabase não encontrada.');
+      // Busca existentes em páginas para impedir duplicação de NF+filial.
+      const existentes=new Set();
+      for(let off=0;;off+=1000){const r=await fetch(base()+`/rest/v1/postagens?select=nf,filial&limit=1000&offset=${off}`,{headers:H,cache:'no-store'});if(!r.ok)throw new Error('Falha ao consultar postagens: '+await r.text());const a=await r.json();a.forEach(p=>existentes.add(`${soDig(p.nf)}|${filial(p.filial)}`));if(a.length<1000)break;}
+      const unicas=new Map(); validas.forEach(x=>unicas.set(`${x.nf}|${x.filial}`,x));
+      const novas=[...unicas.values()].filter(x=>!existentes.has(`${x.nf}|${x.filial}`));
+      const duplicadas=validas.length-novas.length;
+      if(!novas.length){$('ce-antiga-status').textContent=`Nada importado · ${duplicadas} já existente(s)`;alert('Todas as NFs válidas já existem em postagens.');return}
+      // Enriquecimento opcional com xmls: pedido, cliente e chave.
+      const xmlMap=new Map();
+      for(let i=0;i<novas.length;i+=100){const grupo=novas.slice(i,i+100);const nfs=[...new Set(grupo.map(x=>x.nf))];const filtro=nfs.map(encodeURIComponent).join(',');const r=await fetch(base()+`/rest/v1/xmls?select=nf,filial,pedido,cliente_nome,chave_nfe&nf=in.(${filtro})&limit=1000`,{headers:H,cache:'no-store'});if(r.ok){(await r.json()).forEach(x=>xmlMap.set(`${soDig(x.nf)}|${filial(x.filial)}`,x));}}
+      let importados=0;
+      for(let i=0;i<novas.length;i+=100){
+        const lote=novas.slice(i,i+100).map(x=>{const xm=xmlMap.get(`${x.nf}|${x.filial}`)||{};const coleta=isoSP(x.data,x.coleta);const bip=isoSP(x.data,x.finalizacao);return {
+          // Todos os objetos do lote usam exatamente as mesmas chaves.
+          // Isso evita PGRST102 quando alguma linha não possui horário de finalização
+          // ou não encontra dados complementares na tabela xmls.
+          empresa:x.filial==='1020'?'BBBATERIAS':'EQUIPATECH',
+          filial:x.filial,
+          nf:x.nf,
+          chave_nfe:xm.chave_nfe||null,
+          pedido:xm.pedido?String(xm.pedido):null,
+          cliente_nome:xm.cliente_nome||null,
+          transporte_original:x.transporte||null,
+          transporte_romaneio:x.transporte||null,
+          volume:x.volume,
+          bipador:'PLANILHA ANTIGA',
+          embalador:x.embalador||null,
+          status:'coletado',
+          bipada_em:bip||null,
+          coleta_em:coleta,
+          criado_em:bip||coleta,
+          atualizado_em:new Date().toISOString()
+        }});
+        $('ce-antiga-status').textContent=`Gravando ${Math.min(i+100,novas.length)} de ${novas.length}...`;
+        const r=await fetch(base()+'/rest/v1/postagens',{method:'POST',headers:{...H,Prefer:'return=minimal'},body:JSON.stringify(lote)});if(!r.ok)throw new Error('Erro ao gravar lote: '+await r.text());importados+=lote.length;
+      }
+      $('ce-antiga-status').textContent=`${importados} importado(s) · ${duplicadas} já existente(s) · gravados no Supabase`;
+      alert(`Importação concluída.\n\n${importados} importado(s)\n${duplicadas} já existente(s)\n\nOrigem: PLANILHA ANTIGA`);
+      try{if(typeof ceRecarregarOperacionalSupabase==='function')await ceRecarregarOperacionalSupabase();}catch(e){}
+      try{window.CE_VIA_RECARREGAR?.();}catch(e){}
+    }catch(e){$('ce-antiga-status').textContent='Falha na importação: '+e.message;alert('Não foi possível gravar a planilha no Supabase.\n\n'+e.message)}finally{btn.disabled=false}
+  }
+  function limpar(){linhas=[];if($('ce-antiga-file'))$('ce-antiga-file').value='';if($('ce-antiga-preview'))$('ce-antiga-preview').innerHTML='';if($('ce-antiga-preview-card'))$('ce-antiga-preview-card').style.display='none';if($('ce-antiga-contagem'))$('ce-antiga-contagem').textContent='0';if($('ce-antiga-status'))$('ce-antiga-status').textContent='Nenhum arquivo analisado.';if($('ce-antiga-importar'))$('ce-antiga-importar').disabled=true;}
+  document.addEventListener('DOMContentLoaded',()=>{$('ce-antiga-analisar')?.addEventListener('click',analisar);$('ce-antiga-importar')?.addEventListener('click',importar);$('ce-antiga-limpar')?.addEventListener('click',limpar);});
+})();
+</script>
 
 <script id="ce-v132-remove-local-operacional">
 (function(){
@@ -12609,7 +12756,7 @@ const INTERVALO_AUTO_MS=120000;      // atualização automática (2 min)
 const OBSOLETO_MS=45000;             // ao abrir a aba, recarrega se os dados tiverem mais que isso
 const CAP_REGISTROS=30000;
 const COLS_POST='id,nf,chave_nfe,pedido,filial,volume,bipador,embalador,bipada_em,coleta_em,romaneio_id,status';
-const SEL_XML='filial,nf,pedido,chave_nfe,total_unidades,volume,data_saida_entrada';
+const SEL_XML='filial,nf,pedido,chave_nfe,total_unidades,volume,data_saida_entrada,transportadora';
 
 // ───────────────────────── utilitários ─────────────────────────
 const $=id=>document.getElementById(id);
@@ -12778,10 +12925,12 @@ function msgErro(e){
 async function carregarDados(dataISO){
   const j=janelaDia(dataISO),estado={truncado:false};
   const ini=encodeURIComponent(j.ini),fim=encodeURIComponent(j.fim);
-  const [fat,prod,colet]=await Promise.all([
+  const [fat,prod,colet,venceHoje,pendentesVia]=await Promise.all([
     paginado(`xmls?select=${SEL_XML}&filial=in.(${FILIAIS.join(',')})&data_saida_entrada=gte.${ini}&data_saida_entrada=lt.${fim}&order=data_saida_entrada.asc,filial.asc,nf.asc`,estado),
     paginado(`postagens?select=${COLS_POST}&bipada_em=gte.${ini}&bipada_em=lt.${fim}&order=bipada_em.asc,id.asc`,estado),
-    paginado(`postagens?select=${COLS_POST}&coleta_em=gte.${ini}&order=coleta_em.asc,id.asc`,estado)
+    paginado(`postagens?select=${COLS_POST}&coleta_em=gte.${ini}&order=coleta_em.asc,id.asc`,estado),
+    paginado(`xmls?select=filial,nf,pedido,data_limite&filial=in.(${FILIAIS.join(',')})&data_limite=gte.${ini}&data_limite=lt.${fim}&order=data_limite.asc,filial.asc,nf.asc`,estado),
+    paginado(`via_leitor?select=filial,nf,pedido,data_limite&filial=in.(${FILIAIS.join(',')})&order=data_limite.asc,filial.asc,nf.asc`,estado)
   ]);
   // XML das postagens que não estão entre os faturados do dia (chave NF-e primeiro; NF depois).
   const chavesFat=new Set(fat.map(x=>digitos(x.chave_nfe)).filter(Boolean));
@@ -12804,7 +12953,7 @@ async function carregarDados(dataISO){
     const xs=await rest(`xmls?select=${SEL_XML}&nf=in.(${nfs.slice(i,i+60).map(n=>'"'+n+'"').join(',')})&limit=1000`);
     if(Array.isArray(xs))xmlExtra.push(...xs);
   }
-  return {raw:{fat,prod,colet,xmlExtra},janela:j,truncado:estado.truncado};
+  return {raw:{fat,prod,colet,xmlExtra,venceHoje,pendentesVia},janela:j,truncado:estado.truncado};
 }
 
 // ───────────────────────── metas diárias (public.metas_operacao) ─────────────────────────
@@ -12858,7 +13007,7 @@ async function salvarMetas(){
 }
 
 // ───────────────────────── interface ─────────────────────────
-const ST={dados:null,dataCarregada:'',ts:0,carregando:false,modo:'bip',ordem:{col:'pedidos',dir:-1},ordemCmp:{col:'pedidos',dir:-1},timer:null,hojeAnt:'',erro:'',metas:new Map(),metasErro:'',metasAusente:false,editMetas:false,rascunho:{},metaMsg:''};
+const ST={dados:null,dataCarregada:'',ts:0,carregando:false,modo:'emb',ordem:{col:'pedidos',dir:-1},ordemCmp:{col:'pedidos',dir:-1},timer:null,hojeAnt:'',erro:'',metas:new Map(),metasErro:'',metasAusente:false,editMetas:false,rascunho:{},metaMsg:''};
 const perfil=()=>window.CE_AUTH?.perfil||null;
 const ehAdmin=()=>String(perfil()?.perfil||'').toLowerCase()==='admin';
 const nomeUsuario=()=>String(perfil()?.nome||'').trim();
@@ -12883,7 +13032,7 @@ function css(){
 .ce-pn-title{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:12px;gap:12px;flex-wrap:wrap}
 .ce-pn-title h2{margin:0;font-size:20px;color:#102536}.ce-pn-title p{margin:3px 0 0;font-size:11px;color:#657785}
 .ce-pn-upd{text-align:right;font-size:11px;color:#314654}.ce-pn-upd b{font-size:12px}.ce-pn-upd small{display:block;font-size:9px;color:#7a8a95;margin-top:2px}
-.ce-pn-filtros{display:grid;grid-template-columns:160px 130px minmax(200px,260px) 100px;gap:8px;background:#fff;border:1px solid #d4dcda;border-radius:7px;padding:10px;margin-bottom:10px;align-items:end}
+.ce-pn-filtros{display:grid;grid-template-columns:150px 120px minmax(180px,240px) minmax(180px,240px) 100px;gap:8px;background:#fff;border:1px solid #d4dcda;border-radius:7px;padding:10px;margin-bottom:10px;align-items:end}
 .ce-pn-filtros label{display:block;font-size:9px;font-weight:800;color:#536572;margin-bottom:4px}
 .ce-pn-filtros input,.ce-pn-filtros select{width:100%;height:31px;border:1px solid #bcc8cf;border-radius:3px;padding:0 8px;font-size:11px;box-sizing:border-box;background:#fff}
 .ce-pn-filtros select:disabled{background:#eef2f5;color:#314654;font-weight:700}
@@ -12939,11 +13088,16 @@ function montarSecao(){
   if(!main)return;
   const s=document.createElement('section');s.className='view';s.id='view-painel';
   s.innerHTML=`
-<div class="ce-pn-title"><div><h2>Painel da Operação</h2><p>Produtividade diária da Expedição · Supabase · horário de São Paulo</p></div>
+<div class="ce-pn-title"><div><h2>Painel de Operação</h2><p>Acompanhamento diário da Expedição</p></div>
 <div class="ce-pn-upd"><b id="ce-pn-upd">Última atualização: --:--:--</b><small>Atualização automática a cada 2 min</small></div></div>
+<div class="ce-pn-tabs">
+ <button type="button" class="ce-pn-tab on" data-pn-aba="operacao">Resumo da Operação</button>
+ <button type="button" class="ce-pn-tab" data-pn-aba="colaboradores">Painel dos Colaboradores</button>
+</div>
 <div class="ce-pn-filtros">
  <div><label>DATA</label><input type="date" id="ce-pn-data"></div>
  <div><label>FILIAL</label><select id="ce-pn-filial"><option value="">Todas</option><option>0101</option><option>0102</option><option>1020</option></select></div>
+ <div><label>TRANSPORTE</label><select id="ce-pn-transporte"><option value="">Todos os transportes</option></select></div>
  <div><label>COLABORADOR</label><select id="ce-pn-colab"><option value="">Todos</option></select></div>
  <button type="button" class="ce-pn-btn" id="ce-pn-atualizar">Atualizar</button>
 </div>
@@ -12954,8 +13108,10 @@ function montarSecao(){
   $('ce-pn-atualizar').onclick=()=>atualizar(true);
   $('ce-pn-data').onchange=()=>atualizar(true);
   $('ce-pn-filial').onchange=()=>renderizar();
+  $('ce-pn-transporte').onchange=()=>renderizar();
   $('ce-pn-colab').onchange=()=>renderizar();
   $('ce-pn-corpo').addEventListener('input',e=>{const i=e.target.closest('input[data-pn-meta]');if(i)ST.rascunho[i.dataset.pnMeta]=i.value;});
+  document.querySelectorAll('[data-pn-aba]').forEach(b=>b.onclick=()=>{ST.aba=b.dataset.pnAba||'operacao';document.querySelectorAll('[data-pn-aba]').forEach(x=>x.classList.toggle('on',x===b));renderizar();});
   $('ce-pn-corpo').addEventListener('click',e=>{
     const seg=e.target.closest('[data-pn-modo]');
     if(seg){ST.modo=seg.dataset.pnModo;renderizar();return;}
@@ -13052,11 +13208,54 @@ function renderizar(){
   if(!ST.dados){corpo.innerHTML=ST.erro?'':'<div class="ce-pn-vazio">Carregando...</div>';return;}
   const admin=ehAdmin();
   const f={filial:$('ce-pn-filial')?.value||''};
+  const canonTransporte=v=>{
+    let t=String(v||'SEM TRANSPORTADORA').trim().toUpperCase();
+    if(!t)t='SEM TRANSPORTADORA';
+    if(t.includes('MERCADO LIVRE'))t='ME2';
+    if(t.includes('MAGALU'))t='ENVIOS - MARKETPLACES';
+    return t;
+  };
+  // Preenche o filtro apenas com transportes existentes nos faturados da data/filial.
+  const selTr=$('ce-pn-transporte');
+  if(selTr){
+    const atual=selTr.value||'';
+    const trs=[...new Set((ST.dados.raw.fat||[]).filter(x=>!f.filial||String(x?.filial||'')===f.filial).map(x=>canonTransporte(x.transportadora)))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+    selTr.innerHTML='<option value="">Todos os transportes</option>'+trs.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');
+    if(trs.includes(atual))selTr.value=atual;
+  }
+  const transporteSel=selTr?.value||'';
   // 1) modelo sem recorte individual só para listar colaboradores; 2) modelo do recorte atual
   popularColaboradores(construirModelo(ST.dados.raw,f,{janela:ST.dados.janela,predBip:null,predEmb:null}));
   const ctx2=contexto();
   const mm=construirModelo(ST.dados.raw,f,ctx2);
   const c=mm.cartoes,fx=mm.fat,emb=mm.embalagem;
+  // V168 — resumo operacional do dia selecionado.
+  const filOk=x=>(!f.filial||String(x?.filial||'')===f.filial)&&(!transporteSel||canonTransporte(x?.transportadora)===transporteSel);
+  const chaveNF=x=>String(x?.filial||'')+'|'+String(x?.nf||'').replace(/^0+/,'');
+  const unicos=arr=>new Set((arr||[]).filter(filOk).map(chaveNF).filter(x=>!x.endsWith('|'))).size;
+  const dataSel=$('ce-pn-data')?.value||hojeSP();
+  const pend=(ST.dados.raw.pendentesVia||[]).filter(filOk);
+  const pendHoje=pend.filter(x=>String(x.data_limite||'').slice(0,10)===dataSel);
+  const atrasados=pend.filter(x=>{const d=String(x.data_limite||'').slice(0,10);return d&&d<dataSel;});
+  const resumoOp={
+    faturados:unicos(ST.dados.raw.fat||[]),
+    precisamSair:unicos(ST.dados.raw.venceHoje||[]),
+    faltamBipar:unicos(pendHoje),
+    atrasados:unicos(atrasados)
+  };
+  // V169 — faturados do dia agrupados por transportadora (sem volume).
+  const porTransporte=new Map();
+  const vistosTransporte=new Set();
+  (ST.dados.raw.fat||[]).filter(filOk).forEach(x=>{
+    const id=chaveNF(x); if(!id||id.endsWith('|')||vistosTransporte.has(id))return;
+    vistosTransporte.add(id);
+    const tr=canonTransporte(x.transportadora);
+    porTransporte.set(tr,(porTransporte.get(tr)||0)+1);
+  });
+  const faturadosTransporte=[...porTransporte.entries()].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'pt-BR'));
+  const totalTransporte=faturadosTransporte.reduce((a,[,q])=>a+q,0);
+  const blocoTransportes=`<div class="ce-pn-bloco"><div class="ce-pn-bloco-h"><h3>Faturados do Dia por Transporte</h3><span style="font-size:10px;color:#7a8a95">${f.filial?'Filial '+esc(f.filial):'Todas as filiais'}${transporteSel?' · '+esc(transporteSel):''}</span></div>
+<div class="ce-pn-tw"><table class="ce-pn-t"><thead><tr><th style="text-align:left">TRANSPORTE</th><th>FATURADOS</th></tr></thead><tbody>${faturadosTransporte.length?faturadosTransporte.map(([tr,q])=>`<tr><td>${esc(tr)}</td><td><b>${fmtN(q)}</b></td></tr>`).join(''):`<tr><td colspan="2" class="ce-pn-vazio">Nenhum faturado encontrado na data selecionada.</td></tr>`}</tbody><tfoot><tr><td>TOTAL</td><td>${fmtN(totalTransporte)}</td></tr></tfoot></table></div></div>`;
   const selNome=admin?($('ce-pn-colab').selectedOptions[0]?.textContent||'Todos'):nomeUsuario();
   const quem=admin
     ?`<span class="ce-pn-chip adm">ADMIN</span> ${ctx2.predBip?'Visão individual: <b>'+esc(selNome)+'</b>':'Operação completa'}`
@@ -13072,17 +13271,17 @@ function renderizar(){
   // Tabelas
   const lista=ST.modo==='emb'?mm.emb:mm.bip;
   const meu=admin?null:predUsuario();
-  const comMeta=ST.modo==='bip';
+  const comMeta=ST.modo==='emb';
   const lista2=lista.map(x=>{const meta=comMeta?(ST.metas.get(x.chave)?.meta||0):0;return {...x,meta,pctMeta:meta?x.pedidos/meta*100:-1};});
   let linhas=ordenar(lista2,ST.ordem);
   if(!admin)linhas=linhas.filter(x=>meu(x.chave));
-  const rotPed=ST.modo==='emb'?'PEDIDOS EMBALADOS':'PEDIDOS BIPADOS';
+  const rotPed=ST.modo==='emb'?'EMBALAGENS':'PEDIDOS BIPADOS';
   const marca=x=>(!admin||(ctx2.predBip&&ctx2.predBip(x.chave)))?' class="me"':'';
   const corpoTab=linhas.length?linhas.map(x=>`<tr${marca(x)}><td>${esc(x.nome)}</td><td>${fmtN(x.postagens)}</td><td>${fmtN(x.pedidos)}</td><td>${fmtN(x.unidades)}</td><td>${fmtN(x.exp)}</td><td>${fmtN(x.unExp)}</td><td>${fmtPct(x.part)}</td>${comMeta?`<td>${x.meta?fmtN(x.meta):'—'}</td><td>${x.meta?`<span class="mb"><i style="width:${Math.min(100,x.pctMeta)}%;background:${corMeta(x.pctMeta)}"></i></span>${fmtPct(x.pctMeta)}`:'—'}</td>`:''}</tr>`).join(''):`<tr><td colspan="9" class="ce-pn-vazio">Sem produção registrada para o recorte.</td></tr>`;
   const o=ST.ordem;
-  const tabProd=`<div class="ce-pn-bloco"><div class="ce-pn-bloco-h"><h3>Produtividade por colaborador</h3>
+  const tabProd=`<div class="ce-pn-bloco"><div class="ce-pn-bloco-h"><h3>Resumo dos Colaboradores · Embalagens × Meta do Dia</h3>
 <div class="ce-pn-seg"><button type="button" data-pn-modo="bip" class="${ST.modo==='bip'?'on':''}">Bipagem</button><button type="button" data-pn-modo="emb" class="${ST.modo==='emb'?'on':''}">Embalagem</button></div></div>
-<div class="ce-pn-tw"><table class="ce-pn-t"><thead><tr>${th('COLABORADOR','nome','prod',o)}${th('POSTAGENS','postagens','prod',o)}${th(rotPed,'pedidos','prod',o)}${th('UNIDADES','unidades','prod',o)}${th('EXPEDIDOS','exp','prod',o)}${th('UN. EXPEDIDAS','unExp','prod',o)}${th('% PARTICIPAÇÃO','part','prod',o)}${comMeta?th('META','meta','prod',o)+th('% DA META','pctMeta','prod',o):''}</tr></thead><tbody>${corpoTab}</tbody></table></div></div>`;
+<div class="ce-pn-tw"><table class="ce-pn-t"><thead><tr>${th('COLABORADOR','nome','prod',o)}${th('POSTAGENS','postagens','prod',o)}${th(rotPed,'pedidos','prod',o)}${th('UNIDADES','unidades','prod',o)}${th('EXPEDIDOS','exp','prod',o)}${th('UN. EXPEDIDAS','unExp','prod',o)}${th('% PARTICIPAÇÃO','part','prod',o)}${comMeta?th('META DO DIA','meta','prod',o)+th('% DA META','pctMeta','prod',o):''}</tr></thead><tbody>${corpoTab}</tbody></table></div></div>`;
   let tabCmp='';
   if(admin){
     const mapa=new Map();
@@ -13097,27 +13296,30 @@ function renderizar(){
     tabCmp=`<div class="ce-pn-bloco"><div class="ce-pn-bloco-h"><h3>Comparativo da equipe · quem bipou × quem embalou</h3><span style="font-size:10px;color:#7a8a95">Clique no cabeçalho para ordenar</span></div>
 <div class="ce-pn-tw"><table class="ce-pn-t"><thead><tr>${th('COLABORADOR','nome','cmp',oc)}${th('PEDIDOS BIPADOS','pedidos','cmp',oc)}${th('UN. BIPADAS','unidades','cmp',oc)}${th('PEDIDOS EMBALADOS','pedE','cmp',oc)}${th('UN. EMBALADAS','unE','cmp',oc)}${th('EXPEDIDOS (BIPADOR)','expB','cmp',oc)}${th('EXPEDIDOS (EMBALADOR)','expE','cmp',oc)}</tr></thead><tbody>${cb}</tbody></table></div></div>`;
   }
+  const aba=ST.aba||'operacao';
+  const painelOperacao=`
+<div class="ce-pn-subtitle">Resumo da Operação</div>
+<div class="ce-pn-cards">
+ ${card('FATURADOS HOJE',fmtN(resumoOp.faturados),'pedidos/NFs faturados na data','fat')}
+ ${card('PRECISAM SAIR',fmtN(resumoOp.precisamSair),'data limite na data selecionada')}
+ ${card('FALTAM BIPAR',fmtN(resumoOp.faltamBipar),'ainda sem postagem/bipagem')}
+ ${card('ATRASADOS',fmtN(resumoOp.atrasados),'data limite vencida','exp')}
+</div>
+${blocoTransportes}
+<div class="ce-pn-fx"><h3>Faturados × Expedidos${f.filial?' · Filial '+f.filial:' · Todas as filiais'}${transporteSel?' · '+esc(transporteSel):''}</h3>
+ <div class="ce-pn-fxgrid"><div><small>PEDIDOS FATURADOS</small><b>${fmtN(resumoOp.faturados)}</b></div><div><small>PEDIDOS EXPEDIDOS</small><b>${fmtN(fx.expedidos)}</b></div><div class="pen"><small>AINDA PENDENTES</small><b>${fmtN(Math.max(0,resumoOp.faturados-fx.expedidos))}</b></div><div class="pct"><small>% EXPEDIDO</small><b>${fmtPct(resumoOp.faturados?fx.expedidos/resumoOp.faturados*100:0)}</b></div></div>
+ <div class="ce-pn-barra"><i style="width:${Math.min(100,resumoOp.faturados?fx.expedidos/resumoOp.faturados*100:0)}%"></i></div>
+ <div class="ce-pn-fil">${fils}</div>
+ <div class="ce-pn-nota">Faturados = NFs em <b>xmls</b> com data de saída/entrada na data. O filtro de transporte usa a transportadora registrada no XML.</div></div>`;
+  const painelColaboradores=`
+<div class="ce-pn-subtitle">Painel dos Colaboradores</div>
+${blocoMeta(admin,ctx2,c.pedidos,selNome,mm)}
+${`<div class="ce-pn-emb"><span>📦 <b>Embalagem${admin&&ctx2.predBip?' · '+esc(selNome):(admin?' · toda a operação':' · você')}</b></span><span>Pedidos embalados: <b>${fmtN(emb.pedidos)}</b></span><span>Unidades embaladas: <b>${fmtN(emb.unidades)}</b></span><span>Expedidos: <b>${fmtN(emb.exp)}</b></span></div>`}
+${tabProd}${tabCmp}${admin?blocoEditorMetas(mm):''}`;
   corpo.innerHTML=`
 <div class="ce-pn-quem">${quem}</div>
 ${aviso.map(a=>`<div class="ce-pn-aviso">${a}</div>`).join('')}
-${blocoMeta(admin,ctx2,c.pedidos,selNome,mm)}
-<div class="ce-pn-cards">
- ${card('POSTAGENS REALIZADAS',fmtN(c.postagens),'registros salvos em lote')}
- ${card('PEDIDOS BIPADOS',fmtN(c.pedidos),'NFs únicas')}
- ${card('UNIDADES BIPADAS',fmtN(c.unidades),'quantidade real (XML)')}
- ${card('PEDIDOS EXPEDIDOS/COLETADOS',fmtN(c.exp),'coletados na data','exp')}
- ${card('UNIDADES EXPEDIDAS',fmtN(c.unExp),'quantidade real (XML)','exp')}
- ${card('TOTAL DE PEDIDOS FATURADOS',fmtN(fx.faturados),'NFs faturadas na data','fat')}
- ${card('FATURADOS × EXPEDIDOS',fmtN(fx.expedidos)+' / '+fmtN(fx.faturados),'expedidos / faturados','fat')}
- ${card('% DE EXPEDIÇÃO',fmtPct(fx.pct),'expedidos ÷ faturados','fat')}
-</div>
-<div class="ce-pn-fx"><h3>Faturados × Expedidos${f.filial?' · Filial '+f.filial:' · Todas as filiais'}</h3>
- <div class="ce-pn-fxgrid"><div><small>PEDIDOS FATURADOS</small><b>${fmtN(fx.faturados)}</b></div><div><small>PEDIDOS EXPEDIDOS</small><b>${fmtN(fx.expedidos)}</b></div><div class="pen"><small>AINDA PENDENTES</small><b>${fmtN(fx.pendentes)}</b></div><div class="pct"><small>% EXPEDIDO</small><b>${fmtPct(fx.pct)}</b></div></div>
- <div class="ce-pn-barra"><i style="width:${Math.min(100,fx.pct)}%"></i></div>
- <div class="ce-pn-fil">${fils}</div>
- <div class="ce-pn-nota">Faturados = NFs em <b>xmls</b> com data de saída/entrada na data. Expedido = NF faturada que possui coleta registrada em <b>postagens.coleta_em</b>. Coletas realizadas na data (inclui NFs faturadas em outros dias): <b>${fmtN(fx.coletadosDia)}</b>.</div></div>
-${`<div class="ce-pn-emb"><span>📦 <b>Embalagem${admin&&ctx2.predBip?' · '+esc(selNome):(admin?' · toda a operação':' · você')}</b></span><span>Pedidos embalados: <b>${fmtN(emb.pedidos)}</b></span><span>Unidades embaladas: <b>${fmtN(emb.unidades)}</b></span><span>Expedidos: <b>${fmtN(emb.exp)}</b></span></div>`}
-${tabProd}${tabCmp}${admin?blocoEditorMetas(mm):''}`;
+${aba==='colaboradores'?painelColaboradores:painelOperacao}`;
 }
 async function atualizar(forcar){
   if(ST.carregando)return;
