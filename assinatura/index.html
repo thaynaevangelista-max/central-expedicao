@@ -2,13 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#121A24">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Assinaturas BBDI">
-<link rel="manifest" href="./manifest.webmanifest">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 <title>Central de Expedição — V31</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -2323,6 +2317,15 @@
   .ce-mobile-nfs-lista span{padding:6px 9px;border:1px solid var(--border);border-radius:8px;font-size:12px;font-weight:700;background:var(--surface)}
 }
 </style>
+
+
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#121A24">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Assinaturas BBDI">
+<link rel="apple-touch-icon" href="./icon-192.png">
 
 </head>
 <body><div class="app-shell">
@@ -10830,8 +10833,7 @@ main.main-content > #ce-historico-postagens.ce-nav-visible{display:block!importa
  const KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qdmNvc3Rlc2N5Ymd3Ym5pcGVjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxNzkxNzMsImV4cCI6MjEwNTc1NTE3M30.ZR9V23Fs-MzYznZCIRrTf2uXwc5oHiltb8hpmgJHADI';
  const LS='ce_auth_session_v1';
  const MIG='ce_auth_v3_migrado';
- localStorage.removeItem(LS);
- if(!localStorage.getItem(MIG)){ localStorage.removeItem(LS); localStorage.setItem(MIG,'1'); }
+ if(!localStorage.getItem(MIG)) localStorage.setItem(MIG,'1');
  const $=id=>document.getElementById(id);
  window.CE_AUTH={session:null,perfil:null};
  try{ /* [correção] antes isto escondia a tela de login do V10 ao carregar a página */ }catch(e){}
@@ -10981,7 +10983,67 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
    }
  }
  function aplicarSessao(){const p=window.CE_AUTH.perfil;if(!p)return;const fil=localStorage.getItem('expedicao_filial_inicial')||'';try{const ov=document.getElementById('startup-overlay');if(ov)ov.classList.add('startup-hidden');if(typeof aplicarFilialInicial==='function'&&fil)aplicarFilialInicial(fil);}catch(e){}$('ce-login-overlay').classList.add('ce-hidden');const actions=document.querySelector('.topbar-actions');if(actions&&!$('ce-user-chip')){const d=document.createElement('div');d.id='ce-user-chip';d.innerHTML=`<span>${p.usuario}${p.perfil==='admin'?' · ADMIN':''}</span><button class="ce-logout" id="ce-logout">Sair</button>`;actions.prepend(d);$('ce-logout').onclick=()=>{localStorage.removeItem(LS);location.reload();};}const gear=$('btn-abrir-configuracoes');if(gear)gear.style.display=p.perfil==='admin'?'':'none';}
- async function init(){localStorage.removeItem(LS);window.CE_AUTH.session=null;window.CE_AUTH.perfil=null;const ov=document.getElementById('ce-login-overlay');if(ov)ov.classList.remove('ce-hidden');/* [correção] antes esta função escondia #startup-overlay (a tela real de login do V10) com display:none!important via JS, o que nenhum CSS conseguia reverter */}
+ async function ceRenovarSessao(sess){
+   if(!sess?.refresh_token)return null;
+   try{
+     const r=await fetch(SB+'/auth/v1/token?grant_type=refresh_token',{
+       method:'POST',
+       headers:{apikey:KEY,'Content-Type':'application/json'},
+       body:JSON.stringify({refresh_token:sess.refresh_token})
+     });
+     const j=await r.json();
+     if(!r.ok||!j?.access_token)return null;
+     localStorage.setItem(LS,JSON.stringify(j));
+     return j;
+   }catch(e){return null}
+ }
+ function ceSessaoExpirada(sess){
+   try{
+     if(!sess?.access_token)return true;
+     const p=JSON.parse(atob(sess.access_token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
+     return !p?.exp || (p.exp*1000)<=(Date.now()+60000);
+   }catch(e){return true}
+ }
+ async function init(){
+   window.CE_AUTH.session=null;window.CE_AUTH.perfil=null;
+   const ov=document.getElementById('ce-login-overlay');
+   let sess=null;
+   try{sess=JSON.parse(localStorage.getItem(LS)||'null')}catch(e){}
+   if(sess && ceSessaoExpirada(sess)) sess=await ceRenovarSessao(sess);
+   if(sess?.access_token){
+     try{
+       window.CE_AUTH.session=sess;
+       await carregarPerfil();
+       if(!window.CE_AUTH.perfil?.ativo)throw new Error('Sessão sem acesso ativo.');
+       aplicarSessao();
+       const start=document.getElementById('startup-overlay');
+       if(start)start.classList.add('ce-auth-ok');
+       window.CE_CONFIG_READY=carregarConfig();
+       await window.CE_CONFIG_READY;
+       try{if(typeof window.CE_VIA_RECARREGAR==='function')window.CE_VIA_RECARREGAR();else if(typeof window.ceViaLeitorCarregar==='function')window.ceViaLeitorCarregar();}catch(_e){}
+       return;
+     }catch(e){
+       const renovada=await ceRenovarSessao(sess);
+       if(renovada){
+         try{
+           window.CE_AUTH.session=renovada;
+           await carregarPerfil();
+           if(window.CE_AUTH.perfil?.ativo){
+             aplicarSessao();
+             const start=document.getElementById('startup-overlay');
+             if(start)start.classList.add('ce-auth-ok');
+             window.CE_CONFIG_READY=carregarConfig();
+             await window.CE_CONFIG_READY;
+             return;
+           }
+         }catch(_e){}
+       }
+       localStorage.removeItem(LS);
+       window.CE_AUTH.session=null;window.CE_AUTH.perfil=null;
+     }
+   }
+   if(ov)ov.classList.remove('ce-hidden');
+ }
  $('ce-login-btn').onclick=login;
  const gl=$('ce-login-google');if(gl)gl.onclick=loginGoogle;$('ce-login-pass').addEventListener('keydown',e=>{if(e.key==='Enter')login()});
  // ADMIN
@@ -11167,8 +11229,7 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
   const overlay=document.getElementById('startup-overlay');
   const err=document.getElementById('ce-start-error');
   const btn=document.getElementById('ce-start-enter');
-  // V10 sempre exige login ao abrir o arquivo.
-  try{localStorage.removeItem('ce_supabase_session_v1')}catch(e){}
+  // Mantém a sessão entre atualizações e reaberturas do aplicativo.
   document.querySelectorAll('[data-start-filial]').forEach(function(b){b.addEventListener('click',function(){document.querySelectorAll('[data-start-filial]').forEach(x=>x.classList.remove('selected'));b.classList.add('selected');filial=b.dataset.startFilial;});});
   async function entrar(){
     const user=document.getElementById('ce-start-user').value.trim();
@@ -11994,9 +12055,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(err => {
-      console.warn('Service Worker não registrado:', err);
-    });
+    navigator.serviceWorker.register('./sw.js').catch(err => console.warn('Service Worker:', err));
   });
 }
 </script>
