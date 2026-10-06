@@ -12060,6 +12060,80 @@ if ('serviceWorker' in navigator) {
 }
 </script>
 
+
+<!-- ===== AJUSTE BBDI: APP DE ASSINATURAS SEMPRE EM MODO CLARO ===== -->
+<style id="ce-assinaturas-tema-claro">
+:root, html, body, body.ce-assinatura-only {
+  color-scheme: light !important;
+  --bg: #f5f7fa !important;
+  --surface: #ffffff !important;
+  --surface-2: #f7f8fa !important;
+  --card: #ffffff !important;
+  --text: #111827 !important;
+  --muted: #667085 !important;
+  --border: #dfe3e8 !important;
+}
+html, body, body.ce-assinatura-only, body.ce-assinatura-only .app-shell {
+  background: #f5f7fa !important;
+  color: #111827 !important;
+}
+body.ce-assinatura-only .card,
+body.ce-assinatura-only .manifest,
+body.ce-assinatura-only .manifest-body,
+body.ce-assinatura-only .manifest-meta,
+body.ce-assinatura-only .ce-mobile-nfs,
+body.ce-assinatura-only .ce-mobile-nfs-lista span,
+body.ce-assinatura-only .sigpad-wrap,
+body.ce-assinatura-only #assinatura-lista,
+body.ce-assinatura-only #assinatura-detalhe {
+  background: #ffffff !important;
+  color: #111827 !important;
+  border-color: #dfe3e8 !important;
+}
+body.ce-assinatura-only input,
+body.ce-assinatura-only select,
+body.ce-assinatura-only textarea {
+  background: #ffffff !important;
+  color: #111827 !important;
+  border-color: #cfd5dc !important;
+}
+body.ce-assinatura-only input::placeholder,
+body.ce-assinatura-only textarea::placeholder { color:#98a2b3 !important; }
+body.ce-assinatura-only #sigcanvas,
+body.ce-assinatura-only canvas {
+  background: #ffffff !important;
+}
+body.ce-assinatura-only .manifest-head {
+  background: #f8fafc !important;
+  color: #111827 !important;
+  border-color: #dfe3e8 !important;
+}
+body.ce-assinatura-only .manifest-meta > div {
+  background: #ffffff !important;
+  color: #111827 !important;
+  border-color: #dfe3e8 !important;
+}
+body.ce-assinatura-only label,
+body.ce-assinatura-only .lbl,
+body.ce-assinatura-only .nome,
+body.ce-assinatura-only b,
+body.ce-assinatura-only strong,
+body.ce-assinatura-only summary { color:#111827 !important; }
+</style>
+<script>
+(function(){
+  function ceForcarAssinaturasClaro(){
+    document.documentElement.style.colorScheme='light';
+    document.documentElement.removeAttribute('data-theme');
+    document.body && document.body.removeAttribute('data-theme');
+    try { localStorage.setItem('theme','light'); } catch(e) {}
+    var meta=document.querySelector('meta[name="theme-color"]');
+    if(meta) meta.setAttribute('content','#f5f7fa');
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',ceForcarAssinaturasClaro);
+  else ceForcarAssinaturasClaro();
+})();
+</script>
 </body>
 </html>
 
