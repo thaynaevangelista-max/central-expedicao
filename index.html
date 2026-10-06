@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<!-- V178: Histórico consulta postagens diretamente no Supabase por NF+filial para definir coletado -->
+<!-- V180: Salvar/Adicionar colaborador grava config_usuarios e cria acesso no Auth via swift-handler -->
+<!-- V179: Histórico consulta postagens diretamente no Supabase por NF+filial para definir coletado -->
 <!-- V176: Histórico corrigido para reconhecer COLETADO diretamente em postagens, inclusive Planilha Antiga sem romaneio -->
 <!-- V175: Histórico reconhece postagens status=coletado sem romaneio e recarrega a base após importação -->
 <!-- V174: Planilha Antiga atualiza NFs existentes ainda não coletadas, em vez de ignorá-las -->
@@ -11371,32 +11372,36 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
    }
  }
 
- async function ceCriarAcessoUsuario(nome,email){
-   const sess=window.CE_AUTH?.session;
-   if(!sess?.access_token)throw new Error('Sessão não autenticada. Faça login novamente.');
+ async function ceCriarAcessoUsuario(nome,email,extra={}){
+   // V180: garante conta no Supabase Auth via Edge Function (swift-handler). Nenhuma chave secreta fica no HTML.
+   if(!window.CE_AUTH?.session?.access_token)throw new Error('Sessão não autenticada. Faça login novamente.');
+   try{
+     const exp=Number(window.CE_AUTH.session.expires_at||0);
+     if(exp && exp<=Math.floor(Date.now()/1000)+60 && typeof window.CE_RENOVAR_SESSAO==='function')await window.CE_RENOVAR_SESSAO();
+   }catch(_e){}
    const endpoint=SB+'/functions/v1/swift-handler';
-   let r=await fetch(endpoint,{
+   const payload=JSON.stringify({nome,email,perfil:extra.perfil||null,ativo:extra.ativo!==false,tipo:extra.tipo||null});
+   const chamar=()=>fetch(endpoint,{
      method:'POST',
      headers:{
        apikey:KEY,
-       Authorization:'Bearer '+sess.access_token,
+       Authorization:'Bearer '+window.CE_AUTH.session.access_token,
        'Content-Type':'application/json'
      },
-     body:JSON.stringify({nome,email})
+     body:payload
    });
+   let r;
+   try{r=await chamar();}
+   catch(e){throw new Error('Não foi possível conectar à função swift-handler (verifique se está publicada e o CORS): '+(e?.message||e));}
    if(r.status===401 && typeof window.CE_RENOVAR_SESSAO==='function' && await window.CE_RENOVAR_SESSAO()){
-     r=await fetch(endpoint,{
-       method:'POST',
-       headers:{
-         apikey:KEY,
-         Authorization:'Bearer '+window.CE_AUTH.session.access_token,
-         'Content-Type':'application/json'
-       },
-       body:JSON.stringify({nome,email})
-     });
+     try{r=await chamar();}catch(e){throw new Error('Falha ao reenviar para swift-handler: '+(e?.message||e));}
    }
-   const j=await r.json().catch(()=>({}));
-   if(!r.ok || j?.ok===false)throw new Error(j?.error||j?.message||'Não foi possível criar o acesso do usuário.');
+   const txt=await r.text();
+   let j={};try{j=txt?JSON.parse(txt):{};}catch(_e){j={error:txt};}
+   if(!r.ok || j?.ok===false){
+     const base=j?.error||j?.message||j?.msg||('HTTP '+r.status);
+     throw new Error(base+(j?.detail?' — '+j.detail:'')+' [HTTP '+r.status+']');
+   }
    return j;
  }
 
@@ -11620,7 +11625,7 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
    if(!nome){msg('Informe o nome do colaborador.');return}
    if(email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){msg('Informe um e-mail válido.');return}
    try{
-     // Configuração operacional: fonte oficial config_usuarios.
+     // 1) Atualiza o registro em config_usuarios (fonte oficial).
      const atualizado=await rest('config_usuarios?id=eq.'+encodeURIComponent(id),{
        method:'PATCH',
        headers:{Prefer:'return=representation'},
@@ -11638,9 +11643,19 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
          });
        }catch(e){console.warn('[CONFIG] usuarios_app não sincronizado:',e);}
      }
+
+     // 2) V180: com e-mail informado, verifica/cria o acesso no Supabase Auth (senha inicial BBDI@2026).
+     let acessoCriado=null,erroAcesso='';
+     if(email){
+       try{acessoCriado=await ceCriarAcessoUsuario(nome,email,{perfil,ativo,tipo});}
+       catch(e){console.error('[CONFIG] criar acesso',e);erroAcesso=e?.message||String(e);}
+     }
      await window.CE_RECARREGAR_CONFIG();
      renderAdmin('usuarios');
-     msg('Colaborador atualizado e função aplicada.');
+     if(erroAcesso)msg('Colaborador atualizado, mas o acesso NÃO foi criado: '+erroAcesso);
+     else if(acessoCriado && acessoCriado.usuarios_app && acessoCriado.usuarios_app.ok===false)msg('Acesso no Auth OK, mas a tabela usuarios_app não foi sincronizada: '+(acessoCriado.usuarios_app.erro||'erro desconhecido'));
+     else if(acessoCriado && !acessoCriado.existente)msg('Colaborador atualizado. Acesso criado com senha inicial BBDI@2026.');
+     else msg('Colaborador atualizado. O acesso já existia no Supabase Auth.');
    }catch(e){
      console.error('[CONFIG] editar colaborador',e);
      msg('Erro ao editar colaborador: '+(e?.message||e));
@@ -11680,10 +11695,13 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
    cfgAbrir({titulo:'Adicionar colaborador',html:`<div class="ce-cfg-grid"><div class="ce-cfg-field full"><label>NOME *</label><input id="cfg-u-nome" placeholder="Nome completo"></div><div class="ce-cfg-field full"><label>E-MAIL</label><input id="cfg-u-email" type="email" placeholder="nome@empresa.com.br"></div><div class="ce-cfg-field"><label>TIPO</label><select id="cfg-u-tipo"><option>AMBOS</option><option>BIPADOR</option><option>EMBALADOR</option></select></div><div class="ce-cfg-field"><label>ACESSO</label><select id="cfg-u-perfil"><option>OPERACIONAL</option><option>ADMIN</option></select></div><div class="ce-cfg-field full"><label class="ce-cfg-check"><input id="cfg-u-ativo" type="checkbox" checked> Ativo</label></div></div>`,salvarTexto:'Salvar colaborador',salvar:async()=>{
      const nome=$('cfg-u-nome').value.trim(),email=$('cfg-u-email').value.trim().toLowerCase(),tipo=$('cfg-u-tipo').value,perfil=$('cfg-u-perfil').value,ativo=$('cfg-u-ativo').checked;if(!nome){cfgErro('Informe o nome do colaborador.');return}if(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){cfgErro('Informe um e-mail válido.');return}
      if(!email){cfgErro('Informe o e-mail para criar o acesso do colaborador.');return}
-     const acesso=await ceCriarAcessoUsuario(nome,email);
      await rest('config_usuarios',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({nome,email:email||null,tipo,perfil,ativo,ordem:window.CE_CFG.usuarios.length+1})});
+     let acesso=null,erroAcesso='';
+     try{acesso=await ceCriarAcessoUsuario(nome,email,{perfil,ativo,tipo});}
+     catch(e){console.error('[CONFIG] criar acesso',e);erroAcesso=e?.message||String(e);}
      cfgFechar();await window.CE_RECARREGAR_CONFIG();renderAdmin('usuarios');
-     msg(acesso?.existente?'Colaborador salvo. A conta de acesso já existia no Supabase Auth.':'Colaborador criado. Senha inicial: BBDI@2026');
+     if(erroAcesso)msg('Colaborador salvo, mas o acesso NÃO foi criado: '+erroAcesso+' — corrija e clique em Salvar na linha do colaborador para tentar de novo.');
+     else msg(acesso?.existente?'Colaborador salvo. A conta de acesso já existia no Supabase Auth.':'Colaborador criado. Senha inicial: BBDI@2026');
    }});
  }
  document.addEventListener('click',e=>{const gear=e.target.closest?.('#btn-abrir-configuracoes');if(gear&&window.CE_AUTH.perfil?.perfil==='admin'){e.preventDefault();e.stopImmediatePropagation();abrirAdmin();}},true);
