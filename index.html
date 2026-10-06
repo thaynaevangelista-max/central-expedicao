@@ -1,4 +1,9 @@
 <!DOCTYPE html>
+<!-- V177: Histórico consulta postagens diretamente no Supabase por NF+filial para definir coletado -->
+<!-- V176: Histórico corrigido para reconhecer COLETADO diretamente em postagens, inclusive Planilha Antiga sem romaneio -->
+<!-- V175: Histórico reconhece postagens status=coletado sem romaneio e recarrega a base após importação -->
+<!-- V174: Planilha Antiga atualiza NFs existentes ainda não coletadas, em vez de ignorá-las -->
+<!-- V173: Importação da Planilha Antiga renova sessão automaticamente e evita falha JWT expired -->
 <!-- V169: Painel de Operação com Resumo da Operação + Painel dos Colaboradores e filtro de transporte -->
 <!-- V163: Via Leitor — botões azuis juntos; filtro de coluna na linha dos filtros (somente layout) -->
 <!-- V162: Painel da Operação com metas diárias por colaborador (public.metas_operacao) -->
@@ -10372,6 +10377,7 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
  let dados=[];
  let retiradasMap=new Map();
  let rastreiosPorNF=new Map();
+ let postagensHistoricoDiretas=new Map();
  let hpPagina=0; const HP_TAM=200; let hpTemProxima=false; let hpCarregado=false,hpCarregando=null;
  const $=id=>document.getElementById(id);
  const get=(o,ks)=>{for(const k of ks)if(o&&o[k]!=null&&String(o[k]).trim()!=='')return String(o[k]).trim();return''};
@@ -10420,6 +10426,49 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
      });
    }catch(e){console.warn('[RETIRADAS]',e);retiradasMap=new Map();}
  }
+ async function carregarPostagensHistoricoDireto(registros=[]){
+   postagensHistoricoDiretas=new Map();
+   const itens=(registros||[]).map(api=>({
+     nf:String(NF(api)||'').replace(/\D/g,''),
+     filial:String(FIL(api)||'').trim()
+   })).filter(x=>x.nf);
+   const nfs=[...new Set(itens.map(x=>x.nf))];
+   if(!nfs.length)return;
+   try{
+     for(let i=0;i<nfs.length;i+=100){
+       const lote=nfs.slice(i,i+100);
+       const q=new URLSearchParams();
+       q.set('select','*');
+       q.set('nf','in.('+lote.map(x=>'"'+x.replace(/"/g,'')+'"').join(',')+')');
+       q.set('limit','5000');
+       const r=await fetch('https://njvcostescybgwbnipec.supabase.co/rest/v1/postagens?'+q.toString(),{
+         headers:{apikey:SBKEY,Authorization:'Bearer '+SBKEY},cache:'no-store'
+       });
+       if(!r.ok)throw new Error('HTTP '+r.status+' ao consultar postagens');
+       const a=await r.json();
+       for(const p of a||[]){
+         const nf=String(p.nf||'').replace(/\D/g,'').padStart(9,'0');
+         const fil=String(p.filial||'').trim();
+         if(!nf)continue;
+         const k=fil+'|'+nf;
+         const atual=postagensHistoricoDiretas.get(k);
+         const rank=x=>{
+           if(!x)return -1;
+           const st=String(x.status||'').trim().toLowerCase();
+           if(st==='coletado'||x.coleta_em)return 3;
+           if(st==='expedido'||st==='finalizado')return 2;
+           return 1;
+         };
+         if(!atual || rank(p)>=rank(atual))postagensHistoricoDiretas.set(k,p);
+         const kg='*|'+nf;
+         const atualG=postagensHistoricoDiretas.get(kg);
+         if(!atualG || rank(p)>=rank(atualG))postagensHistoricoDiretas.set(kg,p);
+       }
+     }
+   }catch(e){
+     console.warn('[HISTÓRICO POSTAGENS DIRETO]',e);
+   }
+ }
  async function carregarRastreiosPostagens(nfs=[]){
    rastreiosPorNF=new Map();
    const lista=[...new Set((nfs||[]).map(x=>String(x||'').trim()).filter(Boolean))];
@@ -10455,13 +10504,25 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
  function status(s,nf){
    if(retiradasMap.has(norm(nf)))return ['vermelho','Retirado'];
    if(!s)return ['verde','Aguardando postagem'];
-   const r=s._rom||{}, rs=String(r.status||'').toLowerCase();
-   if(['finalizado','aguardando_assinatura','assinado'].includes(rs)||r.coleta_em||r.finalizado_em||s.coleta_em)return ['vermelho','Expedido / coletado'];
+   const r=s._rom||{};
+   const rs=String(r.status||'').toLowerCase();
+   const ps=String(s.status||'').trim().toLowerCase();
+   // A postagem é a fonte oficial do status. Importações da PLANILHA ANTIGA
+   // podem estar coletadas sem romaneio_id; por isso não dependem do romaneio.
+   if(['coletado','expedido','finalizado'].includes(ps)||s.coleta_em||
+      ['finalizado','aguardando_assinatura','assinado','coletado','expedido'].includes(rs)||
+      r.coleta_em||r.finalizado_em){
+     return ['vermelho','Expedido / coletado'];
+   }
    return ['amarelo','Postado — aguardando coleta'];
  }
  function render(){
    const sv=salvos(), sm=new Map(sv.map(x=>[norm(x.nf),x]));
-   let rows=dados.map(api=>({api,s:sm.get(norm(NF(api)))}));
+   let rows=dados.map(api=>{
+     const nf=norm(NF(api)), fil=String(FIL(api)||'').trim();
+     const direto=postagensHistoricoDiretas.get(fil+'|'+nf)||postagensHistoricoDiretas.get('*|'+nf);
+     return {api,s:direto||sm.get(nf)};
+   });
    const vistos=new Set(rows.map(x=>norm(NF(x.api))));
    sv.forEach(s=>{const n=String(s.nf||'').replace(/\D/g,'');if(n && !vistos.has(norm(n)))rows.push({api:{},s})});
    // Transportadora agora é um filtro de seleção. Mantém as opções padrão da operação
@@ -10550,6 +10611,13 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
  async function carregar(forcar=false){
    if(hpCarregando && !forcar) return hpCarregando;
    hpCarregando=(async()=>{
+   // Recarrega postagens do Supabase antes de montar o status do histórico.
+   // Evita usar a cópia em memória anterior à importação da Planilha Antiga.
+   try{
+     if(typeof window.ceRecarregarBaseOperacional==='function'){
+       await window.ceRecarregarBaseOperacional();
+     }
+   }catch(e){console.warn('[HISTÓRICO] Falha ao recarregar postagens',e);}
    await carregarRetiradas();
    const assinaturaConsulta=[
      hpPagina,
@@ -10560,7 +10628,7 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
    ].join('|');
    const cacheKey='historico_geral_v38:'+assinaturaConsulta;
    const cache=await cacheGet(cacheKey);
-   if(cache?.dados?.length){dados=cache.dados;hpTemProxima=!!cache.temProxima;await carregarRastreiosPostagens(dados.map(NF));render();const st=$('ce-hp-cache');if(st)st.textContent=`Cache ${horaCache(cache.ts)} · atualizando...`;}
+   if(cache?.dados?.length){dados=cache.dados;hpTemProxima=!!cache.temProxima;await carregarPostagensHistoricoDireto(dados);await carregarRastreiosPostagens(dados.map(NF));render();const st=$('ce-hp-cache');if(st)st.textContent=`Cache ${horaCache(cache.ts)} · atualizando...`;}
    try{
      const qs=new URLSearchParams();
      qs.set('select','filial,nf,pedido,cliente_codigo,cliente_nome,transportadora,data_emissao,data_saida_entrada,data_autorizacao,chave_nfe,data_limite,volume');
@@ -10700,6 +10768,9 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
          Volume:x.volume??orig.volume??''
        };
      });
+     // V177: consulta a tabela postagens diretamente para definir o status.
+     // Não depende da memória operacional nem da existência de romaneio.
+     await carregarPostagensHistoricoDireto(dados);
      await carregarRastreiosPostagens(dados.map(NF));
      await cacheSet(cacheKey,{ts:Date.now(),dados,temProxima:hpTemProxima});
      const st=$('ce-hp-cache');if(st)st.textContent=`Atualizado ${horaCache(Date.now())}`;
@@ -12387,8 +12458,28 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
       $('ce-antiga-status').textContent=`${linhas.length} registro(s) · ${ok} pronto(s) · ${err} com erro(s)`;$('ce-antiga-importar').disabled=!ok;
     }catch(e){linhas=[];$('ce-antiga-importar').disabled=true;$('ce-antiga-status').textContent='Erro ao ler: '+e.message;alert('Não foi possível ler a planilha.\n\n'+e.message)}
   }
-  function headers(){const key=window.CE_SUPABASE_ANON_KEY||document.querySelector('meta[name="supabase-anon-key"]')?.content||'';const token=window.CE_AUTH?.session?.access_token||key;return {apikey:key,Authorization:'Bearer '+token,'Content-Type':'application/json'};}
+  function headers(forceAnon=false){
+    const key=window.CE_SUPABASE_ANON_KEY||document.querySelector('meta[name="supabase-anon-key"]')?.content||'';
+    const token=forceAnon?key:(window.CE_AUTH?.session?.access_token||key);
+    return {apikey:key,Authorization:'Bearer '+token,'Content-Type':'application/json'};
+  }
   function base(){return (window.CE_SUPABASE_URL||'https://njvcostescybgwbnipec.supabase.co').replace(/\/$/,'');}
+  async function fetchSupabase(url,opts={},tentativa=0){
+    const forceAnon=tentativa>=2;
+    const r=await fetch(url,{...opts,headers:{...headers(forceAnon),...(opts.headers||{})}});
+    if(r.ok)return r;
+    const corpo=await r.clone().text().catch(()=> '');
+    const jwtExpirado=r.status===401 && /jwt|expired|token/i.test(corpo);
+    if(jwtExpirado && tentativa===0){
+      try{
+        if(typeof window.CE_RENOVAR_SESSAO==='function' && await window.CE_RENOVAR_SESSAO()){
+          return fetchSupabase(url,opts,1);
+        }
+      }catch(e){}
+      return fetchSupabase(url,opts,2);
+    }
+    return r;
+  }
   async function importar(){
     const validas=linhas.filter(x=>!x.erros.length);if(!validas.length)return;
     if(!confirm(`Importar ${validas.length} registro(s) como coletados da PLANILHA ANTIGA?\n\nNão será criado romaneio nem assinatura.`))return;
@@ -12396,16 +12487,40 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
     try{
       const H=headers(); if(!H.apikey)throw new Error('Configuração do Supabase não encontrada.');
       // Busca existentes em páginas para impedir duplicação de NF+filial.
-      const existentes=new Set();
-      for(let off=0;;off+=1000){const r=await fetch(base()+`/rest/v1/postagens?select=nf,filial&limit=1000&offset=${off}`,{headers:H,cache:'no-store'});if(!r.ok)throw new Error('Falha ao consultar postagens: '+await r.text());const a=await r.json();a.forEach(p=>existentes.add(`${soDig(p.nf)}|${filial(p.filial)}`));if(a.length<1000)break;}
+      const existentes=new Map();
+      for(let off=0;;off+=1000){
+        const r=await fetchSupabase(base()+`/rest/v1/postagens?select=id,nf,filial,status,coleta_em&limit=1000&offset=${off}`,{cache:'no-store'});
+        if(!r.ok)throw new Error('Falha ao consultar postagens: '+await r.text());
+        const a=await r.json();
+        a.forEach(p=>{
+          const k=`${soDig(p.nf)}|${filial(p.filial)}`;
+          if(!existentes.has(k))existentes.set(k,[]);
+          existentes.get(k).push(p);
+        });
+        if(a.length<1000)break;
+      }
       const unicas=new Map(); validas.forEach(x=>unicas.set(`${x.nf}|${x.filial}`,x));
-      const novas=[...unicas.values()].filter(x=>!existentes.has(`${x.nf}|${x.filial}`));
-      const duplicadas=validas.length-novas.length;
-      if(!novas.length){$('ce-antiga-status').textContent=`Nada importado · ${duplicadas} já existente(s)`;alert('Todas as NFs válidas já existem em postagens.');return}
+      const todas=[...unicas.values()];
+      const novas=todas.filter(x=>!existentes.has(`${x.nf}|${x.filial}`));
+      const atualizar=todas.filter(x=>{
+        const regs=existentes.get(`${x.nf}|${x.filial}`)||[];
+        return regs.length && !regs.some(p=>String(p.status||'').toLowerCase()==='coletado' && !!p.coleta_em);
+      });
+      const jaColetadas=todas.filter(x=>{
+        const regs=existentes.get(`${x.nf}|${x.filial}`)||[];
+        return regs.some(p=>String(p.status||'').toLowerCase()==='coletado' && !!p.coleta_em);
+      });
+      const duplicadas=jaColetadas.length;
+      if(!novas.length && !atualizar.length){
+        $('ce-antiga-status').textContent=`Nada importado · ${duplicadas} já coletado(s)`;
+        alert('Todas as NFs válidas já estão coletadas em postagens.');
+        return;
+      }
       // Enriquecimento opcional com xmls: pedido, cliente e chave.
       const xmlMap=new Map();
-      for(let i=0;i<novas.length;i+=100){const grupo=novas.slice(i,i+100);const nfs=[...new Set(grupo.map(x=>x.nf))];const filtro=nfs.map(encodeURIComponent).join(',');const r=await fetch(base()+`/rest/v1/xmls?select=nf,filial,pedido,cliente_nome,chave_nfe&nf=in.(${filtro})&limit=1000`,{headers:H,cache:'no-store'});if(r.ok){(await r.json()).forEach(x=>xmlMap.set(`${soDig(x.nf)}|${filial(x.filial)}`,x));}}
-      let importados=0;
+      const processar=[...novas,...atualizar];
+      for(let i=0;i<processar.length;i+=100){const grupo=processar.slice(i,i+100);const nfs=[...new Set(grupo.map(x=>x.nf))];const filtro=nfs.map(encodeURIComponent).join(',');const r=await fetchSupabase(base()+`/rest/v1/xmls?select=nf,filial,pedido,cliente_nome,chave_nfe&nf=in.(${filtro})&limit=1000`,{cache:'no-store'});if(r.ok){(await r.json()).forEach(x=>xmlMap.set(`${soDig(x.nf)}|${filial(x.filial)}`,x));}}
+      let importados=0, atualizados=0;
       for(let i=0;i<novas.length;i+=100){
         const lote=novas.slice(i,i+100).map(x=>{const xm=xmlMap.get(`${x.nf}|${x.filial}`)||{};const coleta=isoSP(x.data,x.coleta);const bip=isoSP(x.data,x.finalizacao);return {
           // Todos os objetos do lote usam exatamente as mesmas chaves.
@@ -12429,11 +12544,45 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
           atualizado_em:new Date().toISOString()
         }});
         $('ce-antiga-status').textContent=`Gravando ${Math.min(i+100,novas.length)} de ${novas.length}...`;
-        const r=await fetch(base()+'/rest/v1/postagens',{method:'POST',headers:{...H,Prefer:'return=minimal'},body:JSON.stringify(lote)});if(!r.ok)throw new Error('Erro ao gravar lote: '+await r.text());importados+=lote.length;
+        const r=await fetchSupabase(base()+'/rest/v1/postagens',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify(lote)});if(!r.ok)throw new Error('Erro ao gravar lote: '+await r.text());importados+=lote.length;
       }
-      $('ce-antiga-status').textContent=`${importados} importado(s) · ${duplicadas} já existente(s) · gravados no Supabase`;
-      alert(`Importação concluída.\n\n${importados} importado(s)\n${duplicadas} já existente(s)\n\nOrigem: PLANILHA ANTIGA`);
-      try{if(typeof ceRecarregarOperacionalSupabase==='function')await ceRecarregarOperacionalSupabase();}catch(e){}
+
+      // NFs que já existem, mas ainda não estão coletadas, são atualizadas em vez de ignoradas.
+      for(let i=0;i<atualizar.length;i++){
+        const x=atualizar[i];
+        const xm=xmlMap.get(`${x.nf}|${x.filial}`)||{};
+        const coleta=isoSP(x.data,x.coleta);
+        const bip=isoSP(x.data,x.finalizacao);
+        const payload={
+          status:'coletado',
+          coleta_em:coleta,
+          bipada_em:bip||null,
+          embalador:x.embalador||null,
+          transporte_original:x.transporte||null,
+          transporte_romaneio:x.transporte||null,
+          volume:x.volume,
+          atualizado_em:new Date().toISOString()
+        };
+        const regs=existentes.get(`${x.nf}|${x.filial}`)||[];
+        for(const p of regs){
+          if(String(p.status||'').toLowerCase()==='coletado' && p.coleta_em)continue;
+          const r=await fetchSupabase(base()+`/rest/v1/postagens?id=eq.${encodeURIComponent(p.id)}`,{
+            method:'PATCH',
+            headers:{Prefer:'return=minimal'},
+            body:JSON.stringify(payload)
+          });
+          if(!r.ok)throw new Error(`Erro ao atualizar NF ${x.nf}: `+await r.text());
+          atualizados++;
+        }
+      }
+
+      $('ce-antiga-status').textContent=`${importados} novo(s) · ${atualizados} atualizado(s) para coletado · ${duplicadas} já coletado(s)`;
+      alert(`Importação concluída.\n\n${importados} novo(s)\n${atualizados} atualizado(s) para COLETADO\n${duplicadas} já coletado(s)\n\nOrigem: PLANILHA ANTIGA`);
+      try{
+        if(typeof window.ceRecarregarBaseOperacional==='function'){
+          await window.ceRecarregarBaseOperacional();
+        }
+      }catch(e){}
       try{window.CE_VIA_RECARREGAR?.();}catch(e){}
     }catch(e){$('ce-antiga-status').textContent='Falha na importação: '+e.message;alert('Não foi possível gravar a planilha no Supabase.\n\n'+e.message)}finally{btn.disabled=false}
   }
