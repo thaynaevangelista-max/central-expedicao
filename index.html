@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- V177: Histórico consulta postagens diretamente no Supabase por NF+filial para definir coletado -->
+<!-- V178: Histórico consulta postagens diretamente no Supabase por NF+filial para definir coletado -->
 <!-- V176: Histórico corrigido para reconhecer COLETADO diretamente em postagens, inclusive Planilha Antiga sem romaneio -->
 <!-- V175: Histórico reconhece postagens status=coletado sem romaneio e recarrega a base após importação -->
 <!-- V174: Planilha Antiga atualiza NFs existentes ainda não coletadas, em vez de ignorá-las -->
@@ -2305,6 +2305,22 @@
 @media(max-width:1100px){.ce-hp-filtros{grid-template-columns:repeat(3,minmax(130px,1fr))!important}.ce-hp-rel-wrap{min-width:260px!important}}
 </style>
 <!-- V172: HORA FAT exibida em America/Sao_Paulo; dados no Supabase permanecem UTC -->
+
+<style id="ce-v178-senha-css">
+#ce-user-chip{display:flex;align-items:center;gap:7px}
+#ce-user-chip .ce-change-pass{border:1px solid rgba(255,255,255,.35);background:transparent;color:inherit;border-radius:6px;padding:6px 9px;font-size:11px;font-weight:700;cursor:pointer}
+#ce-senha-modal{display:none;position:fixed;inset:0;z-index:2147483647;background:rgba(15,23,42,.52);align-items:center;justify-content:center;padding:16px}
+#ce-senha-modal.show{display:flex}
+.ce-senha-box{width:min(410px,100%);background:#fff;border-radius:12px;padding:20px;box-shadow:0 24px 70px rgba(15,23,42,.28);color:#132238}
+.ce-senha-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:15px;font-size:17px}
+.ce-senha-head button{border:0;background:transparent;font-size:25px;cursor:pointer;color:#64748b}
+.ce-senha-box label{display:block;font-size:10px;font-weight:800;color:#475569;margin:11px 0 5px}
+.ce-senha-box input{width:100%;box-sizing:border-box;height:40px;border:1px solid #cbd5e1;border-radius:6px;padding:0 10px}
+#ce-senha-erro{min-height:18px;margin-top:10px;color:#b42318;font-size:11px;font-weight:700}
+.ce-senha-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
+.ce-senha-actions button{border:1px solid #cbd5e1;border-radius:6px;padding:9px 13px;background:#fff;cursor:pointer;font-weight:700}
+#ce-senha-salvar{background:#0b78c8;color:#fff;border-color:#0b78c8}
+</style>
 </head>
 <body><div class="app-shell">
 
@@ -11354,7 +11370,106 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
      $('ce-login-btn').disabled=false;
    }
  }
- function aplicarSessao(){const p=window.CE_AUTH.perfil;if(!p)return;const fil=localStorage.getItem('expedicao_filial_inicial')||'';try{const ov=document.getElementById('startup-overlay');if(ov)ov.classList.add('startup-hidden');if(typeof aplicarFilialInicial==='function'&&fil)aplicarFilialInicial(fil);}catch(e){}$('ce-login-overlay').classList.add('ce-hidden');const actions=document.querySelector('.topbar-actions');if(actions&&!$('ce-user-chip')){const d=document.createElement('div');d.id='ce-user-chip';d.innerHTML=`<span>${p.usuario}${p.perfil==='admin'?' · ADMIN':''}</span><button class="ce-logout" id="ce-logout">Sair</button>`;actions.prepend(d);$('ce-logout').onclick=()=>{localStorage.removeItem(LS);location.reload();};}const gear=$('btn-abrir-configuracoes');if(gear)gear.style.display=p.perfil==='admin'?'':'none';}
+
+ async function ceCriarAcessoUsuario(nome,email){
+   const sess=window.CE_AUTH?.session;
+   if(!sess?.access_token)throw new Error('Sessão não autenticada. Faça login novamente.');
+   const endpoint=SB+'/functions/v1/swift-handler';
+   let r=await fetch(endpoint,{
+     method:'POST',
+     headers:{
+       apikey:KEY,
+       Authorization:'Bearer '+sess.access_token,
+       'Content-Type':'application/json'
+     },
+     body:JSON.stringify({nome,email})
+   });
+   if(r.status===401 && typeof window.CE_RENOVAR_SESSAO==='function' && await window.CE_RENOVAR_SESSAO()){
+     r=await fetch(endpoint,{
+       method:'POST',
+       headers:{
+         apikey:KEY,
+         Authorization:'Bearer '+window.CE_AUTH.session.access_token,
+         'Content-Type':'application/json'
+       },
+       body:JSON.stringify({nome,email})
+     });
+   }
+   const j=await r.json().catch(()=>({}));
+   if(!r.ok || j?.ok===false)throw new Error(j?.error||j?.message||'Não foi possível criar o acesso do usuário.');
+   return j;
+ }
+
+ function ceAbrirAlterarSenha(){
+   let ov=document.getElementById('ce-senha-modal');
+   if(!ov){
+     ov=document.createElement('div');
+     ov.id='ce-senha-modal';
+     ov.innerHTML=`<div class="ce-senha-box">
+       <div class="ce-senha-head"><b>Alterar senha</b><button type="button" id="ce-senha-fechar">×</button></div>
+       <label>SENHA ATUAL</label><input id="ce-senha-atual" type="password" autocomplete="current-password">
+       <label>NOVA SENHA</label><input id="ce-senha-nova" type="password" autocomplete="new-password">
+       <label>CONFIRMAR NOVA SENHA</label><input id="ce-senha-confirmar" type="password" autocomplete="new-password">
+       <div id="ce-senha-erro"></div>
+       <div class="ce-senha-actions"><button type="button" id="ce-senha-cancelar">Cancelar</button><button type="button" id="ce-senha-salvar">Alterar senha</button></div>
+     </div>`;
+     document.body.appendChild(ov);
+     const fechar=()=>ov.classList.remove('show');
+     document.getElementById('ce-senha-fechar').onclick=fechar;
+     document.getElementById('ce-senha-cancelar').onclick=fechar;
+     ov.addEventListener('click',e=>{if(e.target===ov)fechar();});
+     document.getElementById('ce-senha-salvar').onclick=ceSalvarNovaSenha;
+   }
+   ['ce-senha-atual','ce-senha-nova','ce-senha-confirmar'].forEach(id=>document.getElementById(id).value='');
+   document.getElementById('ce-senha-erro').textContent='';
+   ov.classList.add('show');
+   setTimeout(()=>document.getElementById('ce-senha-atual')?.focus(),50);
+ }
+
+ async function ceSalvarNovaSenha(){
+   const atual=document.getElementById('ce-senha-atual').value;
+   const nova=document.getElementById('ce-senha-nova').value;
+   const confirmar=document.getElementById('ce-senha-confirmar').value;
+   const erro=document.getElementById('ce-senha-erro');
+   const btn=document.getElementById('ce-senha-salvar');
+   erro.textContent='';
+   if(!atual||!nova||!confirmar){erro.textContent='Preencha os três campos.';return;}
+   if(nova.length<6){erro.textContent='A nova senha deve ter pelo menos 6 caracteres.';return;}
+   if(nova!==confirmar){erro.textContent='A confirmação da nova senha não confere.';return;}
+   if(atual===nova){erro.textContent='A nova senha deve ser diferente da senha atual.';return;}
+   const email=String(window.CE_AUTH?.session?.user?.email||window.CE_AUTH?.perfil?.email||'').trim().toLowerCase();
+   if(!email){erro.textContent='Não foi possível identificar o e-mail do usuário.';return;}
+   btn.disabled=true;btn.textContent='Alterando...';
+   try{
+     // Confirma a senha atual antes de permitir a troca.
+     const vr=await fetch(SB+'/auth/v1/token?grant_type=password',{
+       method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},
+       body:JSON.stringify({email,password:atual})
+     });
+     if(!vr.ok)throw new Error('Senha atual incorreta.');
+     const valid=await vr.json();
+     const token=valid.access_token;
+     const ur=await fetch(SB+'/auth/v1/user',{
+       method:'PUT',
+       headers:{apikey:KEY,Authorization:'Bearer '+token,'Content-Type':'application/json'},
+       body:JSON.stringify({password:nova})
+     });
+     const uj=await ur.json().catch(()=>({}));
+     if(!ur.ok)throw new Error(uj?.msg||uj?.message||'Não foi possível alterar a senha.');
+     // Mantém a sessão recém-validada, evitando logout após a alteração.
+     window.CE_AUTH.session=valid;
+     try{localStorage.setItem(LS,JSON.stringify(valid));}catch(e){}
+     document.getElementById('ce-senha-modal').classList.remove('show');
+     if(typeof msg==='function')msg('Senha alterada com sucesso.');
+     else alert('Senha alterada com sucesso.');
+   }catch(e){
+     erro.textContent=e?.message||'Erro ao alterar senha.';
+   }finally{
+     btn.disabled=false;btn.textContent='Alterar senha';
+   }
+ }
+
+ function aplicarSessao(){const p=window.CE_AUTH.perfil;if(!p)return;const fil=localStorage.getItem('expedicao_filial_inicial')||'';try{const ov=document.getElementById('startup-overlay');if(ov)ov.classList.add('startup-hidden');if(typeof aplicarFilialInicial==='function'&&fil)aplicarFilialInicial(fil);}catch(e){}$('ce-login-overlay').classList.add('ce-hidden');const actions=document.querySelector('.topbar-actions');if(actions&&!$('ce-user-chip')){const d=document.createElement('div');d.id='ce-user-chip';d.innerHTML=`<span>${p.usuario}${p.perfil==='admin'?' · ADMIN':''}</span><button class="ce-change-pass" id="ce-change-pass">Alterar senha</button><button class="ce-logout" id="ce-logout">Sair</button>`;actions.prepend(d);$('ce-change-pass').onclick=ceAbrirAlterarSenha;$('ce-logout').onclick=()=>{localStorage.removeItem(LS);location.reload();};}const gear=$('btn-abrir-configuracoes');if(gear)gear.style.display=p.perfil==='admin'?'':'none';}
  async function init(){
    window.CE_AUTH.session=null;window.CE_AUTH.perfil=null;
    const ov=document.getElementById('ce-login-overlay');if(ov)ov.classList.remove('ce-hidden');
@@ -11564,7 +11679,11 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
  async function adicionarUsuario(){
    cfgAbrir({titulo:'Adicionar colaborador',html:`<div class="ce-cfg-grid"><div class="ce-cfg-field full"><label>NOME *</label><input id="cfg-u-nome" placeholder="Nome completo"></div><div class="ce-cfg-field full"><label>E-MAIL</label><input id="cfg-u-email" type="email" placeholder="nome@empresa.com.br"></div><div class="ce-cfg-field"><label>TIPO</label><select id="cfg-u-tipo"><option>AMBOS</option><option>BIPADOR</option><option>EMBALADOR</option></select></div><div class="ce-cfg-field"><label>ACESSO</label><select id="cfg-u-perfil"><option>OPERACIONAL</option><option>ADMIN</option></select></div><div class="ce-cfg-field full"><label class="ce-cfg-check"><input id="cfg-u-ativo" type="checkbox" checked> Ativo</label></div></div>`,salvarTexto:'Salvar colaborador',salvar:async()=>{
      const nome=$('cfg-u-nome').value.trim(),email=$('cfg-u-email').value.trim().toLowerCase(),tipo=$('cfg-u-tipo').value,perfil=$('cfg-u-perfil').value,ativo=$('cfg-u-ativo').checked;if(!nome){cfgErro('Informe o nome do colaborador.');return}if(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){cfgErro('Informe um e-mail válido.');return}
-     await rest('config_usuarios',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({nome,email:email||null,tipo,perfil,ativo,ordem:window.CE_CFG.usuarios.length+1})});cfgFechar();await window.CE_RECARREGAR_CONFIG();renderAdmin('usuarios');
+     if(!email){cfgErro('Informe o e-mail para criar o acesso do colaborador.');return}
+     const acesso=await ceCriarAcessoUsuario(nome,email);
+     await rest('config_usuarios',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({nome,email:email||null,tipo,perfil,ativo,ordem:window.CE_CFG.usuarios.length+1})});
+     cfgFechar();await window.CE_RECARREGAR_CONFIG();renderAdmin('usuarios');
+     msg(acesso?.existente?'Colaborador salvo. A conta de acesso já existia no Supabase Auth.':'Colaborador criado. Senha inicial: BBDI@2026');
    }});
  }
  document.addEventListener('click',e=>{const gear=e.target.closest?.('#btn-abrir-configuracoes');if(gear&&window.CE_AUTH.perfil?.perfil==='admin'){e.preventDefault();e.stopImmediatePropagation();abrirAdmin();}},true);
