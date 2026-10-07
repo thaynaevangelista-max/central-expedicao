@@ -1,21 +1,9 @@
 <!DOCTYPE html>
-<!-- V178: Histórico consulta postagens diretamente no Supabase por NF+filial para definir coletado -->
-<!-- V176: Histórico corrigido para reconhecer COLETADO diretamente em postagens, inclusive Planilha Antiga sem romaneio -->
-<!-- V175: Histórico reconhece postagens status=coletado sem romaneio e recarrega a base após importação -->
-<!-- V174: Planilha Antiga atualiza NFs existentes ainda não coletadas, em vez de ignorá-las -->
-<!-- V173: Importação da Planilha Antiga renova sessão automaticamente e evita falha JWT expired -->
-<!-- V169: Painel de Operação com Resumo da Operação + Painel dos Colaboradores e filtro de transporte -->
-<!-- V163: Via Leitor — botões azuis juntos; filtro de coluna na linha dos filtros (somente layout) -->
-<!-- V162: Painel da Operação com metas diárias por colaborador (public.metas_operacao) -->
-<!-- V171: Planilha Antiga com lote Supabase padronizado; finalização opcional e coleta obrigatória -->
-<!-- V161: nova aba "Painel da Operação" (somente consulta; xmls + postagens) -->
-<!-- V160: Gerar relatório corrigido (função e botão no mesmo escopo; xlsx a partir de postagens.coleta_em) -->
-<!-- V149: postagens Supabase + renovação automática JWT + relatório autenticado -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
-<title>Central de Expedição — V31</title>
+<title>V181 — Central de Expedição — V31</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -2265,62 +2253,80 @@
 <!-- V138: alterações de Configurações recarregam Supabase e telas operacionais imediatamente -->
 <!-- V139: edição/exclusão de colaboradores validada pelo retorno do Supabase -->
 
-<style id="ce-v140-ajustes">
-.ce-hp-rel-wrap{display:flex!important;align-items:center;gap:6px;flex:0 0 auto;min-width:285px;overflow:visible!important}
-.ce-hp-rel-data{height:34px;width:145px;min-width:145px;border:1px solid #c5d0d6;border-radius:5px;padding:0 7px;background:#fff;color:#233947;font:600 11px Inter,Arial,sans-serif;box-sizing:border-box}
-.ce-hp-rel-data::-webkit-calendar-picker-indicator{cursor:pointer}
-.ce-hp-relatorio{display:inline-flex!important;align-items:center;justify-content:center;white-space:nowrap;min-width:125px;height:34px;visibility:visible!important;opacity:1!important}
-@media(max-width:900px){.ce-hp-rel-wrap{width:auto!important;min-width:285px}.ce-hp-rel-data{width:145px}.ce-hp-relatorio{flex:0 0 auto}}
+<style id="ce-mobile-assinatura-only">
+  body.ce-assinatura-only nav.main-nav,
+  body.ce-assinatura-only #btn-abrir-configuracoes,
+  body.ce-assinatura-only #ce-admin-modal {display:none!important}
+  body.ce-assinatura-only main.main-content > .view:not(#view-assinatura),
+  body.ce-assinatura-only main.main-content > #ce-historico-postagens {display:none!important}
+  body.ce-assinatura-only #view-assinatura {display:block!important}
+  @media(max-width:700px){
+    body.ce-assinatura-only .main-content{padding:10px!important}
+    body.ce-assinatura-only .topbar{padding-left:12px!important;padding-right:12px!important}
+  }
+</style>
+<script>
+(function(){
+  function ativar(){
+    document.body.classList.add('ce-assinatura-only');
+    try{
+      if(typeof window.ceTrocarAbaInstantanea==='function') window.ceTrocarAbaInstantanea('assinatura');
+      if(typeof window.CE_AO_CLICAR_MENU==='function') window.CE_AO_CLICAR_MENU('assinatura');
+    }catch(e){console.warn('[ASSINATURA MOBILE]',e)}
+  }
+  document.addEventListener('DOMContentLoaded',ativar);
+  window.addEventListener('load',()=>setTimeout(ativar,300));
+  new MutationObserver(()=>{if(document.body&&!document.body.classList.contains('ce-assinatura-only'))ativar()})
+    .observe(document.documentElement,{childList:true,subtree:true});
+})();
+</script>
+<!-- NETLIFY V1 — acesso móvel restrito à assinatura -->
+
+<style id="ce-assinatura-mobile-simples">
+@media (max-width: 760px){
+  body.ce-assinatura-only .topbar,
+  body.ce-assinatura-only .sidebar,
+  body.ce-assinatura-only nav,
+  body.ce-assinatura-only #assinatura-filtro-empresa,
+  body.ce-assinatura-only #view-assinatura .toolbar,
+  body.ce-assinatura-only #btn-voltar-lista,
+  body.ce-assinatura-only .manifest-head .no-print,
+  body.ce-assinatura-only .barcode {display:none!important}
+  body.ce-assinatura-only .main-content{padding:12px!important;margin:0!important}
+  body.ce-assinatura-only #view-assinatura{display:block!important}
+  body.ce-assinatura-only .section-title h2{font-size:22px}
+  body.ce-assinatura-only .manifest{border-radius:16px;overflow:hidden}
+  body.ce-assinatura-only .manifest-head{padding:16px!important;min-height:auto!important}
+  body.ce-assinatura-only .manifest-head .lbl{display:none}
+  body.ce-assinatura-only .manifest-head .rid{font-size:13px!important;opacity:.8}
+  body.ce-assinatura-only .manifest-transportadora .nome{font-size:21px!important}
+  body.ce-assinatura-only .manifest-meta{display:grid!important;grid-template-columns:1fr 1fr!important;gap:8px!important;padding:12px!important}
+  body.ce-assinatura-only .manifest-meta>div:first-child,
+  body.ce-assinatura-only .manifest-meta>div:nth-child(2){display:none!important}
+  body.ce-assinatura-only .manifest-meta>div{border:1px solid var(--border);border-radius:12px;padding:12px!important}
+  body.ce-assinatura-only .manifest-meta b{font-size:11px!important}
+  body.ce-assinatura-only .manifest-body{padding:12px!important}
+  body.ce-assinatura-only .grid2{grid-template-columns:1fr!important}
+  body.ce-assinatura-only .sigpad-wrap{margin-top:12px}
+  body.ce-assinatura-only #sigcanvas{min-height:220px!important}
+  body.ce-assinatura-only .btn-row{display:grid!important;grid-template-columns:110px 1fr!important;gap:8px!important}
+  body.ce-assinatura-only .btn-row .btn{width:100%;min-height:50px}
+  .ce-mobile-nfs{margin:0 0 14px;border:1px solid var(--border);border-radius:12px;padding:12px;background:var(--surface-2)}
+  .ce-mobile-nfs summary{font-weight:800;cursor:pointer}
+  .ce-mobile-nfs-lista{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+  .ce-mobile-nfs-lista span{padding:6px 9px;border:1px solid var(--border);border-radius:8px;font-size:12px;font-weight:700;background:var(--surface)}
+}
 </style>
 
 
-<style id="ce-v142-ajustes-relatorio-via">
-/* V142 — Relatório sempre visível e Via Leitor com filtros nativos */
-.ce-hp-filtros{grid-template-columns:130px 105px 145px 140px minmax(180px,1fr) 82px minmax(260px,285px)!important;align-items:end!important;overflow:visible!important}
-.ce-hp-rel-wrap{display:flex!important;align-items:end!important;gap:6px!important;min-width:260px!important;width:100%!important;overflow:visible!important}
-.ce-hp-rel-data{display:block!important;width:132px!important;min-width:132px!important;height:31px!important}
-#ce-hp-relatorio.ce-hp-relatorio{display:inline-flex!important;visibility:visible!important;opacity:1!important;align-items:center!important;justify-content:center!important;min-width:120px!important;height:31px!important;position:relative!important;z-index:3!important}
-.ce-via-colfilters{display:flex;align-items:end;gap:7px;flex-wrap:wrap;margin:0 0 8px;padding:7px 8px;border:1px solid #d4dcda;border-radius:6px;background:#fff}
-.ce-via-colfilters label{display:block;font-size:9px;font-weight:800;color:#536572;margin-bottom:3px}
-.ce-via-colfilters select,.ce-via-colfilters input{height:30px;border:1px solid #bcc8cf;border-radius:4px;padding:0 7px;background:#fff;font-size:10px;box-sizing:border-box}
-.ce-via-colfilters select{min-width:150px}.ce-via-colfilters input{min-width:190px}
-.ce-via-colfilters button{height:30px;border:1px solid #bcc8cf;border-radius:4px;background:#fff;padding:0 11px;font-size:10px;font-weight:800;cursor:pointer}
-/* V163 — Via Leitor: botões azuis juntos e filtro de coluna na mesma linha dos filtros */
-.ce-inc-grupo{display:flex;align-items:center;gap:8px}
-@media(min-width:851px){.via-exp-filtros{grid-template-columns:115px 220px minmax(200px,1fr) auto 90px}}
-.via-exp-filtros .ce-via-colfilters{margin:0;padding:0;border:0;background:transparent;border-radius:0;flex-wrap:nowrap;gap:6px;align-items:end}
-.via-exp-filtros .ce-via-colfilters select,.via-exp-filtros .ce-via-colfilters input{height:26px;font-size:10px;padding:0 7px}
-.via-exp-filtros .ce-via-colfilters select{min-width:130px}.via-exp-filtros .ce-via-colfilters input{min-width:150px}
-.via-exp-filtros .ce-via-colfilters button{height:26px;padding:0 11px}
-.ce-via-hint{font-size:9px;color:#657785;padding-bottom:7px;white-space:nowrap}
-@media(max-width:1600px){.ce-via-hint{display:none}}
-@media(max-width:850px){.via-exp-filtros .ce-via-colfilters{grid-column:1/-1;flex-wrap:wrap}}
-.via-exp-table thead th[data-sort]{cursor:pointer;user-select:none}
-.via-exp-table thead th.ce-sort-asc::after{content:" ▲";font-size:8px}.via-exp-table thead th.ce-sort-desc::after{content:" ▼";font-size:8px}
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#121A24">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Assinaturas BBDI">
+<link rel="apple-touch-icon" href="./icon-192.png">
 
-.ce-pn-tabs{display:flex;gap:6px;margin:0 0 10px;border-bottom:1px solid #d4dcda;padding-bottom:8px}
-.ce-pn-tab{height:34px;border:1px solid #bcc8cf;background:#fff;color:#314654;border-radius:5px;padding:0 16px;font-size:11px;font-weight:800;cursor:pointer}
-.ce-pn-tab.on{background:#164764;border-color:#164764;color:#fff}
-.ce-pn-subtitle{font-size:12px;font-weight:800;color:#102536;margin:0 0 8px}
-@media(max-width:1100px){.ce-hp-filtros{grid-template-columns:repeat(3,minmax(130px,1fr))!important}.ce-hp-rel-wrap{min-width:260px!important}}
-</style>
-<!-- V172: HORA FAT exibida em America/Sao_Paulo; dados no Supabase permanecem UTC -->
-
-<style id="ce-v178-senha-css">
-#ce-user-chip{display:flex;align-items:center;gap:7px}
-#ce-user-chip .ce-change-pass{border:1px solid rgba(255,255,255,.35);background:transparent;color:inherit;border-radius:6px;padding:6px 9px;font-size:11px;font-weight:700;cursor:pointer}
-#ce-senha-modal{display:none;position:fixed;inset:0;z-index:2147483647;background:rgba(15,23,42,.52);align-items:center;justify-content:center;padding:16px}
-#ce-senha-modal.show{display:flex}
-.ce-senha-box{width:min(410px,100%);background:#fff;border-radius:12px;padding:20px;box-shadow:0 24px 70px rgba(15,23,42,.28);color:#132238}
-.ce-senha-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:15px;font-size:17px}
-.ce-senha-head button{border:0;background:transparent;font-size:25px;cursor:pointer;color:#64748b}
-.ce-senha-box label{display:block;font-size:10px;font-weight:800;color:#475569;margin:11px 0 5px}
-.ce-senha-box input{width:100%;box-sizing:border-box;height:40px;border:1px solid #cbd5e1;border-radius:6px;padding:0 10px}
-#ce-senha-erro{min-height:18px;margin-top:10px;color:#b42318;font-size:11px;font-weight:700}
-.ce-senha-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
-.ce-senha-actions button{border:1px solid #cbd5e1;border-radius:6px;padding:9px 13px;background:#fff;cursor:pointer;font-weight:700}
-#ce-senha-salvar{background:#0b78c8;color:#fff;border-color:#0b78c8}
-</style>
 </head>
 <body><div class="app-shell">
 
@@ -2330,6 +2336,8 @@
     <div class="ce-login-start-mark">CE</div>
     <h2>Central de Expedição</h2>
     <p>Entre com seu e-mail e senha. Usuários operacionais selecionam a operação inicial.</p>
+    <button type="button" class="ce-google-btn" id="ce-start-google"><span class="ce-google-g">G</span> Continuar com Google</button>
+    <div class="ce-login-sep">OU</div>
     <label>E-MAIL</label>
     <input id="ce-start-user" type="email" autocomplete="username" placeholder="nome@empresa.com.br">
     <label>SENHA</label>
@@ -2407,10 +2415,6 @@
   <button class="tab-btn" data-view="assinatura">
     <svg viewBox="0 0 24 24" fill="none"><path d="M3 20c2-3 4.5-1 6-3s-1-4 1-6 5-1 9-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M17 4l3 3-2 2-3-3 2-2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
     Assinar Retirada <span class="count-pill" id="count-abertos">0</span>
-  </button>
-  <button class="tab-btn" data-view="painel">
-    <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="9" rx="1" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="3" width="7" height="5" rx="1" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="12" width="7" height="9" rx="1" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="16" width="7" height="5" rx="1" stroke="currentColor" stroke-width="1.8"/></svg>
-    Painel da Operação
   </button>
 </nav>
 
@@ -2846,40 +2850,6 @@
       <table class="ce-xml-result-table">
         <thead><tr><th>ARQUIVO</th><th>FILIAL</th><th>NF</th><th>CHAVE</th><th>STATUS</th><th>DETALHE</th></tr></thead>
         <tbody id="ce-xml-resultados"><tr><td colspan="6" class="empty">O resultado da importação aparecerá aqui.</td></tr></tbody>
-      </table>
-    </div>
-
-
-    <div class="card ce-antiga-card" style="margin-top:16px;">
-      <div class="ce-xml-upload-head">
-        <div>
-          <strong>Planilha Antiga</strong>
-          <p>Importe o relatório antigo de coletas. Os registros são gravados diretamente no Supabase como já coletados, sem criar romaneio ou assinatura.</p>
-        </div>
-        <span class="badge badge-romaneio">Excel ou CSV</span>
-      </div>
-      <div class="grid2" style="align-items:end;">
-        <div class="field">
-          <label>Arquivo da planilha antiga</label>
-          <input id="ce-antiga-file" type="file" accept=".xlsx,.xls,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel">
-        </div>
-        <div class="field">
-          <label>Registros encontrados</label>
-          <div id="ce-antiga-contagem" style="height:38px;display:flex;align-items:center;font-weight:800;">0</div>
-        </div>
-      </div>
-      <div class="btn-row">
-        <button class="btn btn-primary" type="button" id="ce-antiga-analisar">Analisar planilha</button>
-        <button class="btn btn-primary" type="button" id="ce-antiga-importar" disabled>Importar como coletados</button>
-        <button class="btn btn-ghost" type="button" id="ce-antiga-limpar">Limpar</button>
-        <span id="ce-antiga-status" style="font-size:12px;color:var(--muted);align-self:center;">Nenhum arquivo analisado.</span>
-      </div>
-    </div>
-
-    <div class="card" id="ce-antiga-preview-card" style="padding:0;overflow:auto;display:none;margin-top:12px;">
-      <table class="ce-xml-result-table">
-        <thead><tr><th>DATA</th><th>NF</th><th>FINALIZAÇÃO</th><th>COLETA</th><th>EMBALADOR</th><th>TRANSPORTE</th><th>FILIAL</th><th>VOLUME</th><th>VALIDAÇÃO</th></tr></thead>
-        <tbody id="ce-antiga-preview"></tbody>
       </table>
     </div>
   </section>
@@ -3370,43 +3340,19 @@
       });
     }
   }
-  function ceOpHeaders(prefer='',forceAnon=false){
-    const token=forceAnon?CE_OP_SB_KEY:(window.CE_AUTH?.session?.access_token||CE_OP_SB_KEY);
+  function ceOpHeaders(prefer=''){
+    const token=window.CE_AUTH?.session?.access_token||CE_OP_SB_KEY;
     const x={apikey:CE_OP_SB_KEY,Authorization:'Bearer '+token,'Content-Type':'application/json',Accept:'application/json'};
     if(prefer)x.Prefer=prefer;
     return x;
   }
-  function ceJwtExpirado(status,j,t){
-    const msg=String(j?.message||j?.msg||t||'').toLowerCase();
-    return status===401 && (msg.includes('jwt')||msg.includes('expired')||msg.includes('token'));
-  }
-  async function ceRenovarSessao(){
-    const sess=window.CE_AUTH?.session;
-    const refresh=sess?.refresh_token;
-    if(!refresh)return false;
-    try{
-      const r=await fetch(CE_OP_SB_URL+'/auth/v1/token?grant_type=refresh_token',{
-        method:'POST',headers:{apikey:CE_OP_SB_KEY,'Content-Type':'application/json'},
-        body:JSON.stringify({refresh_token:refresh}),cache:'no-store'
-      });
-      const j=await r.json().catch(()=>null);
-      if(!r.ok||!j?.access_token)return false;
-      window.CE_AUTH.session=j;
-      try{localStorage.setItem('ce_auth_session_v1',JSON.stringify(j));}catch(e){}
-      return true;
-    }catch(e){console.error('[AUTH REFRESH]',e);return false;}
-  }
-  window.CE_RENOVAR_SESSAO=ceRenovarSessao;
-  async function ceOpReq(method,path,body,prefer='',tentativa=0){
+  async function ceOpReq(method,path,body,prefer=''){
     const r=await fetch(CE_OP_SB_URL+'/rest/v1/'+path,{
       method,headers:ceOpHeaders(prefer),cache:'no-store',
       body:body===undefined?undefined:JSON.stringify(body)
     });
     const t=await r.text(); let j=null; try{j=t?JSON.parse(t):null}catch(e){}
     if(!r.ok){
-      if(tentativa===0 && ceJwtExpirado(r.status,j,t) && await ceRenovarSessao()){
-        return ceOpReq(method,path,body,prefer,1);
-      }
       const err=new Error('Supabase HTTP '+r.status+' — '+(j?.message||t||r.statusText));
       err.status=r.status;err.supabase=j||t;console.error('[SUPABASE OPERACIONAL]',method,path,err.supabase);throw err;
     }
@@ -3430,12 +3376,7 @@
     };
   }
   function ceOpPostDb(p){
-    const alvo=String(p.romaneio_id||'').trim();
-    const rom=romaneios.find(r=>
-      String(r.id||'').trim()===alvo ||
-      String(r.uuid||'').trim()===alvo ||
-      String(r.codigo||'').trim()===alvo
-    );
+    const rom=romaneios.find(r=>String(r.id)===String(p.romaneio_id));
     if(!rom)throw new Error('Romaneio '+p.romaneio_id+' não encontrado para a NF '+p.nf);
     if(!rom.uuid)rom.uuid=ceOpUUID();
     if(!p.uuid)p.uuid=ceOpUUID();
@@ -3448,8 +3389,7 @@
       transporte_romaneio:p.transporte_romaneio||rom.transportadora||rom.motorista||null,
       volume:Math.max(1,parseInt(p.volumes??p.volume??1)||1),bipador:p.bipador||null,embalador:p.embalador||null,
       status:p.status||'em_romaneio',divergencia:p.divergencia===true||p.divergencia_aceita===true,
-      bipada_em:p.bipada_em||p.criado_em||new Date().toISOString(),
-      criado_em:p.criado_em||p.bipada_em||new Date().toISOString(),
+      bipada_em:p.bipada_em||p.criado_em||new Date().toISOString(),criado_em:p.criado_em||new Date().toISOString(),
       atualizado_em:new Date().toISOString(),...(p.coleta_em?{coleta_em:p.coleta_em}:{})
     };
   }
@@ -3505,9 +3445,7 @@
           transporte_original:x.transporte_original||'',transporte_romaneio:x.transporte_romaneio||'',
           volumes:x.volume||1,volume:x.volume||1,bipador:x.bipador||'',embalador:x.embalador||'',
           status:x.status||'em_romaneio',divergencia:x.divergencia===true,criado_em:x.criado_em||x.bipada_em||'',
-          bipada_em:x.bipada_em||x.criado_em||'',coleta_em:x.coleta_em||null,
-          dataPostagem:(()=>{const v=x.bipada_em||x.criado_em||'';if(!v)return '';try{return new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(v));}catch(e){return '';}})(),
-          horaPostagem:(()=>{const v=x.bipada_em||x.criado_em||'';if(!v)return '';try{return new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(new Date(v));}catch(e){return '';}})()
+          bipada_em:x.bipada_em||x.criado_em||'',coleta_em:x.coleta_em||null
         };
         if(rom&&!rom.itens.includes(p.id))rom.itens.push(p.id);
         return p;
@@ -3534,37 +3472,9 @@
 
   async function ceSalvarSomentePostagensNovas(itens){
     if(!Array.isArray(itens)||!itens.length) return [];
+    // O romaneio precisa existir antes da FK postagens.romaneio_id.
     await saveRomaneios();
-
-    const gravadas=[];
-    const falhas=[];
-
-    // Salva NF por NF para conseguir informar exatamente qual registro falhou.
-    for(const item of itens){
-      const payload=ceOpPostDb(item);
-      try{
-        const retorno=await ceOpUpsert('postagens',[payload]);
-        if(Array.isArray(retorno) && retorno.length===1){
-          gravadas.push(item);
-        }else{
-          falhas.push({item,erro:'Supabase não confirmou a gravação'});
-        }
-      }catch(e){
-        falhas.push({item,erro:String(e?.message||e)});
-      }
-    }
-
-    if(falhas.length){
-      const err=new Error(
-        gravadas.length+' de '+itens.length+' NF(s) gravada(s). '+
-        falhas.length+' falharam: '+
-        falhas.map(f=>String(f.item?.nf||'SEM NF')).join(', ')
-      );
-      err.ce_parcial=true;
-      err.gravadas=gravadas;
-      err.falhas=falhas;
-      throw err;
-    }
+    const gravadas=await ceOpUpsert('postagens',itens.map(ceOpPostDb));
     return gravadas;
   }
 
@@ -3672,44 +3582,61 @@
   // Leitor nunca ganhava itens de verdade e por isso não aparecia na aba Romaneios.
   // IMPORTANTE: isto NUNCA mexe em rom.status — finalizar a bipagem só salva as NFs.
   // Quem fecha o romaneio de verdade é finalizarEAssinarRomaneio, na tela Romaneio.
-  window.ceAdicionarPostagensNaBaseNativa = async function(romaneioId, itens){
-    const alvo=String(romaneioId||'').trim();
-    let rom = romaneios.find(r=>
-      String(r.id||'').trim()===alvo ||
-      String(r.uuid||'').trim()===alvo ||
-      String(r.codigo||'').trim()===alvo
-    );
+  // TRAVA V180: impede duas gravações simultâneas do mesmo lote.
+  // A segunda chamada aguarda/recebe a mesma Promise da primeira.
+  let ceSalvamentoPostagensEmAndamento = null;
 
-    // Se a memória da tela estiver desatualizada, busca o romaneio diretamente no Supabase.
-    if(!rom && alvo){
-      const filtro=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(alvo)
-        ? 'id=eq.'+encodeURIComponent(alvo)
-        : 'codigo=eq.'+encodeURIComponent(alvo);
-      const rows=await ceOpReq('GET','romaneios?select=*&'+filtro+'&limit=1');
-      const x=Array.isArray(rows)?rows[0]:null;
-      if(x){
-        rom={
-          id:x.codigo||x.id, uuid:x.id, codigo:x.codigo||'',
-          motorista:x.transportadora||'', transportadora:x.transportadora||'',
-          empresa:x.empresa||'', filial:x.filial||'',
-          data:x.data?new Date(x.data+'T12:00:00').toLocaleDateString('pt-BR'):'',
-          data_iso:x.data||'', itens:[], status:x.status||'aberto',
-          criado_em:x.criado_em||'', assinatura:x.assinatura||null,
-          assinado_em:x.assinado_em||null, motorista_nome:x.motorista_nome||'',
-          motorista_cpf:x.motorista_cpf||''
-        };
-        const pos=romaneios.findIndex(r=>String(r.uuid||'')===String(x.id));
-        if(pos>=0) romaneios[pos]=rom; else romaneios.push(rom);
-      }
+  window.ceAdicionarPostagensNaBaseNativa = async function(romaneioId, itens){
+    if(ceSalvamentoPostagensEmAndamento){
+      console.warn('[POSTAGENS] Salvamento duplicado ignorado: já existe uma gravação em andamento.');
+      return ceSalvamentoPostagensEmAndamento;
     }
 
-    if(!rom) throw new Error('Romaneio '+romaneioId+' não encontrado no Supabase');
+    ceSalvamentoPostagensEmAndamento = (async()=>{
+    const rom = romaneios.find(r=>r.id===romaneioId);
+    if(!rom) throw new Error('Romaneio '+romaneioId+' não encontrado');
     if(!Array.isArray(itens) || !itens.length) return [];
 
     const transporteRomaneio = rom.transportadora || rom.motorista || '';
     const criadas = [];
 
-    for(const item of itens){
+    // Identidade operacional da postagem.
+    // Não usa somente a NF porque Correios pode ter a mesma NF em volumes
+    // diferentes, desde que os rastreios sejam diferentes.
+    const chavePostagem = (x)=>[
+      String(x?.nf||'').trim(),
+      String(x?.chave||x?.chave_nfe||'').replace(/\D/g,''),
+      String(x?.rastreio||'').trim().toUpperCase(),
+      String(x?.pedido||'').trim()
+    ].join('|');
+
+    // Remove repetição idêntica dentro do próprio lote.
+    const vistosLote = new Set();
+    const itensUnicos = itens.filter(item=>{
+      const k=chavePostagem(item);
+      if(vistosLote.has(k)){
+        console.warn('[POSTAGENS] Item repetido no mesmo lote ignorado:', item?.nf);
+        return false;
+      }
+      vistosLote.add(k);
+      return true;
+    });
+
+    // Também protege contra uma repetição já presente em memória no MESMO romaneio.
+    const existentes = new Set(
+      (postagens||[])
+        .filter(p=>String(p?.romaneio_id||'')===String(rom.id))
+        .map(chavePostagem)
+    );
+
+    for(const item of itensUnicos){
+      const identidade = chavePostagem(item);
+      if(existentes.has(identidade)){
+        console.warn('[POSTAGENS] Postagem já existente neste romaneio ignorada:', item?.nf);
+        continue;
+      }
+      existentes.add(identidade);
+
       counters.postagem++;
       const p = {
         id:'PST-' + pad(counters.postagem),
@@ -3763,6 +3690,13 @@
     renderAll();
     carregarResumoDiario();
     return criadas;
+    })();
+
+    try{
+      return await ceSalvamentoPostagensEmAndamento;
+    }finally{
+      ceSalvamentoPostagensEmAndamento = null;
+    }
   };
 
   // ---------- nav ----------
@@ -4829,8 +4763,7 @@
     try{
       const SB=window.CE_SUPABASE_URL||'https://njvcostescybgwbnipec.supabase.co';
       const KEY=window.CE_SUPABASE_ANON_KEY||'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qdmNvc3Rlc2N5Ymd3Ym5pcGVjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxNzkxNzMsImV4cCI6MjEwNTc1NTE3M30.ZR9V23Fs-MzYznZCIRrTf2uXwc5oHiltb8hpmgJHADI';
-      const TOKEN=window.CE_AUTH?.session?.access_token||KEY;
-     const headers={apikey:KEY,Authorization:'Bearer '+TOKEN,Accept:'application/json'};
+      const headers={apikey:KEY,Authorization:'Bearer '+KEY,Accept:'application/json'};
       const alvo=r;
 
       // Busca por partes para também detectar registros antigos que possam ter
@@ -5695,37 +5628,6 @@
       await ceSalvarSomentePostagensNovas(novasPostagens);
     }catch(err){
       console.error('[POSTAGENS SUPABASE]',err);
-
-      if(err?.ce_parcial){
-        const gravadas=Array.isArray(err.gravadas)?err.gravadas:[];
-        const falhas=Array.isArray(err.falhas)?err.falhas:[];
-
-        // As confirmadas pelo Supabase entram no estado da tela.
-        gravadas.forEach(p=>{
-          if(!postagens.some(x=>(x.uuid||x.id)===(p.uuid||p.id))) postagens.push(p);
-          if(!rom.itens.includes(p.id)) rom.itens.push(p.id);
-        });
-
-        // Mantém na sequência somente as NFs que realmente falharam.
-        const chavesFalhas=new Set(falhas.map(f=>String(f.item?.chave||f.item?.chave_nfe||f.item?.nf||'')));
-        loteBipagem=loteBipagem.filter(x=>{
-          const k=String(x?.chave||x?.chave_nfe||x?.nf||'');
-          return chavesFalhas.has(k);
-        });
-
-        const listaFalhas=falhas.map(f=>String(f.item?.nf||'SEM NF')).join(', ');
-        alert(
-          'POSTAGEM PARCIAL\n\n'+
-          'Salvas no Supabase: '+gravadas.length+' de '+novasPostagens.length+'\n'+
-          'Falharam: '+falhas.length+'\n'+
-          'NFs com falha: '+listaFalhas+'\n\n'+
-          'Somente as NFs com falha permanecerão abertas para nova tentativa.'
-        );
-        showToast(gravadas.length+' salva(s). '+falhas.length+' NF(s) com erro permanecem abertas.');
-        renderAll();
-        return;
-      }
-
       alert('Não foi possível salvar as postagens no Supabase.\n\n'+(err?.message||err));
       showToast('Postagens não salvas. A sequência continua aberta.');
       return;
@@ -6242,30 +6144,19 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
       const itens = itensDoRomaneio(rom);
       if(!itens.length){ showToast('Este romaneio ainda não tem nenhuma NF bipada.'); return; }
       const nomeTransp = rom.transportadora || rom.motorista || '';
-      const agoraColeta = new Date();
-      const coletaISO = agoraColeta.toISOString();
-
       if(transporteEhCorreios(nomeTransp)){
-        // Correios pode ter até 3 coletas parciais.
         if(!Array.isArray(rom.coletas)) rom.coletas = [];
         const pendentes = itens.filter(p=>!p.coleta_em);
         if(pendentes.length && rom.coletas.length < 3){
+          const agora = new Date();
           const numero = rom.coletas.length + 1;
-          pendentes.forEach(p=>{ p.coleta_numero = numero; p.coleta_em = coletaISO; });
-          rom.coletas.push({ numero, hora: coletaISO });
+          pendentes.forEach(p=>{ p.coleta_numero = numero; p.coleta_em = agora.toISOString(); });
+          rom.coletas.push({ numero, hora: agora.toISOString() });
+          await savePostagens();
         }
-      }else{
-        // V157: para as demais transportadoras, "Finalizar e gerar romaneio"
-        // é o momento oficial da coleta. Todas as NFs recebem o mesmo coleta_em.
-        itens.forEach(p=>{ p.coleta_em = coletaISO; });
-        rom.coleta_em = coletaISO;
       }
-
-      // Persiste PRIMEIRO coleta_em em public.postagens; só depois fecha o romaneio.
-      await savePostagens();
-
       rom.status = 'aguardando_assinatura';
-      rom.finalizado_em = coletaISO;
+      rom.finalizado_em = new Date().toISOString();
       await saveRomaneios();
       renderAll();
     }
@@ -6619,18 +6510,26 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
         <tbody>${linhas || '<tr><td colspan="8" class="empty">Nenhuma NF postada neste romaneio.</td></tr>'}</tbody>
       </table></div>`;
     }else{
-      const linhas = itens.map(p=>`<tr>
-        <td class="mono" style="font-weight:700;">${escapeHtml(p.nf||'—')}</td>
-        <td>${escapeHtml(p.cliente_nome||'—')}</td>
-        <td class="mono" style="font-weight:700;white-space:nowrap;">${escapeHtml(ceMoedaBR(p.valor_nf))}</td>
-        <td class="mono" style="font-size:10.5px;">${escapeHtml(p.chave||'—')}</td>
-        <td class="mono">${escapeHtml(p.rastreio||'—')}</td>
-        <td class="mono">${p.volumes||1}</td>
-      </tr>`).join('');
-      tabela = `<table class="manifest-itens-padrao manifest-itens-postagens" style="margin-top:8px;">
-        <thead><tr><th>NF</th><th>Cliente</th><th>Valor NF</th><th>Chave</th><th>Rastreio</th><th>Volume</th></tr></thead>
-        <tbody>${linhas || '<tr><td colspan="6" class="empty">Sem itens</td></tr>'}</tbody>
-      </table>`;
+      if(!consulta){
+        const nfsResumo=[...new Set(itens.map(p=>String(p.nf||'').replace(/^0+/,'')).filter(Boolean))];
+        tabela = `<details class="ce-mobile-nfs">
+          <summary>Ver NFs (${nfsResumo.length})</summary>
+          <div class="ce-mobile-nfs-lista">${nfsResumo.length ? nfsResumo.map(n=>`<span>${escapeHtml(n)}</span>`).join('') : '<span>Sem NFs</span>'}</div>
+        </details>`;
+      }else{
+        const linhas = itens.map(p=>`<tr>
+          <td class="mono" style="font-weight:700;">${escapeHtml(p.nf||'—')}</td>
+          <td>${escapeHtml(p.cliente_nome||'—')}</td>
+          <td class="mono" style="font-weight:700;white-space:nowrap;">${escapeHtml(ceMoedaBR(p.valor_nf))}</td>
+          <td class="mono" style="font-size:10.5px;">${escapeHtml(p.chave||'—')}</td>
+          <td class="mono">${escapeHtml(p.rastreio||'—')}</td>
+          <td class="mono">${p.volumes||1}</td>
+        </tr>`).join('');
+        tabela = `<table class="manifest-itens-padrao manifest-itens-postagens" style="margin-top:8px;">
+          <thead><tr><th>NF</th><th>Cliente</th><th>Valor NF</th><th>Chave</th><th>Rastreio</th><th>Volume</th></tr></thead>
+          <tbody>${linhas || '<tr><td colspan="6" class="empty">Sem itens</td></tr>'}</tbody>
+        </table>`;
+      }
     }
 
     // ---- bloco de retirada / assinatura ----
@@ -7175,7 +7074,7 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
     if(!nome){ showToast(ehRetira?'Nome de quem está retirando é obrigatório':'Nome do motorista é obrigatório'); $('#sig-nome').focus(); return; }
     const cpf = $('#sig-cpf').value.trim();
     if(!cpf){ showToast(ehRetira?'CPF de quem está retirando é obrigatório':'CPF do motorista é obrigatório'); $('#sig-cpf').focus(); return; }
-    if(String(cpf||'').replace(/\D/g,'').length!==11){ showToast('CPF deve conter 11 números'); $('#sig-cpf').focus(); return; }
+    if(!cpfValido(cpf)){ showToast('CPF inválido — confira os números'); $('#sig-cpf').focus(); return; }
     if(!sigHasStroke){ showToast('Assinatura é obrigatória'); return; }
     if(!rom) return;
     const canvas = $('#sigcanvas');
@@ -7193,16 +7092,6 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
       rom.retirado_em=new Date().toISOString();
     }
     rom.assinado_em = new Date().toISOString();
-
-    // V157: compatibilidade com romaneios antigos finalizados sem coleta_em.
-    const itensAssinatura=itensDoRomaneio(rom);
-    const semColeta=itensAssinatura.filter(p=>!p.coleta_em);
-    if(semColeta.length){
-      semColeta.forEach(p=>{p.coleta_em=rom.assinado_em;});
-      if(!rom.coleta_em)rom.coleta_em=rom.assinado_em;
-      await savePostagens();
-    }
-
     rom.status = 'assinado';
     await saveRomaneios();
     showToast('Retirada confirmada para ' + rom.id + '. Consulte em Romaneio.');
@@ -9002,9 +8891,8 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
       <div class="ce-rom-grid">
         <select id="ce-rom-transp" class="ce-rom-select"><option value="">Selecione a transportadora...</option></select>
         <select id="ce-rom-filial" class="ce-rom-select">
-          <option value="">Selecione a filial...</option>
-          <option value="0101,0102">Equipatech · 0101 / 0102</option>
-          <option value="1020">BB Baterias · 1020</option>
+          <option value="">Todas as filiais do contexto</option>
+          <option value="1020">BB Baterias · 1020</option><option value="0101">Equipatech · 0101</option><option value="0102">Equipatech · 0102</option>
         </select>
       </div>
       <button id="ce-rom-criar" class="ce-rom-create">＋ Criar romaneio e abrir bipagem</button>
@@ -9038,10 +8926,8 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
       const transporte=String(r.transportadora||r.transporte||r.nome_transportadora||'').trim().toUpperCase();
       const ehRetira=!!(r.tipo_retira || r.tipo==='retira' || transporte.includes('RETIRA'));
       const aberto=status==='aberto';
-      const filialRomPartes=filialRom.split(',').map(x=>x.trim()).filter(Boolean);
-      const filialOk=!contexto ||
-        filialRomPartes.some(f=>filiaisContexto.includes(f)) ||
-        (contexto==='0101,0102' && (filialRom==='0101,0102' || empresaRom.includes('equipa'))) ||
+      const filialOk=!contexto || filiaisContexto.includes(filialRom) ||
+        (contexto==='0101,0102' && empresaRom.includes('equipa')) ||
         (contexto==='1020' && (filialRom==='1020' || empresaRom.includes('bater')));
       return aberto && !ehRetira && filialOk;
     });
@@ -9062,13 +8948,7 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
     // Mostra só os romaneios da filial escolhida no seletor acima ("Criar novo romaneio"),
     // mesmo quando o contexto de login cobre mais de uma filial (ex.: Equipatech 0101+0102).
     if(filialSel){
-      lista=lista.filter(r=>{
-        const rf=String(r.filial||'').trim();
-        if(filialSel==='0101,0102'){
-          return rf==='0101,0102' || rf==='0101' || rf==='0102' || String(r.empresa||'').toLowerCase().includes('equipa');
-        }
-        return rf===filialSel;
-      });
+      lista=lista.filter(r=>String(r.filial||'').trim()===filialSel);
     }
     const host=$('ce-rom-lista'); if(!host)return;
     host.innerHTML=lista.length?lista.map((r,i)=>`
@@ -9248,8 +9128,7 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
     if(!alvo)return;
     const b=document.createElement('button');
     b.id='ce-inc-romaneio'; b.className='ce-inc-rom-btn'; b.textContent='＋ Incluir Romaneio';
-    const grupoBtn=document.createElement('div');grupoBtn.className='ce-inc-grupo';grupoBtn.appendChild(b);
-    alvo.parentElement?.insertBefore(grupoBtn,alvo);
+    alvo.parentElement?.insertBefore(b,alvo);
     b.onclick=mostrarModal;
 
     const br=document.createElement('button');
@@ -9768,19 +9647,20 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
         window.ceRomaneioOperacao?.filial_operacao ||
         window.ceRomaneioOperacao?.unidade ||
         ''
-      ).trim();
+      ).trim().padStart(4,'0');
 
       const filialPermitida=(()=>{
         if(!filialRom) return true; // compatibilidade com romaneios antigos sem filial gravada
-        const permitidas=filialRom.split(',').map(f=>String(f).trim().padStart(4,'0')).filter(Boolean);
-        return permitidas.includes(filialNF);
+        if(filialRom==='1020') return filialNF==='1020';
+        if(filialRom==='0101'||filialRom==='0102') return filialNF==='0101'||filialNF==='0102';
+        return filialNF===filialRom;
       })();
 
       if(!filialPermitida){
         alert(
           'FILIAL INCOMPATÍVEL\n\n'+
           'A NF '+item.nf+' pertence à filial '+(filialNF||'não identificada')+
-          ' e não pode ser incluída no romaneio da filial '+(filialRom==='0101,0102'?'0101 / 0102':filialRom)+'.\n\n'+
+          ' e não pode ser incluída no romaneio da filial '+filialRom+'.\n\n'+
           (filialRom==='1020'
             ? 'Romaneios 1020 aceitam somente NFs 1020.'
             : 'Romaneios 0101/0102 aceitam somente NFs 0101 e 0102.')
@@ -9969,6 +9849,106 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
   }
 
  
+ function ceRelDataLocalISO(v){
+   if(!v)return '';
+   try{
+     const d=new Date(v);
+     if(isNaN(d))return '';
+     return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
+   }catch(e){return '';}
+ }
+ function ceRelHora(v){
+   if(!v)return '';
+   try{
+     const d=new Date(v);
+     if(!isNaN(d))return d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+   }catch(e){}
+   return horaBR(v)==='—'?'':horaBR(v);
+ }
+ function ceRelDataBR(v){
+   if(!v)return '';
+   try{
+     const d=new Date(v);
+     if(!isNaN(d))return d.toLocaleDateString('pt-BR');
+   }catch(e){}
+   return dataBR(v)==='—'?'':dataBR(v);
+ }
+ function ceRelFilialCodigo(rom,p){
+   const f=String(rom?.filial||p?.filial||'').trim();
+   return f;
+ }
+ function ceRelEmpresa(rom,p){
+   const f=ceRelFilialCodigo(rom,p);
+   return String(rom?.empresa||p?.empresa||(f==='1020'?'BB Baterias':'Equipatech')).trim();
+ }
+ async function gerarRelatorioColetas(dataSelecionada){
+   if(!dataSelecionada){alert('Selecione a data da coleta.');return;}
+   const btn=$('ce-rel-baixar');
+   const txt=btn?.textContent||'Baixar Excel';
+   if(btn){btn.disabled=true;btn.textContent='Buscando no Supabase...';}
+   try{
+     const SB=window.CE_SUPABASE_URL||'https://njvcostescybgwbnipec.supabase.co';
+     const KEY=window.CE_SUPABASE_ANON_KEY||'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qdmNvc3Rlc2N5Ymd3Ym5pcGVjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxNzkxNzMsImV4cCI6MjEwNTc1NTE3M30.ZR9V23Fs-MzYznZCIRrTf2uXwc5oHiltb8hpmgJHADI';
+     const headers={apikey:KEY,Authorization:'Bearer '+KEY,Accept:'application/json'};
+
+     // Lê a tabela permanente de postagens diretamente do Supabase em páginas.
+     let todos=[];
+     for(let offset=0;offset<50000;offset+=1000){
+       const u=SB.replace(/\/$/,'')+'/rest/v1/postagens?select=*&order=criado_em.desc&limit=1000&offset='+offset;
+       const r=await fetch(u,{headers,cache:'no-store'});
+       if(!r.ok)throw new Error('Supabase HTTP '+r.status+' - '+(await r.text()).slice(0,300));
+       const lote=await r.json();
+       todos.push(...lote);
+       if(lote.length<1000)break;
+     }
+
+     const valor=(o,...ks)=>{for(const k of ks){const v=o?.[k];if(v!==undefined&&v!==null&&String(v).trim()!=='')return v;}return '';};
+     const iso=v=>{
+       if(!v)return '';
+       const s=String(v).trim();
+       let m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);if(m)return `${m[1]}-${m[2]}-${m[3]}`;
+       m=s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);if(m)return `${m[3]}-${m[2]}-${m[1]}`;
+       const d=new Date(s);if(isNaN(d))return '';
+       return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
+     };
+     const br=v=>{const x=iso(v);if(!x)return '';const [a,m,d]=x.split('-');return `${d}/${m}/${a}`;};
+     const hora=v=>{
+       if(!v)return '';
+       const s=String(v).trim();
+       const m=s.match(/(?:T|\s)(\d{2}:\d{2}(?::\d{2})?)/)||s.match(/^(\d{2}:\d{2}(?::\d{2})?)/);
+       if(m)return m[1].length===5?m[1]+':00':m[1];
+       const d=new Date(s);return isNaN(d)?'':d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+     };
+     const coletaDe=p=>valor(p,'coleta_em','data_coleta','coletado_em','retirada_em','data_hora_coleta','finalizado_em');
+     let selecionados=todos.filter(p=>iso(coletaDe(p))===dataSelecionada);
+
+     // Compatibilidade com registros antigos: quando a tabela não possui coleta_em,
+     // usa a data/hora de bipagem como coleta operacional registrada no Supabase.
+     if(!selecionados.length){
+       selecionados=todos.filter(p=>iso(valor(p,'bipada_em','criado_em','data_postagem'))===dataSelecionada);
+     }
+     if(!selecionados.length){alert('Nenhum pedido coletado encontrado no Supabase para '+br(dataSelecionada)+'.');return;}
+
+     const linhas=selecionados.map(p=>{
+       const coleta=coletaDe(p)||valor(p,'bipada_em','criado_em','data_postagem');
+       const fim=valor(p,'finalizado_em','bipada_em','criado_em','data_postagem');
+       const nf0=String(valor(p,'nf','nota_fiscal','numero_nf')).replace(/\D/g,'');
+       const nf=nf0.replace(/^0+/,'')||'0';
+       const cod=String(valor(p,'filial','codigo_filial','cod_filial')).trim();
+       let nome=String(valor(p,'empresa','nome_filial')).trim();
+       if(!nome)nome=cod==='1020'?'BB Baterias':'Equipatech';
+       return [br(coleta),nf,hora(fim),hora(coleta),String(valor(p,'embalador','usuario_embalador')),String(valor(p,'transporte','transportadora','transporte_romaneio','transporte_original')),nome,cod,parseInt(valor(p,'volume','volumes','qtd_volumes')||1,10)||1];
+     });
+     linhas.sort((a,b)=>String(a[3]).localeCompare(String(b[3])));
+     const cab=['Data','Nota Fiscal','Horário de Finalização','Horário da Coleta','Embalador','Transporte','Filial','Código da Filial','Volume'];
+     const esc=v=>{let s=String(v??'');if(/[;"\r\n]/.test(s))s='"'+s.replace(/"/g,'""')+'"';return s;};
+     const csv='\uFEFF'+[cab,...linhas].map(r=>r.map(esc).join(';')).join('\r\n');
+     const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+     const [ano,mes,dia]=dataSelecionada.split('-');a.href=url;a.download=`Relatorio_Coletas_${dia}-${mes}-${ano}.csv`;document.body.appendChild(a);a.click();
+     setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},1000);$('ce-rel-overlay')?.classList.remove('show');
+   }catch(e){console.error('[RELATORIO COLETAS SUPABASE]',e);alert('Não foi possível gerar o relatório.\n\n'+(e?.message||e));}
+   finally{if(btn){btn.disabled=false;btn.textContent=txt;}}
+ }
  function instalar(){
     const chave=$('ce-op-chave');
     const rast=$('ce-op-rastreio');
@@ -9992,15 +9972,25 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
   // romaneio". Aqui só gravamos as NFs como postagens — o status do romaneio (ABERTO)
   // não muda, e ele NUNCA vai para Assinar Retirada a partir daqui. Quem fecha o
   // romaneio definitivamente é o botão "Finalizar e gerar romaneio" na tela Romaneio.
+  let ceFinalizarRomaneioColetaEmAndamento = false;
+
   async function finalizarRomaneioColeta(){
+    if(ceFinalizarRomaneioColetaEmAndamento){
+      console.warn('[POSTAGENS] Clique duplicado em Salvar lote ignorado.');
+      return false;
+    }
+    ceFinalizarRomaneioColetaEmAndamento = true;
+
     const rom = window.ceRomaneioOperacao;
     const romaneioId = rom?.id || rom?.romaneio_id;
     if(!romaneioId){
       alert('Não há romaneio selecionado para finalizar.');
+      ceFinalizarRomaneioColetaEmAndamento = false;
       return false;
     }
     if(typeof window.ceAdicionarPostagensNaBaseNativa !== 'function'){
       alert('Não foi possível salvar: a base de dados do app não está disponível.');
+      ceFinalizarRomaneioColetaEmAndamento = false;
       return false;
     }
 
@@ -10009,6 +9999,7 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
     if(divPendente){
       window.ceAbrirDivergencia?.(divPendente);
       alert('Não é possível concluir.\nExistem divergências de transporte pendentes de confirmação.');
+      ceFinalizarRomaneioColetaEmAndamento = false;
       return false;
     }
 
@@ -10016,6 +10007,7 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
     const rows = linhas().filter(tr=>tr.dataset.naoSalvar!=='1');
     if(!rows.length){
       alert('Nenhuma postagem para salvar neste romaneio.');
+      ceFinalizarRomaneioColetaEmAndamento = false;
       return false;
     }
 
@@ -10032,15 +10024,9 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
       filial: tr.dataset.filial || '',
       bipador: tr.dataset.bipador || window.ceBipadorSessao || '',
       embalador: tr.dataset.embalador || '',
-      volumes: parseInt((tr.children[5]?.textContent || '').trim(), 10) || 1
+      volumes: parseInt((tr.children[5]?.textContent || '').trim(), 10) || 1,
+      criado_em: new Date().toISOString()
     }));
-
-    // V154: momento oficial da postagem = clique em "Salvar lote".
-    const ceMomentoSalvarLote = new Date().toISOString();
-    itens.forEach(item=>{
-      item.bipada_em = ceMomentoSalvarLote;
-      item.criado_em = ceMomentoSalvarLote;
-    });
 
     $('ce-op-status').textContent = 'Salvando '+itens.length+' postagem(ns) no romaneio...';
 
@@ -10058,14 +10044,17 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
         rom.finalizado_em=new Date().toISOString();
         if(typeof window.ceSalvarRomaneioRetira==='function') await window.ceSalvarRomaneioRetira(rom);
         $('ce-op-status').textContent='NF '+nfRetira+' registrada — aguardando assinatura na aba Assinar Retirada.';
+        ceFinalizarRomaneioColetaEmAndamento = false;
         return true;
       }
 
       $('ce-op-status').textContent = itens.length+' postagem(ns) salva(s) no romaneio '+romaneioId+' — ainda ABERTO.';
+      ceFinalizarRomaneioColetaEmAndamento = false;
       return true;
     }catch(e){
       alert('Não foi possível salvar as postagens no romaneio.\n'+(e?.message||e));
       $('ce-op-status').textContent = 'Falha ao salvar. Nada foi perdido — tente novamente.';
+      ceFinalizarRomaneioColetaEmAndamento = false;
       throw e; // interrompe o fechamento da janela: o operador não perde a sequência bipada
     }
   }
@@ -10393,7 +10382,6 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
  let dados=[];
  let retiradasMap=new Map();
  let rastreiosPorNF=new Map();
- let postagensHistoricoDiretas=new Map();
  let hpPagina=0; const HP_TAM=200; let hpTemProxima=false; let hpCarregado=false,hpCarregando=null;
  const $=id=>document.getElementById(id);
  const get=(o,ks)=>{for(const k of ks)if(o&&o[k]!=null&&String(o[k]).trim()!=='')return String(o[k]).trim();return''};
@@ -10405,7 +10393,7 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
  const TRA=o=>get(o,['Transportadora','TRANSPORTADORA','transportadora','Transporte','TRANSPORTE']);
  const CHA=o=>get(o,['Chave','CHAVE','chave','ChaveNFe','CHAVE_NFE','Chave NF-e']);
  const DF=o=>get(o,['DataSaidaEntrada','data_saida_entrada','DataEmissao','DT. EMISSÃO','DtEmissao','DATA_FATURAMENTO','DataFaturamento','data_faturamento']);
- const HF=o=>{const ds=get(o,['DataSaidaEntrada','data_saida_entrada','DataEmissao','data_emissao','DataAutorizacaoSefaz','data_autorizacao']);if(ds&&/^\d{4}-\d{2}-\d{2}T/.test(String(ds))){try{const d=new Date(ds);if(!isNaN(d))return d.toLocaleTimeString('pt-BR',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});}catch(e){}}const direto=get(o,['HoraAutorizacao','hora_autorizacao','HorarioAutorizacao','horario_autorizacao','Hora']);if(direto)return direto;const m=String(ds||'').match(/[T ](\d{2}):(\d{2})(?::(\d{2}))?/);return m?`${m[1]}:${m[2]}${m[3]?':'+m[3]:''}`:'';};
+ const HF=o=>{const direto=get(o,['HoraAutorizacao','hora_autorizacao','HorarioAutorizacao','horario_autorizacao','Hora']);if(direto)return direto;const ds=get(o,['DataSaidaEntrada','data_saida_entrada','DataEmissao','data_emissao','DataAutorizacaoSefaz','data_autorizacao']);const m=String(ds||'').match(/[T ](\d{2}):(\d{2})(?::(\d{2}))?/);return m?`${m[1]}:${m[2]}${m[3]?':'+m[3]:''}`:'';};
  const dataBR=v=>{const x=String(v||'').trim();if(!x)return '—';const m=x.match(/^(\d{4})-(\d{2})-(\d{2})/);return m?`${m[3]}/${m[2]}/${m[1]}`:x;};
  const horaBR=v=>{const x=String(v||'').trim();if(!x)return '—';const m=x.match(/(\d{2}):(\d{2})(?::(\d{2}))?/);return m?`${m[1]}:${m[2]}${m[3]?':'+m[3]:''}`:x;};
  const dataHoraBR=v=>{const x=String(v||'').trim();if(!x)return '—';try{if(/^\d{4}-\d{2}-\d{2}T/.test(x)){const d=new Date(x);if(!isNaN(d))return d.toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).replace(',','');}}catch(e){} const m=x.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?/);if(m)return `${m[3]}/${m[2]}/${m[1]}${m[4]?' '+m[4]+':'+m[5]+':'+(m[6]||'00'):''}`;return x;};
@@ -10442,49 +10430,6 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
      });
    }catch(e){console.warn('[RETIRADAS]',e);retiradasMap=new Map();}
  }
- async function carregarPostagensHistoricoDireto(registros=[]){
-   postagensHistoricoDiretas=new Map();
-   const itens=(registros||[]).map(api=>({
-     nf:String(NF(api)||'').replace(/\D/g,''),
-     filial:String(FIL(api)||'').trim()
-   })).filter(x=>x.nf);
-   const nfs=[...new Set(itens.map(x=>x.nf))];
-   if(!nfs.length)return;
-   try{
-     for(let i=0;i<nfs.length;i+=100){
-       const lote=nfs.slice(i,i+100);
-       const q=new URLSearchParams();
-       q.set('select','*');
-       q.set('nf','in.('+lote.map(x=>'"'+x.replace(/"/g,'')+'"').join(',')+')');
-       q.set('limit','5000');
-       const r=await fetch('https://njvcostescybgwbnipec.supabase.co/rest/v1/postagens?'+q.toString(),{
-         headers:{apikey:SBKEY,Authorization:'Bearer '+SBKEY},cache:'no-store'
-       });
-       if(!r.ok)throw new Error('HTTP '+r.status+' ao consultar postagens');
-       const a=await r.json();
-       for(const p of a||[]){
-         const nf=String(p.nf||'').replace(/\D/g,'').padStart(9,'0');
-         const fil=String(p.filial||'').trim();
-         if(!nf)continue;
-         const k=fil+'|'+nf;
-         const atual=postagensHistoricoDiretas.get(k);
-         const rank=x=>{
-           if(!x)return -1;
-           const st=String(x.status||'').trim().toLowerCase();
-           if(st==='coletado'||x.coleta_em)return 3;
-           if(st==='expedido'||st==='finalizado')return 2;
-           return 1;
-         };
-         if(!atual || rank(p)>=rank(atual))postagensHistoricoDiretas.set(k,p);
-         const kg='*|'+nf;
-         const atualG=postagensHistoricoDiretas.get(kg);
-         if(!atualG || rank(p)>=rank(atualG))postagensHistoricoDiretas.set(kg,p);
-       }
-     }
-   }catch(e){
-     console.warn('[HISTÓRICO POSTAGENS DIRETO]',e);
-   }
- }
  async function carregarRastreiosPostagens(nfs=[]){
    rastreiosPorNF=new Map();
    const lista=[...new Set((nfs||[]).map(x=>String(x||'').trim()).filter(Boolean))];
@@ -10520,25 +10465,13 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
  function status(s,nf){
    if(retiradasMap.has(norm(nf)))return ['vermelho','Retirado'];
    if(!s)return ['verde','Aguardando postagem'];
-   const r=s._rom||{};
-   const rs=String(r.status||'').toLowerCase();
-   const ps=String(s.status||'').trim().toLowerCase();
-   // A postagem é a fonte oficial do status. Importações da PLANILHA ANTIGA
-   // podem estar coletadas sem romaneio_id; por isso não dependem do romaneio.
-   if(['coletado','expedido','finalizado'].includes(ps)||s.coleta_em||
-      ['finalizado','aguardando_assinatura','assinado','coletado','expedido'].includes(rs)||
-      r.coleta_em||r.finalizado_em){
-     return ['vermelho','Expedido / coletado'];
-   }
+   const r=s._rom||{}, rs=String(r.status||'').toLowerCase();
+   if(['finalizado','aguardando_assinatura','assinado'].includes(rs)||r.coleta_em||r.finalizado_em||s.coleta_em)return ['vermelho','Expedido / coletado'];
    return ['amarelo','Postado — aguardando coleta'];
  }
  function render(){
    const sv=salvos(), sm=new Map(sv.map(x=>[norm(x.nf),x]));
-   let rows=dados.map(api=>{
-     const nf=norm(NF(api)), fil=String(FIL(api)||'').trim();
-     const direto=postagensHistoricoDiretas.get(fil+'|'+nf)||postagensHistoricoDiretas.get('*|'+nf);
-     return {api,s:direto||sm.get(nf)};
-   });
+   let rows=dados.map(api=>({api,s:sm.get(norm(NF(api)))}));
    const vistos=new Set(rows.map(x=>norm(NF(x.api))));
    sv.forEach(s=>{const n=String(s.nf||'').replace(/\D/g,'');if(n && !vistos.has(norm(n)))rows.push({api:{},s})});
    // Transportadora agora é um filtro de seleção. Mantém as opções padrão da operação
@@ -10591,20 +10524,8 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
        const extra=rs.length>3?` <button type="button" class="ce-rast-mais" title="${esc(rs.slice(3).join(' | '))}">+${rs.length-3}</button>`:'';
        return `<td class="mono">${esc(rs[0]||'—')}</td><td class="mono">${esc(rs[1]||'—')}</td><td class="mono">${esc(rs[2]||'—')}${extra}</td>`;
      })()}<td>${esc(tr||'—')}</td>
-     <td>${esc(dataBR(DF(api)))}</td><td>${esc(horaBR(HF(api)))}</td><td>${esc(dataBR(api?.DataLimite||api?.data_limite||window.ceDataLimite?.({filial:f,transporte:tr,data:DF(api),data_autorizacao:DF(api),hora:HF(api),hora_autorizacao:HF(api)})||'—'))}</td><td>${esc((()=>{
-        const pronto=s?.data||s?.dataPostagem;
-        if(pronto)return dataBR(pronto);
-        const v=s?.bipada_em||s?.criado_em;
-        if(!v)return '—';
-        try{return new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(v));}catch(e){return '—';}
-      })())}</td><td>${esc((()=>{
-        const pronto=s?.hora||s?.horaPostagem;
-        if(pronto)return horaBR(pronto);
-        const v=s?.bipada_em||s?.criado_em;
-        if(!v)return '—';
-        try{return new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(new Date(v));}catch(e){return '—';}
-      })())}</td>
-     <td>${esc(s?.bipador||'—')}</td><td>${esc(s?.embalador||'—')}</td><td>${esc(s?.volume??s?.volumes??api?.Volume??api?.volume??1)}</td><td>${(()=>{
+     <td>${esc(dataBR(DF(api)))}</td><td>${esc(horaBR(HF(api)))}</td><td>${esc(dataBR(api?.DataLimite||api?.data_limite||window.ceDataLimite?.({filial:f,transporte:tr,data:DF(api),data_autorizacao:DF(api),hora:HF(api),hora_autorizacao:HF(api)})||'—'))}</td><td>${esc(dataBR(s?.data||s?.dataPostagem||'—'))}</td><td>${esc(horaBR(s?.hora||s?.horaPostagem||'—'))}</td>
+     <td>${esc(s?.bipador||'—')}</td><td>${esc(s?.embalador||'—')}</td><td>${esc(s?.volume||'—')}</td><td>${(()=>{
        const nfAtual=NF(api)||s?.nf||'';
        const pedAtual=PED(api)||s?.pedido||'';
        const cliAtual=NCLI(api)||s?.cliente_nome||s?.nome_cliente||'';
@@ -10627,13 +10548,6 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
  async function carregar(forcar=false){
    if(hpCarregando && !forcar) return hpCarregando;
    hpCarregando=(async()=>{
-   // Recarrega postagens do Supabase antes de montar o status do histórico.
-   // Evita usar a cópia em memória anterior à importação da Planilha Antiga.
-   try{
-     if(typeof window.ceRecarregarBaseOperacional==='function'){
-       await window.ceRecarregarBaseOperacional();
-     }
-   }catch(e){console.warn('[HISTÓRICO] Falha ao recarregar postagens',e);}
    await carregarRetiradas();
    const assinaturaConsulta=[
      hpPagina,
@@ -10644,7 +10558,7 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
    ].join('|');
    const cacheKey='historico_geral_v38:'+assinaturaConsulta;
    const cache=await cacheGet(cacheKey);
-   if(cache?.dados?.length){dados=cache.dados;hpTemProxima=!!cache.temProxima;await carregarPostagensHistoricoDireto(dados);await carregarRastreiosPostagens(dados.map(NF));render();const st=$('ce-hp-cache');if(st)st.textContent=`Cache ${horaCache(cache.ts)} · atualizando...`;}
+   if(cache?.dados?.length){dados=cache.dados;hpTemProxima=!!cache.temProxima;await carregarRastreiosPostagens(dados.map(NF));render();const st=$('ce-hp-cache');if(st)st.textContent=`Cache ${horaCache(cache.ts)} · atualizando...`;}
    try{
      const qs=new URLSearchParams();
      qs.set('select','filial,nf,pedido,cliente_codigo,cliente_nome,transportadora,data_emissao,data_saida_entrada,data_autorizacao,chave_nfe,data_limite,volume');
@@ -10779,14 +10693,11 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
          data_emissao:x.data_emissao||orig.data_emissao||'',
          DataAutorizacaoSefaz:x.data_autorizacao||orig.data_autorizacao||'',
          ChaveNFe:x.chave_nfe||orig.chave_nfe||'',
-         HoraAutorizacao:(()=>{try{const d=new Date(ds);if(ds&&/^\d{4}-\d{2}-\d{2}T/.test(ds)&&!isNaN(d))return d.toLocaleTimeString('pt-BR',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});}catch(e){}return mh?`${mh[1]}:${mh[2]}${mh[3]?':'+mh[3]:''}`:'';})(),
+         HoraAutorizacao:mh?`${mh[1]}:${mh[2]}${mh[3]?':'+mh[3]:''}`:'',
          DataLimite:x.data_limite||orig.data_limite||'',
          Volume:x.volume??orig.volume??''
        };
      });
-     // V177: consulta a tabela postagens diretamente para definir o status.
-     // Não depende da memória operacional nem da existência de romaneio.
-     await carregarPostagensHistoricoDireto(dados);
      await carregarRastreiosPostagens(dados.map(NF));
      await cacheSet(cacheKey,{ts:Date.now(),dados,temProxima:hpTemProxima});
      const st=$('ce-hp-cache');if(st)st.textContent=`Atualizado ${horaCache(Date.now())}`;
@@ -10798,227 +10709,6 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
    })();
    try{return await hpCarregando;}finally{hpCarregando=null;}
  }
- // ═══════════════════════════════════════════════════════════════════════════
- // V160 — RELATÓRIO DE COLETAS (ÚNICA IMPLEMENTAÇÃO OFICIAL)
- // Causa do defeito nas versões anteriores: a função existia dentro de OUTRO
- // bloco <script>(function(){...})() e o botão (criado neste bloco) chamava um
- // nome que não existe neste escopo → ReferenceError silencioso a cada clique,
- // antes de qualquer consulta ou download. Agora função e botão vivem juntos.
- // Fonte oficial: public.postagens.coleta_em (fuso America/Sao_Paulo),
- // relacionada a public.romaneios e enriquecida por public.xmls.
- // ═══════════════════════════════════════════════════════════════════════════
- const REL_TZ='America/Sao_Paulo';
- const relFmtSP=new Intl.DateTimeFormat('en-GB',{timeZone:REL_TZ,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'});
- // Partes de data/hora de um instante (ISO com fuso) já convertidas para São Paulo.
- function relPartesSP(v){
-   if(v===null||v===undefined||String(v).trim()==='')return null;
-   const d=new Date(v);
-   if(isNaN(d))return null;
-   const o={};
-   relFmtSP.formatToParts(d).forEach(p=>{o[p.type]=p.value;});
-   return {d:o.day,m:o.month,y:o.year,h:o.hour,mi:o.minute,s:o.second};
- }
- const relISO=p=>p?`${p.y}-${p.m}-${p.d}`:'';
- const relDataSP=v=>{const p=relPartesSP(v);return p?`${p.d}/${p.m}/${p.y}`:'';};
- const relHoraSP=v=>{const p=relPartesSP(v);return p?`${p.h}:${p.mi}:${p.s}`:'';};
- // Datas do XML (faturamento/limite): texto sem fuso é "horário local" e não deve
- // ser deslocado; só converte quando o texto traz Z ou offset explícito.
- const relNF9=v=>{const n=String(v??'').replace(/\D/g,'');return n?n.padStart(9,'0'):'';};
- const relSemZero=v=>String(v??'').replace(/\D/g,'').replace(/^0+/,'');
- const relFilialOk=v=>/^\d{4}$/.test(String(v??'').trim());
- const relTxt=(...vs)=>{for(const v of vs){if(v!==undefined&&v!==null&&String(v).trim()!=='')return String(v).trim();}return '';};
-
- // ── Gerador mínimo de .xlsx (ZIP sem compressão + SpreadsheetML), sem bibliotecas ──
- const REL_CRC=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0;}return t;})();
- function relCrc32(b){let c=0xFFFFFFFF;for(let i=0;i<b.length;i++)c=REL_CRC[(c^b[i])&0xFF]^(c>>>8);return (c^0xFFFFFFFF)>>>0;}
- function relZip(arquivos){
-   const enc=new TextEncoder(),partes=[],central=[];let off=0;
-   const agora=new Date();
-   const dosT=((agora.getHours()<<11)|(agora.getMinutes()<<5)|(agora.getSeconds()>>1))&0xFFFF;
-   const dosD=(((agora.getFullYear()-1980)<<9)|((agora.getMonth()+1)<<5)|agora.getDate())&0xFFFF;
-   for(const [nome,conteudo] of arquivos){
-     const nb=enc.encode(nome),db=enc.encode(conteudo),crc=relCrc32(db);
-     const lh=new DataView(new ArrayBuffer(30));
-     lh.setUint32(0,0x04034b50,true);lh.setUint16(4,20,true);lh.setUint16(6,0x0800,true);lh.setUint16(8,0,true);
-     lh.setUint16(10,dosT,true);lh.setUint16(12,dosD,true);lh.setUint32(14,crc,true);
-     lh.setUint32(18,db.length,true);lh.setUint32(22,db.length,true);lh.setUint16(26,nb.length,true);lh.setUint16(28,0,true);
-     partes.push(new Uint8Array(lh.buffer),nb,db);
-     const ch=new DataView(new ArrayBuffer(46));
-     ch.setUint32(0,0x02014b50,true);ch.setUint16(4,20,true);ch.setUint16(6,20,true);ch.setUint16(8,0x0800,true);ch.setUint16(10,0,true);
-     ch.setUint16(12,dosT,true);ch.setUint16(14,dosD,true);ch.setUint32(16,crc,true);
-     ch.setUint32(20,db.length,true);ch.setUint32(24,db.length,true);ch.setUint16(28,nb.length,true);
-     ch.setUint16(30,0,true);ch.setUint16(32,0,true);ch.setUint16(34,0,true);ch.setUint16(36,0,true);ch.setUint32(38,0,true);ch.setUint32(42,off,true);
-     central.push(new Uint8Array(ch.buffer),nb);
-     off+=30+nb.length+db.length;
-   }
-   const tamCentral=central.reduce((a,b)=>a+b.length,0);
-   const eo=new DataView(new ArrayBuffer(22));
-   eo.setUint32(0,0x06054b50,true);eo.setUint16(4,0,true);eo.setUint16(6,0,true);
-   eo.setUint16(8,arquivos.length,true);eo.setUint16(10,arquivos.length,true);
-   eo.setUint32(12,tamCentral,true);eo.setUint32(16,off,true);eo.setUint16(20,0,true);
-   return new Blob([...partes,...central,new Uint8Array(eo.buffer)],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
- }
- const relXmlEsc=s=>String(s??'').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
- function relColLetra(i){let s='';i++;while(i>0){const r=(i-1)%26;s=String.fromCharCode(65+r)+s;i=Math.floor((i-1)/26);}return s;}
- function relXlsx(cab,linhas,colNumericas,larguras){
-   const cel=(v,c,r,estilo)=>{
-     const ref=relColLetra(c)+r;
-     if(colNumericas.has(c)&&typeof v==='number'&&isFinite(v))return `<c r="${ref}"><v>${v}</v></c>`;
-     return `<c r="${ref}" t="inlineStr"${estilo?` s="${estilo}"`:''}><is><t xml:space="preserve">${relXmlEsc(v)}</t></is></c>`;
-   };
-   let rows=`<row r="1">${cab.map((h,c)=>cel(h,c,1,1)).join('')}</row>`;
-   linhas.forEach((l,i)=>{rows+=`<row r="${i+2}">${l.map((v,c)=>cel(v,c,i+2,0)).join('')}</row>`;});
-   const ult=relColLetra(cab.length-1)+(linhas.length+1);
-   const sheet='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'+
-     '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>'+
-     '<sheetFormatPr defaultRowHeight="15"/><cols>'+larguras.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('')+'</cols>'+
-     `<sheetData>${rows}</sheetData><autoFilter ref="A1:${ult}"/></worksheet>`;
-   const arquivos=[
-     ['[Content_Types].xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>'],
-     ['_rels/.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'],
-     ['xl/workbook.xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Coletas" sheetId="1" r:id="rId1"/></sheets></workbook>'],
-     ['xl/_rels/workbook.xml.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>'],
-     ['xl/styles.xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF146C43"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>'],
-     ['xl/worksheets/sheet1.xml',sheet]
-   ];
-   return relZip(arquivos);
- }
- // Download pelo documento principal (clique de <a download> sobre Blob URL).
- function relBaixar(blob,nome){
-   const url=URL.createObjectURL(blob);
-   const a=document.createElement('a');
-   a.href=url;a.download=nome;a.rel='noopener';a.style.display='none';
-   document.body.appendChild(a);
-   a.click();
-   setTimeout(()=>{try{a.remove();}catch(e){}try{URL.revokeObjectURL(url);}catch(e){}},60000);
- }
- // Consulta paginada ao Supabase via CE_REST (já renova JWT expirado sozinho).
- async function relRest(path){
-   if(typeof window.CE_REST!=='function')throw new Error('conexão com o Supabase ainda não inicializada (faça login e tente novamente)');
-   return window.CE_REST(path);
- }
- function relMsgErro(e){
-   let m=String(e?.message||e||'erro desconhecido');
-   try{const j=JSON.parse(m);m=[j.message,j.details,j.hint].filter(Boolean).join(' — ')||m;}catch(_){}
-   return m;
- }
- let relGerando=false;
- async function gerarRelatorioColetas(dataSelecionada){
-   if(relGerando)return;
-   const btn=$('ce-hp-relatorio');
-   const txtBtn=btn?btn.textContent:'';
-   try{
-     if(!/^\d{4}-\d{2}-\d{2}$/.test(String(dataSelecionada||''))){alert('Selecione a data da coleta.');return;}
-     relGerando=true;
-     if(btn){btn.disabled=true;btn.textContent='Gerando...';}
-     const [Y,M,D]=dataSelecionada.split('-').map(Number);
-     const dataBr=`${String(D).padStart(2,'0')}/${String(M).padStart(2,'0')}/${Y}`;
-
-     // 1) postagens: janela UTC ampliada (±1 dia) só para limitar a consulta;
-     //    a regra exata é aplicada abaixo, convertendo coleta_em para America/Sao_Paulo.
-     const lo=new Date(Date.UTC(Y,M-1,D-1,0,0,0)).toISOString();
-     const hi=new Date(Date.UTC(Y,M-1,D+2,0,0,0)).toISOString();
-     let brutas=[];
-     for(let off=0;off<100000;off+=1000){
-       const lote=await relRest('postagens?select=*&coleta_em=gte.'+encodeURIComponent(lo)+'&coleta_em=lt.'+encodeURIComponent(hi)+'&order=coleta_em.asc,id.asc&limit=1000&offset='+off);
-       if(!Array.isArray(lote))throw new Error('resposta inesperada do Supabase ao consultar postagens');
-       brutas.push(...lote);
-       if(lote.length<1000)break;
-     }
-     const posts=brutas.filter(p=>relISO(relPartesSP(p.coleta_em))===dataSelecionada);
-     if(!posts.length){alert('Nenhuma coleta encontrada para '+dataBr+'.');return;}
-
-     // 2) xmls: chave NF-e primeiro; NF (+filial) como alternativa.
-     const SEL='filial,nf,pedido,cliente_codigo,cliente_nome,transportadora,chave_nfe,volume,data_emissao,data_saida_entrada,data_limite';
-     const xmlPorChave=new Map(),xmlPorNF=new Map();
-     const guardar=x=>{
-       const ch=String(x.chave_nfe||'').replace(/\D/g,'');
-       if(ch)xmlPorChave.set(ch,x);
-       const k=relSemZero(x.nf);
-       if(k){if(!xmlPorNF.has(k))xmlPorNF.set(k,[]);xmlPorNF.get(k).push(x);}
-     };
-     const chaves=[...new Set(posts.map(p=>String(p.chave_nfe||p.chave||'').replace(/\D/g,'')).filter(c=>c.length>=40))];
-     for(let i=0;i<chaves.length;i+=40){
-       const xs=await relRest('xmls?select='+SEL+'&chave_nfe=in.('+chaves.slice(i,i+40).map(c=>'"'+c+'"').join(',')+')&limit=1000');
-       (xs||[]).forEach(guardar);
-     }
-     const semXml=posts.filter(p=>{
-       const ch=String(p.chave_nfe||p.chave||'').replace(/\D/g,'');
-       return !(ch&&xmlPorChave.has(ch));
-     });
-     const nfsBusca=[...new Set(semXml.flatMap(p=>{const raw=String(p.nf||'').replace(/\D/g,'');return raw?[raw,relSemZero(raw),relNF9(raw)]:[];}).filter(Boolean))];
-     for(let i=0;i<nfsBusca.length;i+=60){
-       const xs=await relRest('xmls?select='+SEL+'&nf=in.('+nfsBusca.slice(i,i+60).map(n=>'"'+n+'"').join(',')+')&limit=1000');
-       (xs||[]).forEach(guardar);
-     }
-     const achaXml=p=>{
-       const ch=String(p.chave_nfe||p.chave||'').replace(/\D/g,'');
-       if(ch&&xmlPorChave.has(ch))return xmlPorChave.get(ch);
-       const c=xmlPorNF.get(relSemZero(p.nf))||[];
-       if(!c.length)return null;
-       const f=String(p.filial||'').trim();
-       return c.find(x=>relFilialOk(f)&&String(x.filial||'').trim()===f)||c[0];
-     };
-
-     // 3) monta as linhas — padrão de 9 colunas (uma linha por NF)
-     const cab=['Data','Nota Fiscal','Horário de Finalização','Horário da Coleta','Embalador','Transporte','Filial','Código da Filial','Volume'];
-     const ms=v=>{const t=new Date(v).getTime();return isFinite(t)?t:NaN;};
-     const grupoDe=p=>(p.romaneio_id?String(p.romaneio_id):'id:'+p.id)+'|'+ms(p.coleta_em);
-     // Horário de Finalização = último "Salvar lote" (bipada_em) do romaneio naquela coleta, isto é, quando a
-     // operação do romaneio foi concluída. É um campo INDEPENDENTE de coleta_em (nunca copiado dele).
-     const fimPorGrupo=new Map();
-     posts.forEach(p=>{
-       const t=ms(relTxt(p.bipada_em,p.criado_em));
-       if(isNaN(t))return;
-       const g=grupoDe(p);
-       if(!fimPorGrupo.has(g)||t>fimPorGrupo.get(g))fimPorGrupo.set(g,t);
-     });
-     // Uma linha por NF: soma os volumes registrados nas postagens da NF (vários rastreios/volumes).
-     const porNF=new Map();
-     [...posts].sort((a,b)=>ms(a.coleta_em)-ms(b.coleta_em)||String(a.nf).localeCompare(String(b.nf))).forEach(p=>{
-       const x=achaXml(p)||{};
-       const filial=relFilialOk(x.filial)?String(x.filial).trim():(relFilialOk(p.filial)?String(p.filial).trim():'');
-       const chave=String(relTxt(p.chave_nfe,p.chave,x.chave_nfe)).replace(/\D/g,'');
-       const nf=relSemZero(relTxt(p.nf,x.nf));
-       const k=chave.length>=40?chave:(filial||'?')+'|'+nf;
-       if(!porNF.has(k))porNF.set(k,{p,x,filial,nf,coleta:p.coleta_em,fim:fimPorGrupo.get(grupoDe(p)),embs:new Set(),vols:0});
-       const r=porNF.get(k);
-       r.vols+=Math.max(1,parseInt(relTxt(p.volume,p.volumes),10)||1);
-       const e=relTxt(p.embalador);if(e)r.embs.add(e);
-     });
-     // Filial = empresa da NF, definida pelo código REAL da NF (xmls.filial), nunca pelo romaneio.
-     const empresaDe=(cod,p)=>{
-       if(cod==='1020')return 'BBBATERIAS';
-       if(cod==='0101'||cod==='0102')return 'EQUIPATECH';
-       return String(relTxt(p.empresa)).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'').toUpperCase();
-     };
-     const linhas=[...porNF.values()].map(r=>{
-       const nfNum=Number(r.nf);
-       return [
-         relDataSP(r.coleta),
-         isFinite(nfNum)&&nfNum>0?nfNum:'',
-         isFinite(r.fim)?relHoraSP(new Date(r.fim).toISOString()):'',
-         relHoraSP(r.coleta),
-         [...r.embs].join(' / '),
-         relTxt(r.p.transporte_romaneio,r.p.transporte_original,r.x.transportadora),
-         empresaDe(r.filial,r.p),
-         r.filial,
-         r.vols
-       ];
-     });
-
-     // 4) arquivo .xlsx e download
-     const blob=relXlsx(cab,linhas,new Set([1,8]),[13,14,22,19,20,22,14,16,9]);
-     relBaixar(blob,`Relatorio_Coletas_${String(D).padStart(2,'0')}-${String(M).padStart(2,'0')}-${Y}.xlsx`);
-     alert('Relatório gerado com sucesso — '+linhas.length+' registros.');
-   }catch(e){
-     console.error('[RELATORIO COLETAS]',e);
-     alert('Erro ao gerar relatório: '+relMsgErro(e));
-   }finally{
-     relGerando=false;
-     if(btn){btn.disabled=false;btn.textContent=txtBtn||'Gerar relatório';}
-   }
- }
  function instalar(){
    if($('ce-historico-postagens'))return;
    const main=document.querySelector('main')||document.body, s=document.createElement('section');s.id='ce-historico-postagens';
@@ -11029,9 +10719,20 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
    <div class="ce-hp-campo"><label>TRANSPORTADORA</label><select id="ce-hp-transp"><option value="">Todas</option></select></div>
    <div class="ce-hp-campo"><label>ROMANEIO</label><input id="ce-hp-rom" placeholder="RM-000..."></div>
    <div class="ce-hp-campo"><label>PESQUISAR</label><input id="ce-hp-busca" placeholder="NF, pedido, cliente, chave..."></div>
-   <button id="ce-hp-atualizar" class="ce-hp-atualizar">Atualizar</button><div class="ce-hp-rel-wrap"><input type="date" id="ce-rel-data" class="ce-hp-rel-data" title="Data da coleta"><button id="ce-hp-relatorio" class="ce-hp-relatorio" type="button">Gerar relatório</button></div></div>
+   <button id="ce-hp-atualizar" class="ce-hp-atualizar">Atualizar</button><button id="ce-hp-relatorio" class="ce-hp-relatorio">Gerar relatório</button></div>
    <div class="ce-hp-box"><table class="ce-hp-table"><thead><tr><th>STATUS</th><th>FILIAL</th><th>NF</th><th>PEDIDO</th><th>CÓD. CLIENTE</th><th>CLIENTE</th><th>CHAVE NF-e</th><th>RASTREIO 1</th><th>RASTREIO 2</th><th>RASTREIO 3</th><th>TRANSPORTADORA</th><th>DATA FAT.</th><th>HORA FAT.</th><th>DATA LIMITE</th><th>DATA POSTAGEM</th><th>HORA</th><th>BIPADOR</th><th>EMBALADOR</th><th>VOLUME</th><th>ROMANEIO / RETIRADA</th><th>COLETA</th></tr></thead><tbody id="ce-hp-body"></tbody></table></div>
    <div class="ce-hp-legenda"><span><i class="ce-hp-dot ce-hp-verde"></i>Aguardando postagem</span><span><i class="ce-hp-dot ce-hp-amarelo"></i>Postado — aguardando coleta</span><span><i class="ce-hp-dot ce-hp-vermelho"></i>Expedido / coletado</span></div>
+   <div id="ce-rel-overlay" class="ce-rel-overlay">
+     <div class="ce-rel-card">
+       <h3>Relatório de pedidos coletados</h3>
+       <p>Selecione a data da coleta para gerar o arquivo em Excel.</p>
+       <label>DATA DA COLETA</label>
+       <input type="date" id="ce-rel-data">
+       <div class="ce-rel-acoes">
+         <button type="button" id="ce-rel-cancelar" class="ce-rel-cancelar">Cancelar</button>
+         <button type="button" id="ce-rel-baixar" class="ce-rel-baixar">Baixar Excel</button>
+       </div>
+     </div>
    </div>`;
    main.appendChild(s);
    $('ce-hp-status').onchange=render;
@@ -11046,12 +10747,17 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
      };
    });
    $('ce-hp-atualizar').onclick=()=>{hpPagina=0;carregar(true);};
-   const inpRel=$('ce-rel-data');
-   if(inpRel && !inpRel.value){
-     const d=new Date();
-     inpRel.value=[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
-   }
-   $('ce-hp-relatorio').onclick=()=>gerarRelatorioColetas($('ce-rel-data')?.value||'');
+   $('ce-hp-relatorio').onclick=()=>{
+     const ov=$('ce-rel-overlay'), inp=$('ce-rel-data');
+     if(inp && !inp.value){
+       const d=new Date();
+       inp.value=[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
+     }
+     ov?.classList.add('show');
+   };
+   $('ce-rel-cancelar').onclick=()=>{$('ce-rel-overlay')?.classList.remove('show');};
+   $('ce-rel-overlay').addEventListener('click',e=>{if(e.target.id==='ce-rel-overlay')e.currentTarget.classList.remove('show');});
+   $('ce-rel-baixar').onclick=()=>gerarRelatorioColetas($('ce-rel-data')?.value||'');
  }
  function abrir(){
    instalar();
@@ -11064,7 +10770,6 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
  },true);
  window.ceAbrirHistoricoPostagens=abrir;
  window.CE_HP_RECARREGAR=()=>{hpPagina=0;return carregar(true);};
-
 })();
 </script>
 
@@ -11134,7 +10839,7 @@ main.main-content > #ce-historico-postagens.ce-nav-visible{display:block!importa
 </style>
 <script id="ce-nav-zero-delay">
 (function(){
-  const MAP={resumo:'view-resumo',bipados:'view-bipados',importarxml:'view-importarxml',romaneio:'view-romaneio',assinatura:'view-assinatura',painel:'view-painel'};
+  const MAP={resumo:'view-resumo',bipados:'view-bipados',importarxml:'view-importarxml',romaneio:'view-romaneio',assinatura:'view-assinatura'};
   let atual='resumo';
   function mostrar(view){
     atual=view;
@@ -11187,7 +10892,7 @@ main.main-content > #ce-historico-postagens.ce-nav-visible{display:block!importa
 #ce-admin-modal{position:fixed;inset:0;background:rgba(15,23,42,.48);z-index:999998;display:none;align-items:center;justify-content:center;padding:20px}#ce-admin-modal.show{display:flex}.ce-admin-box{width:min(1100px,96vw);height:min(760px,92vh);background:#fff;border-radius:12px;display:flex;flex-direction:column;overflow:hidden}.ce-admin-head{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #e2e8f0}.ce-admin-head h2{margin:0;font-size:18px}.ce-admin-close{border:0;background:#eef2f6;border-radius:6px;width:32px;height:32px;cursor:pointer}.ce-admin-tabs{display:flex;gap:4px;padding:10px 20px;border-bottom:1px solid #e2e8f0}.ce-admin-tabs button{border:0;background:#eef2f6;padding:8px 12px;border-radius:6px;font-weight:800;font-size:11px;cursor:pointer}.ce-admin-tabs button.active{background:#0b5f91;color:#fff}.ce-admin-body{padding:16px 20px;overflow:auto;flex:1}.ce-admin-table{width:100%;border-collapse:collapse;font-size:11px}.ce-admin-table th,.ce-admin-table td{padding:8px;border-bottom:1px solid #e7edf2;text-align:left}.ce-admin-table th{font-size:9px;color:#64748b}.ce-admin-table input,.ce-admin-table select{padding:6px;border:1px solid #cbd5e1;border-radius:5px;font-size:11px;max-width:180px}.ce-admin-save{border:0;background:#0b5f91;color:#fff;border-radius:5px;padding:7px 10px;font-weight:800;cursor:pointer}.ce-admin-add{border:1px solid #0b5f91;background:#fff;color:#0b5f91;border-radius:6px;padding:7px 10px;font-weight:800;cursor:pointer;margin-bottom:12px}.ce-admin-msg{font-size:11px;color:#64748b;margin-bottom:10px}
 .ce-cfg-form-overlay{position:fixed;inset:0;background:rgba(15,23,42,.52);z-index:1000001;display:none;align-items:center;justify-content:center;padding:20px}.ce-cfg-form-overlay.show{display:flex}.ce-cfg-form-box{width:min(560px,94vw);background:#fff;border-radius:12px;box-shadow:0 24px 70px rgba(15,23,42,.25);overflow:hidden}.ce-cfg-form-head{padding:16px 18px;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center}.ce-cfg-form-head h3{margin:0;font-size:16px;color:#132238}.ce-cfg-form-close{border:0;background:#eef2f6;border-radius:6px;width:30px;height:30px;cursor:pointer;font-size:18px}.ce-cfg-form-body{padding:18px}.ce-cfg-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.ce-cfg-field.full{grid-column:1/-1}.ce-cfg-field label{display:block;font-size:10px;font-weight:800;color:#64748b;margin-bottom:5px}.ce-cfg-field input,.ce-cfg-field select{width:100%;box-sizing:border-box;height:38px;border:1px solid #cbd5e1;border-radius:6px;padding:0 10px;font-size:12px}.ce-cfg-check{display:flex;align-items:center;gap:8px;height:38px}.ce-cfg-check input{width:16px;height:16px}.ce-cfg-form-actions{display:flex;justify-content:flex-end;gap:8px;padding:14px 18px;border-top:1px solid #e2e8f0}.ce-cfg-cancel{border:1px solid #cbd5e1;background:#fff;color:#334155;border-radius:6px;padding:8px 13px;font-weight:800;cursor:pointer}.ce-cfg-primary{border:0;background:#0b5f91;color:#fff;border-radius:6px;padding:9px 14px;font-weight:800;cursor:pointer}.ce-cfg-danger{border:0;background:#c62828;color:#fff;border-radius:6px;padding:9px 14px;font-weight:800;cursor:pointer}.ce-cfg-form-error{min-height:16px;color:#b42318;font-size:11px;margin-top:10px}
 </style>
-<div id="ce-login-overlay"><div class="ce-login-card"><div class="ce-login-logo">CE</div><h2>Central de Expedição</h2><p>Entre com seu e-mail e senha.</p><label>E-MAIL</label><input id="ce-login-user" type="email" autocomplete="username" placeholder="nome@empresa.com.br"><label>SENHA</label><input id="ce-login-pass" type="password" autocomplete="current-password" placeholder="••••••••"><label>EMPRESA / FILIAL</label><div class="ce-login-ops"><button type="button" class="ce-login-op" data-ce-filial="1020"><b>BB Baterias</b><span>Filial 1020</span></button><button type="button" class="ce-login-op" data-ce-filial="0101,0102"><b>Equipatech</b><span>Filiais 0101 e 0102</span></button></div><button id="ce-login-btn">Entrar no sistema</button><div id="ce-login-erro" class="ce-login-erro"></div></div></div>
+<div id="ce-login-overlay"><div class="ce-login-card"><div class="ce-login-logo">CE</div><h2>Central de Expedição</h2><p>Entre com seu e-mail e senha.</p><button type="button" class="ce-google-btn" id="ce-login-google"><span class="ce-google-g">G</span> Continuar com Google</button><div class="ce-login-sep">OU</div><label>E-MAIL</label><input id="ce-login-user" type="email" autocomplete="username" placeholder="nome@empresa.com.br"><label>SENHA</label><input id="ce-login-pass" type="password" autocomplete="current-password" placeholder="••••••••"><label>EMPRESA / FILIAL</label><div class="ce-login-ops"><button type="button" class="ce-login-op" data-ce-filial="1020"><b>BB Baterias</b><span>Filial 1020</span></button><button type="button" class="ce-login-op" data-ce-filial="0101,0102"><b>Equipatech</b><span>Filiais 0101 e 0102</span></button></div><button id="ce-login-btn">Entrar no sistema</button><div id="ce-login-erro" class="ce-login-erro"></div></div></div>
 <div id="ce-admin-modal"><div class="ce-admin-box"><div class="ce-admin-head"><div><h2>Configurações</h2><div style="font-size:11px;color:#64748b">Dados operacionais armazenados no Supabase</div></div><button class="ce-admin-close" id="ce-admin-close">×</button></div><div class="ce-admin-tabs"><button data-adm="transportadoras" class="active">Transportadoras</button><button data-adm="usuarios">Colaboradores</button><button data-adm="filiais">Filiais</button><button data-adm="feriados">Feriados</button><button data-adm="filtros">Filtros</button></div><div class="ce-admin-body"><div id="ce-admin-msg" class="ce-admin-msg"></div><div id="ce-admin-content"></div></div></div></div>
 <div id="ce-cfg-form-overlay" class="ce-cfg-form-overlay"><div class="ce-cfg-form-box"><div class="ce-cfg-form-head"><h3 id="ce-cfg-form-title">Cadastro</h3><button type="button" class="ce-cfg-form-close" id="ce-cfg-form-close">×</button></div><div class="ce-cfg-form-body"><div id="ce-cfg-form-content"></div><div id="ce-cfg-form-error" class="ce-cfg-form-error"></div></div><div class="ce-cfg-form-actions"><button type="button" class="ce-cfg-cancel" id="ce-cfg-form-cancel">Cancelar</button><button type="button" class="ce-cfg-primary" id="ce-cfg-form-save">Salvar</button></div></div></div>
 <script>
@@ -11196,7 +10901,6 @@ main.main-content > #ce-historico-postagens.ce-nav-visible{display:block!importa
  const KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qdmNvc3Rlc2N5Ymd3Ym5pcGVjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxNzkxNzMsImV4cCI6MjEwNTc1NTE3M30.ZR9V23Fs-MzYznZCIRrTf2uXwc5oHiltb8hpmgJHADI';
  const LS='ce_auth_session_v1';
  const MIG='ce_auth_v3_migrado';
- // V166: mantém a sessão autenticada entre acessos.
  if(!localStorage.getItem(MIG)) localStorage.setItem(MIG,'1');
  const $=id=>document.getElementById(id);
  window.CE_AUTH={session:null,perfil:null};
@@ -11204,16 +10908,8 @@ main.main-content > #ce-historico-postagens.ce-nav-visible{display:block!importa
  let ceLoginFilial='';
  document.querySelectorAll('[data-ce-filial]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('[data-ce-filial]').forEach(x=>x.classList.remove('selected'));b.classList.add('selected');ceLoginFilial=b.dataset.ceFilial;})); window.CE_CFG={transportadoras:[],cortes:[],usuarios:[],filiais:[]};
  const emailFor=u=>{u=String(u||'').trim().toLowerCase();return u.includes('@')?u:'';};
- function authHeaders(){return {apikey:KEY,Authorization:'Bearer '+(window.CE_AUTH?.session?.access_token||KEY),'Content-Type':'application/json'};}
- async function rest(path,opt={},tentativa=0){
-   let r=await fetch(SB+'/rest/v1/'+path,{...opt,headers:{...authHeaders(),...(opt.headers||{})},cache:'no-store'});
-   if(!r.ok){
-     const erro=await r.text();
-     if(tentativa===0 && r.status===401 && /jwt|expired|token/i.test(erro) && typeof window.CE_RENOVAR_SESSAO==='function' && await window.CE_RENOVAR_SESSAO()) return rest(path,opt,1);
-     throw new Error(erro||('HTTP '+r.status));
-   }
-   const t=await r.text();return t?JSON.parse(t):null;
- }
+ function authHeaders(){return {apikey:KEY,Authorization:'Bearer '+window.CE_AUTH.session.access_token,'Content-Type':'application/json'};}
+ async function rest(path,opt={}){const r=await fetch(SB+'/rest/v1/'+path,{...opt,headers:{...authHeaders(),...(opt.headers||{})},cache:'no-store'});if(!r.ok)throw new Error((await r.text())||('HTTP '+r.status));const t=await r.text();return t?JSON.parse(t):null;}
  window.CE_REST=rest; window.CE_SUPABASE_URL=SB; window.CE_SUPABASE_ANON_KEY=KEY;
  async function carregarPerfil(){
    const a=window.CE_AUTH.session?.user?.id;
@@ -11265,23 +10961,7 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
  };
  window.CE_CONFIG_READY=Promise.resolve();
  function normTr(n){n=String(n||'').trim().toUpperCase();if(['PAC','SEDEX','CORREIOS'].includes(n))return 'CORREIOS';if(n==='LOGGI - POA RS')return 'LOGGI';if(n.startsWith('TROCA'))return 'TROCA';return n;}
- function corteObj(nome,filial){
-   const n=normTr(nome).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
-   if(!n)return null;
-   const candidatos=(window.CE_CFG.transportadoras||[])
-     .filter(x=>x.ativo)
-     .map(x=>{
-       const cfg=normTr(x.nome).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
-       return {item:x,cfg};
-     })
-     .filter(x=>x.cfg && (n.includes(x.cfg) || x.cfg.includes(n)))
-     .sort((a,b)=>b.cfg.length-a.cfg.length);
-   const t=candidatos[0]?.item;
-   if(!t)return null;
-   return window.CE_CFG.cortes.find(c=>c.transportadora_id===t.id&&c.ativo&&c.filial===filial)
-     ||window.CE_CFG.cortes.find(c=>c.transportadora_id===t.id&&c.ativo&&!c.filial)
-     ||null;
- }
+ function corteObj(nome,filial){const n=normTr(nome);const t=window.CE_CFG.transportadoras.find(x=>normTr(x.nome)===n&&x.ativo);if(!t)return null;return window.CE_CFG.cortes.find(c=>c.transportadora_id===t.id&&c.ativo&&c.filial===filial)||window.CE_CFG.cortes.find(c=>c.transportadora_id===t.id&&c.ativo&&!c.filial)||null;}
  window.ceCorteTexto=(nome,filial)=>{const c=corteObj(nome,filial);if(!c)return '—';if(c.tipo_regra==='HORARIO')return String(c.hora_corte||'').slice(0,5)||'—';if(c.tipo_regra==='DIAS_UTEIS')return `${c.dias_uteis} dia${Number(c.dias_uteis)===1?'':'s'} útil${Number(c.dias_uteis)===1?'':'eis'}`;return '—';};
  function parseData(s){const m=String(s||'').match(/^(\d{4})-(\d{2})-(\d{2})/);return m?new Date(+m[1],+m[2]-1,+m[3],0,0,0):null;}
  function ymdLocal(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
@@ -11370,156 +11050,67 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
      $('ce-login-btn').disabled=false;
    }
  }
-
- async function ceCriarAcessoUsuario(nome,email){
-   const sess=window.CE_AUTH?.session;
-   if(!sess?.access_token)throw new Error('Sessão não autenticada. Faça login novamente.');
-   const endpoint=SB+'/functions/v1/swift-handler';
-   let r=await fetch(endpoint,{
-     method:'POST',
-     headers:{
-       apikey:KEY,
-       Authorization:'Bearer '+sess.access_token,
-       'Content-Type':'application/json'
-     },
-     body:JSON.stringify({nome,email})
-   });
-   if(r.status===401 && typeof window.CE_RENOVAR_SESSAO==='function' && await window.CE_RENOVAR_SESSAO()){
-     r=await fetch(endpoint,{
-       method:'POST',
-       headers:{
-         apikey:KEY,
-         Authorization:'Bearer '+window.CE_AUTH.session.access_token,
-         'Content-Type':'application/json'
-       },
-       body:JSON.stringify({nome,email})
-     });
-   }
-   const j=await r.json().catch(()=>({}));
-   if(!r.ok || j?.ok===false)throw new Error(j?.error||j?.message||'Não foi possível criar o acesso do usuário.');
-   return j;
- }
-
- function ceAbrirAlterarSenha(){
-   let ov=document.getElementById('ce-senha-modal');
-   if(!ov){
-     ov=document.createElement('div');
-     ov.id='ce-senha-modal';
-     ov.innerHTML=`<div class="ce-senha-box">
-       <div class="ce-senha-head"><b>Alterar senha</b><button type="button" id="ce-senha-fechar">×</button></div>
-       <label>SENHA ATUAL</label><input id="ce-senha-atual" type="password" autocomplete="current-password">
-       <label>NOVA SENHA</label><input id="ce-senha-nova" type="password" autocomplete="new-password">
-       <label>CONFIRMAR NOVA SENHA</label><input id="ce-senha-confirmar" type="password" autocomplete="new-password">
-       <div id="ce-senha-erro"></div>
-       <div class="ce-senha-actions"><button type="button" id="ce-senha-cancelar">Cancelar</button><button type="button" id="ce-senha-salvar">Alterar senha</button></div>
-     </div>`;
-     document.body.appendChild(ov);
-     const fechar=()=>ov.classList.remove('show');
-     document.getElementById('ce-senha-fechar').onclick=fechar;
-     document.getElementById('ce-senha-cancelar').onclick=fechar;
-     ov.addEventListener('click',e=>{if(e.target===ov)fechar();});
-     document.getElementById('ce-senha-salvar').onclick=ceSalvarNovaSenha;
-   }
-   ['ce-senha-atual','ce-senha-nova','ce-senha-confirmar'].forEach(id=>document.getElementById(id).value='');
-   document.getElementById('ce-senha-erro').textContent='';
-   ov.classList.add('show');
-   setTimeout(()=>document.getElementById('ce-senha-atual')?.focus(),50);
- }
-
- async function ceSalvarNovaSenha(){
-   const atual=document.getElementById('ce-senha-atual').value;
-   const nova=document.getElementById('ce-senha-nova').value;
-   const confirmar=document.getElementById('ce-senha-confirmar').value;
-   const erro=document.getElementById('ce-senha-erro');
-   const btn=document.getElementById('ce-senha-salvar');
-   erro.textContent='';
-   if(!atual||!nova||!confirmar){erro.textContent='Preencha os três campos.';return;}
-   if(nova.length<6){erro.textContent='A nova senha deve ter pelo menos 6 caracteres.';return;}
-   if(nova!==confirmar){erro.textContent='A confirmação da nova senha não confere.';return;}
-   if(atual===nova){erro.textContent='A nova senha deve ser diferente da senha atual.';return;}
-   const email=String(window.CE_AUTH?.session?.user?.email||window.CE_AUTH?.perfil?.email||'').trim().toLowerCase();
-   if(!email){erro.textContent='Não foi possível identificar o e-mail do usuário.';return;}
-   btn.disabled=true;btn.textContent='Alterando...';
+ function aplicarSessao(){const p=window.CE_AUTH.perfil;if(!p)return;const fil=localStorage.getItem('expedicao_filial_inicial')||'';try{const ov=document.getElementById('startup-overlay');if(ov)ov.classList.add('startup-hidden');if(typeof aplicarFilialInicial==='function'&&fil)aplicarFilialInicial(fil);}catch(e){}$('ce-login-overlay').classList.add('ce-hidden');const actions=document.querySelector('.topbar-actions');if(actions&&!$('ce-user-chip')){const d=document.createElement('div');d.id='ce-user-chip';d.innerHTML=`<span>${p.usuario}${p.perfil==='admin'?' · ADMIN':''}</span><button class="ce-logout" id="ce-logout">Sair</button>`;actions.prepend(d);$('ce-logout').onclick=()=>{localStorage.removeItem(LS);location.reload();};}const gear=$('btn-abrir-configuracoes');if(gear)gear.style.display=p.perfil==='admin'?'':'none';}
+ async function ceRenovarSessao(sess){
+   if(!sess?.refresh_token)return null;
    try{
-     // Confirma a senha atual antes de permitir a troca.
-     const vr=await fetch(SB+'/auth/v1/token?grant_type=password',{
-       method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},
-       body:JSON.stringify({email,password:atual})
+     const r=await fetch(SB+'/auth/v1/token?grant_type=refresh_token',{
+       method:'POST',
+       headers:{apikey:KEY,'Content-Type':'application/json'},
+       body:JSON.stringify({refresh_token:sess.refresh_token})
      });
-     if(!vr.ok)throw new Error('Senha atual incorreta.');
-     const valid=await vr.json();
-     const token=valid.access_token;
-     const ur=await fetch(SB+'/auth/v1/user',{
-       method:'PUT',
-       headers:{apikey:KEY,Authorization:'Bearer '+token,'Content-Type':'application/json'},
-       body:JSON.stringify({password:nova})
-     });
-     const uj=await ur.json().catch(()=>({}));
-     if(!ur.ok)throw new Error(uj?.msg||uj?.message||'Não foi possível alterar a senha.');
-     // Mantém a sessão recém-validada, evitando logout após a alteração.
-     window.CE_AUTH.session=valid;
-     try{localStorage.setItem(LS,JSON.stringify(valid));}catch(e){}
-     document.getElementById('ce-senha-modal').classList.remove('show');
-     if(typeof msg==='function')msg('Senha alterada com sucesso.');
-     else alert('Senha alterada com sucesso.');
-   }catch(e){
-     erro.textContent=e?.message||'Erro ao alterar senha.';
-   }finally{
-     btn.disabled=false;btn.textContent='Alterar senha';
-   }
+     const j=await r.json();
+     if(!r.ok||!j?.access_token)return null;
+     localStorage.setItem(LS,JSON.stringify(j));
+     return j;
+   }catch(e){return null}
  }
-
- function aplicarSessao(){const p=window.CE_AUTH.perfil;if(!p)return;const fil=localStorage.getItem('expedicao_filial_inicial')||'';try{const ov=document.getElementById('startup-overlay');if(ov)ov.classList.add('startup-hidden');if(typeof aplicarFilialInicial==='function'&&fil)aplicarFilialInicial(fil);}catch(e){}$('ce-login-overlay').classList.add('ce-hidden');const actions=document.querySelector('.topbar-actions');if(actions&&!$('ce-user-chip')){const d=document.createElement('div');d.id='ce-user-chip';d.innerHTML=`<span>${p.usuario}${p.perfil==='admin'?' · ADMIN':''}</span><button class="ce-change-pass" id="ce-change-pass">Alterar senha</button><button class="ce-logout" id="ce-logout">Sair</button>`;actions.prepend(d);$('ce-change-pass').onclick=ceAbrirAlterarSenha;$('ce-logout').onclick=()=>{localStorage.removeItem(LS);location.reload();};}const gear=$('btn-abrir-configuracoes');if(gear)gear.style.display=p.perfil==='admin'?'':'none';}
+ function ceSessaoExpirada(sess){
+   try{
+     if(!sess?.access_token)return true;
+     const p=JSON.parse(atob(sess.access_token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
+     return !p?.exp || (p.exp*1000)<=(Date.now()+60000);
+   }catch(e){return true}
+ }
  async function init(){
    window.CE_AUTH.session=null;window.CE_AUTH.perfil=null;
-   const ov=document.getElementById('ce-login-overlay');if(ov)ov.classList.remove('ce-hidden');
-
-   // V166: captura retorno de autenticação do Supabase e remove tokens da URL.
-   try{
-     const h=String(location.hash||'');
-     if(h && /(?:^#|&)access_token=/.test(h)){
-       const q=new URLSearchParams(h.replace(/^#/,''));
-       const access_token=q.get('access_token')||'';
-       const refresh_token=q.get('refresh_token')||'';
-       if(access_token){
-         const ur=await fetch(SB+'/auth/v1/user',{headers:{apikey:KEY,Authorization:'Bearer '+access_token},cache:'no-store'});
-         const user=ur.ok?await ur.json():null;
-         const expires_in=Number(q.get('expires_in')||3600);
-         const sess={access_token,refresh_token,token_type:q.get('token_type')||'bearer',expires_in,expires_at:Math.floor(Date.now()/1000)+expires_in,user};
-         window.CE_AUTH.session=sess;
-         localStorage.setItem(LS,JSON.stringify(sess));
+   const ov=document.getElementById('ce-login-overlay');
+   let sess=null;
+   try{sess=JSON.parse(localStorage.getItem(LS)||'null')}catch(e){}
+   if(sess && ceSessaoExpirada(sess)) sess=await ceRenovarSessao(sess);
+   if(sess?.access_token){
+     try{
+       window.CE_AUTH.session=sess;
+       await carregarPerfil();
+       if(!window.CE_AUTH.perfil?.ativo)throw new Error('Sessão sem acesso ativo.');
+       aplicarSessao();
+       const start=document.getElementById('startup-overlay');
+       if(start)start.classList.add('ce-auth-ok');
+       window.CE_CONFIG_READY=carregarConfig();
+       await window.CE_CONFIG_READY;
+       try{if(typeof window.CE_VIA_RECARREGAR==='function')window.CE_VIA_RECARREGAR();else if(typeof window.ceViaLeitorCarregar==='function')window.ceViaLeitorCarregar();}catch(_e){}
+       return;
+     }catch(e){
+       const renovada=await ceRenovarSessao(sess);
+       if(renovada){
+         try{
+           window.CE_AUTH.session=renovada;
+           await carregarPerfil();
+           if(window.CE_AUTH.perfil?.ativo){
+             aplicarSessao();
+             const start=document.getElementById('startup-overlay');
+             if(start)start.classList.add('ce-auth-ok');
+             window.CE_CONFIG_READY=carregarConfig();
+             await window.CE_CONFIG_READY;
+             return;
+           }
+         }catch(_e){}
        }
-       history.replaceState(null,document.title,location.pathname+location.search);
+       localStorage.removeItem(LS);
+       window.CE_AUTH.session=null;window.CE_AUTH.perfil=null;
      }
-   }catch(e){console.warn('[AUTH CALLBACK]',e);try{history.replaceState(null,document.title,location.pathname+location.search)}catch(_e){}}
-
-   // V166: recupera a sessão salva; se necessário, tenta renovar pelo refresh token.
-   try{
-     if(!window.CE_AUTH.session){
-       const salvo=JSON.parse(localStorage.getItem(LS)||'null');
-       if(salvo?.access_token)window.CE_AUTH.session=salvo;
-     }
-     if(window.CE_AUTH.session){
-       let ok=true;
-       const exp=Number(window.CE_AUTH.session.expires_at||0);
-       if(exp && exp<=Math.floor(Date.now()/1000)+60){
-         ok=typeof window.CE_RENOVAR_SESSAO==='function' ? await window.CE_RENOVAR_SESSAO() : false;
-       }
-       if(ok){
-         await carregarPerfil();
-         if(window.CE_AUTH.perfil?.ativo){
-           aplicarSessao();
-           document.getElementById('startup-overlay')?.classList.add('ce-auth-ok');
-           window.CE_CONFIG_READY=carregarConfig();
-           await window.CE_CONFIG_READY;
-           try{if(typeof window.CE_VIA_RECARREGAR==='function')window.CE_VIA_RECARREGAR();else if(typeof window.ceViaLeitorCarregar==='function')window.ceViaLeitorCarregar();}catch(_e){}
-           return;
-         }
-       }
-     }
-   }catch(e){console.warn('[AUTH RESTORE]',e);}
-   window.CE_AUTH.session=null;window.CE_AUTH.perfil=null;
-   localStorage.removeItem(LS);
+   }
+   if(ov)ov.classList.remove('ce-hidden');
  }
  $('ce-login-btn').onclick=login;
  const gl=$('ce-login-google');if(gl)gl.onclick=loginGoogle;$('ce-login-pass').addEventListener('keydown',e=>{if(e.key==='Enter')login()});
@@ -11679,11 +11270,7 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
  async function adicionarUsuario(){
    cfgAbrir({titulo:'Adicionar colaborador',html:`<div class="ce-cfg-grid"><div class="ce-cfg-field full"><label>NOME *</label><input id="cfg-u-nome" placeholder="Nome completo"></div><div class="ce-cfg-field full"><label>E-MAIL</label><input id="cfg-u-email" type="email" placeholder="nome@empresa.com.br"></div><div class="ce-cfg-field"><label>TIPO</label><select id="cfg-u-tipo"><option>AMBOS</option><option>BIPADOR</option><option>EMBALADOR</option></select></div><div class="ce-cfg-field"><label>ACESSO</label><select id="cfg-u-perfil"><option>OPERACIONAL</option><option>ADMIN</option></select></div><div class="ce-cfg-field full"><label class="ce-cfg-check"><input id="cfg-u-ativo" type="checkbox" checked> Ativo</label></div></div>`,salvarTexto:'Salvar colaborador',salvar:async()=>{
      const nome=$('cfg-u-nome').value.trim(),email=$('cfg-u-email').value.trim().toLowerCase(),tipo=$('cfg-u-tipo').value,perfil=$('cfg-u-perfil').value,ativo=$('cfg-u-ativo').checked;if(!nome){cfgErro('Informe o nome do colaborador.');return}if(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){cfgErro('Informe um e-mail válido.');return}
-     if(!email){cfgErro('Informe o e-mail para criar o acesso do colaborador.');return}
-     const acesso=await ceCriarAcessoUsuario(nome,email);
-     await rest('config_usuarios',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({nome,email:email||null,tipo,perfil,ativo,ordem:window.CE_CFG.usuarios.length+1})});
-     cfgFechar();await window.CE_RECARREGAR_CONFIG();renderAdmin('usuarios');
-     msg(acesso?.existente?'Colaborador salvo. A conta de acesso já existia no Supabase Auth.':'Colaborador criado. Senha inicial: BBDI@2026');
+     await rest('config_usuarios',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({nome,email:email||null,tipo,perfil,ativo,ordem:window.CE_CFG.usuarios.length+1})});cfgFechar();await window.CE_RECARREGAR_CONFIG();renderAdmin('usuarios');
    }});
  }
  document.addEventListener('click',e=>{const gear=e.target.closest?.('#btn-abrir-configuracoes');if(gear&&window.CE_AUTH.perfil?.perfil==='admin'){e.preventDefault();e.stopImmediatePropagation();abrirAdmin();}},true);
@@ -11710,7 +11297,7 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
   const overlay=document.getElementById('startup-overlay');
   const err=document.getElementById('ce-start-error');
   const btn=document.getElementById('ce-start-enter');
-  // V166: a sessão pode permanecer salva; a tela some automaticamente quando a autenticação é restaurada.
+  // Mantém a sessão entre atualizações e reaberturas do aplicativo.
   document.querySelectorAll('[data-start-filial]').forEach(function(b){b.addEventListener('click',function(){document.querySelectorAll('[data-start-filial]').forEach(x=>x.classList.remove('selected'));b.classList.add('selected');filial=b.dataset.startFilial;});});
   async function entrar(){
     const user=document.getElementById('ce-start-user').value.trim();
@@ -11763,7 +11350,7 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
 .ce-op-alerta{font-weight:700;color:#a23c2e}
 </style>
 <script>
-/* VIA LEITOR V147 - fonte operacional public.via_leitor (originada de xmls) */
+/* VIA LEITOR V115 XMLS - quantidade + volume + data limite hoje ou anterior */
 (function(){
  const SB='https://njvcostescybgwbnipec.supabase.co';
  const KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qdmNvc3Rlc2N5Ymd3Ym5pcGVjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxNzkxNzMsImV4cCI6MjEwNTc1NTE3M30.ZR9V23Fs-MzYznZCIRrTf2uXwc5oHiltb8hpmgJHADI';
@@ -11786,13 +11373,13 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
    try{
      const contexto=String(localStorage.getItem('expedicao_filial_inicial')||'').trim();
      const filiais=contexto==='1020'?'1020':contexto==='0101,0102'?'0101,0102':'0101,0102,1020';
-     const path=`via_leitor?select=filial,nf,pedido,cliente_codigo,cliente_nome,cpf_cnpj,transportadora,data_saida_entrada,data_autorizacao,hora_autorizacao,chave_nfe,data_limite,volume,total_unidades,valor_nf,peso,cidade,uf,data_emissao&filial=in.(${filiais})&order=data_saida_entrada.asc,nf.asc&limit=${TAM+1}&offset=${pagina*TAM}`;
+     const path=`xmls?select=filial,nf,pedido,cliente_codigo,cliente_nome,transportadora,data_saida_entrada,data_autorizacao,chave_nfe,data_limite,volume,total_unidades&filial=in.(${filiais})&data_saida_entrada=not.is.null&order=data_saida_entrada.desc,nf.desc&limit=${TAM+1}&offset=${pagina*TAM}`;
      let dados=await get(path);
      temProxima=dados.length>TAM;
      if(temProxima)dados=dados.slice(0,TAM);
      base=dados
        .filter(x=>!window.CE_CLIENTE_IGNORADO?.(x.cliente_codigo??''))
-       .map(x=>({...x,transportadora:normTr(x.transportadora),hora_saida:String(x.hora_autorizacao||'').slice(0,5)}));
+       .map(x=>{const ds=String(x.data_saida_entrada||'');const mh=ds.match(/[T ](\d{2}):(\d{2})/);return {...x,transportadora:normTr(x.transportadora),hora_saida:mh?`${mh[1]}:${mh[2]}`:''};});
      window.ceViaDadosAtuais=base;
      preencherTransportes();
      render();
@@ -11800,7 +11387,7 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
      console.error('[VIA LEITOR VIEW]',e);
      base=[];window.ceViaDadosAtuais=[];
      const c=$('via-exp-count');if(c)c.textContent='0';
-     host.innerHTML=`<div class="via-exp-empty"><b>Não foi possível carregar os dados da VIEW Via Leitor.</b><br>${esc(e.message)}</div>`;
+     host.innerHTML=`<div class="via-exp-empty"><b>Não foi possível carregar os dados da tabela XMLS.</b><br>${esc(e.message)}</div>`;
    }
  }
  function preencherTransportes(){
@@ -11810,44 +11397,8 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
    s.innerHTML='<option value="">Todas</option>'+nomes.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('');
    if(nomes.includes(atual))s.value=atual;
  }
- let ceViaColuna='';
- let ceViaValor='';
- let ceViaSort='data_saida_entrada';
- let ceViaSortDir=1;
- function ceViaValorCampo(x,campo){
-   if(campo==='data_limite'){
-     const obj={transporte:x.transportadora,filial:x.filial,data:x.data_saida_entrada,hora:x.hora_saida,data_limite:x.data_limite};
-     return x.data_limite||window.ceDataLimite?.(obj)||'';
-   }
-   return x?.[campo]??'';
- }
- function ceViaComparavel(v,campo){
-   if(campo==='data_saida_entrada'||campo==='data_limite'){const t=new Date(v).getTime();return Number.isFinite(t)?t:0}
-   if(campo==='volume'||campo==='total_unidades'){const n=Number(String(v??'').replace(',','.'));return Number.isFinite(n)?n:0}
-   return String(v??'').trim().toLocaleLowerCase('pt-BR');
- }
- // Filtro por coluna: fica na mesma linha de Filial/Transportadora/Pesquisar, criado uma única vez
- // (não é refeito a cada render, então o campo "Contém" não perde o foco enquanto se digita).
- function garantirFiltroColuna(){
-   const barra=document.querySelector('.via-exp-filtros');
-   if(!barra)return;
-   let bloco=document.getElementById('ce-via-colfilters-bar');
-   if(!bloco){
-     bloco=document.createElement('div');
-     bloco.className='ce-via-colfilters';bloco.id='ce-via-colfilters-bar';
-     bloco.innerHTML='<div><label>FILTRAR COLUNA</label><select id="ce-via-coluna"><option value="">Selecione...</option><option value="filial">Filial</option><option value="nf">NF</option><option value="pedido">Pedido</option><option value="cliente_codigo">Cliente</option><option value="transportadora">Transporte</option><option value="total_unidades">Qtd.</option><option value="volume">Volume</option><option value="data_saida_entrada">Data fat.</option><option value="data_limite">Data limite</option></select></div><div><label>CONTÉM</label><input id="ce-via-valor" placeholder="Digite para filtrar" autocomplete="off"></div><button type="button" id="ce-via-limpar">Limpar</button><span class="ce-via-hint">Clique no cabeçalho para ordenar · padrão: mais antigos primeiro</span>';
-     barra.insertBefore(bloco,barra.querySelector('.via-exp-total'));
-     $('ce-via-coluna').addEventListener('change',e=>{ceViaColuna=e.target.value;render()});
-     $('ce-via-valor').addEventListener('input',e=>{ceViaValor=e.target.value;render()});
-     $('ce-via-limpar').addEventListener('click',()=>{ceViaColuna='';ceViaValor='';ceViaSort='data_saida_entrada';ceViaSortDir=1;render()});
-   }
-   const col=$('ce-via-coluna'),val=$('ce-via-valor');
-   if(col&&col.value!==ceViaColuna)col.value=ceViaColuna;
-   if(val&&val.value!==ceViaValor)val.value=ceViaValor;
- }
  function render(){
    const host=$('tbl-via-expedicao');if(!host)return;
-   garantirFiltroColuna();
    let a=[...base].filter(window.CE_REGISTRO_PERMITIDO||(()=>true));
    const f=$('via-exp-filial')?.value||'';
    const t=normTr($('via-exp-transporte')?.value||'');
@@ -11856,26 +11407,27 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
    if(t&&t!=='TODAS')a=a.filter(x=>normTr(x.transportadora)===t);
    if(q)a=a.filter(x=>`${x.nf} ${x.pedido} ${x.cliente_codigo} ${x.transportadora}`.toLowerCase().includes(q));
 
-   // A VIEW public.via_leitor já entrega somente os pendentes operacionais
-   // dos últimos 10 dias e remove o que já foi postado.
-   // Não aplicar um segundo corte por data aqui, para não esconder NFs válidas.
-
-   // Filtro por coluna e ordenação operacional. O padrão é faturamento mais antigo primeiro.
-   if(ceViaColuna && ceViaValor){
-     const busca=String(ceViaValor).trim().toLocaleLowerCase('pt-BR');
-     a=a.filter(x=>String(ceViaValorCampo(x,ceViaColuna)??'').toLocaleLowerCase('pt-BR').includes(busca));
-   }
-   if(ceViaSort){
-     a.sort((x,y)=>{
-       const A=ceViaComparavel(ceViaValorCampo(x,ceViaSort),ceViaSort);
-       const B=ceViaComparavel(ceViaValorCampo(y,ceViaSort),ceViaSort);
-       return (A<B?-1:A>B?1:0)*ceViaSortDir;
-     });
-   }
+   // Via Leitor: mostra somente pedidos vencendo hoje ou já vencidos.
+   // Pedidos com data limite futura ficam ocultos.
+   const hoje=new Date();
+   hoje.setHours(0,0,0,0);
+   a=a.filter(x=>{
+     const obj={transporte:x.transportadora,filial:x.filial,data:x.data_saida_entrada,hora:x.hora_saida,data_limite:x.data_limite};
+     const corteTexto=String(window.ceCorteTexto?.(x.transportadora,x.filial)||'');
+     const ct=corteTexto.toLowerCase();
+     const regraDiasUteis=ct.includes('útil')||ct.includes('uteis')||ct.includes('úteis');
+     const dl=regraDiasUteis ? (window.ceDataLimite?.(obj)||x.data_limite||'') : (x.data_limite||window.ceDataLimite?.(obj)||'');
+     if(!dl)return false;
+     const partes=String(dl).slice(0,10).split('-').map(Number);
+     if(partes.length!==3||!partes[0]||!partes[1]||!partes[2])return false;
+     const limite=new Date(partes[0],partes[1]-1,partes[2]);
+     limite.setHours(0,0,0,0);
+     return limite<=hoje;
+   });
 
    const c=$('via-exp-count');if(c)c.textContent=a.length;
    if(!a.length){host.innerHTML='<div class="via-exp-empty">Nenhum pedido pendente de envio encontrado neste filtro.</div>';return}
-   host.innerHTML=`<div class="ce-sb-pager"><button id="v3-ant" ${pagina===0?'disabled':''}>‹ Anterior</button><span>Página ${pagina+1} · XMLS · API anon</span><button id="v3-prox" ${temProxima?'':'disabled'}>Próxima ›</button></div><table class="via-exp-table"><thead><tr><th></th><th data-sort="filial">FILIAL</th><th data-sort="nf">NF</th><th data-sort="pedido">PEDIDO</th><th data-sort="cliente_codigo">CLIENTE</th><th data-sort="transportadora">TRANSPORTE</th><th data-sort="total_unidades">QTD.</th><th data-sort="volume">VOLUME</th><th data-sort="data_saida_entrada">DATA FAT.</th><th>HORÁRIO AUT.</th><th>CORTE</th><th data-sort="data_limite">DATA LIMITE</th><th>TEMPO RESTANTE</th><th>OBSERVAÇÃO</th></tr></thead><tbody>${a.map(x=>{
+   host.innerHTML=`<div class="ce-sb-pager"><button id="v3-ant" ${pagina===0?'disabled':''}>‹ Anterior</button><span>Página ${pagina+1} · XMLS · API anon</span><button id="v3-prox" ${temProxima?'':'disabled'}>Próxima ›</button></div><table class="via-exp-table"><thead><tr><th></th><th>FILIAL</th><th>NF</th><th>PEDIDO</th><th>CLIENTE</th><th>TRANSPORTE</th><th>QTD.</th><th>VOLUME</th><th>DATA FAT.</th><th>HORÁRIO AUT.</th><th>CORTE</th><th>DATA LIMITE</th><th>TEMPO RESTANTE</th><th>OBSERVAÇÃO</th></tr></thead><tbody>${a.map(x=>{
      const obj={transporte:x.transportadora,filial:x.filial,data:x.data_saida_entrada,hora:x.hora_saida,data_limite:x.data_limite};
      const corteTexto=String(window.ceCorteTexto?.(x.transportadora,x.filial)||'');
      const regraDiasUteis=corteTexto.toLowerCase().includes('útil')||corteTexto.toLowerCase().includes('uteis')||corteTexto.toLowerCase().includes('úteis');
@@ -11887,11 +11439,6 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
    }).join('')}</tbody></table>`;
    $('v3-ant')?.addEventListener('click',()=>{if(pagina>0){pagina--;carregar()}});
    $('v3-prox')?.addEventListener('click',()=>{if(temProxima){pagina++;carregar()}});
-   host.querySelectorAll('th[data-sort]').forEach(th=>{
-     const campo=th.dataset.sort;
-     if(campo===ceViaSort) th.classList.add(ceViaSortDir===1?'ce-sort-asc':'ce-sort-desc');
-     th.addEventListener('click',()=>{if(ceViaSort===campo)ceViaSortDir*=-1;else{ceViaSort=campo;ceViaSortDir=1}render()});
-   });
  }
  function substituirSemEventos(id){
    const el=$(id); if(!el||!el.parentNode)return el;
@@ -12122,6 +11669,24 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
  let n=0,t=setInterval(()=>{n++;if(window.CE_AUTH?.session?.access_token&&typeof window.CE_REST==='function'){clearInterval(t);carregar()}else if(n>240)clearInterval(t)},250);
  window.CE_OBS={get:k=>String(obs[k]||'')};
  window.CE_RECARREGAR_OBSERVACOES=carregar;
+})();
+</script>
+
+
+<script id="ce-google-visible-bridge">
+(function(){
+  window.addEventListener('load',()=>{
+    const b=document.getElementById('ce-start-google');
+    if(!b)return;
+    b.addEventListener('click',()=>{
+      try{
+        const sel=document.querySelector('.ce-start-op.active')?.dataset?.ceFilial||window.ceLoginFilial||'';
+        if(sel)localStorage.setItem('ce_google_filial_pendente',sel);
+      }catch(e){}
+      const hidden=document.getElementById('ce-login-google');
+      if(hidden){hidden.click();return}
+    });
+  });
 })();
 </script>
 
@@ -12476,8 +12041,6 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
 .ce-xml-upload-head strong{font-size:14px}.ce-xml-upload-head p{font-size:12px;color:var(--muted);margin:5px 0 0;line-height:1.45}
 .ce-xml-result-table{width:100%;border-collapse:collapse;font-size:11px;white-space:nowrap}.ce-xml-result-table th{background:#e5e8ea;color:#243744;text-align:left;padding:7px;border-bottom:1px solid #aeb7be}
 .ce-xml-result-table td{padding:7px;border-bottom:1px solid #e4e6e8}.ce-xml-ok{color:#147a4b;font-weight:800}.ce-xml-erro{color:#b42318;font-weight:800}.ce-xml-ignorado{color:#8a5a10;font-weight:800}
-.ce-antiga-card{border-top:3px solid var(--primary,#1f6f5f)}
-#ce-antiga-preview-card{max-height:420px}
 </style>
 <script id="ce-xml-upload-script">
 (function(){
@@ -12529,187 +12092,6 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
 </script>
 
 
-<script id="ce-planilha-antiga-upload-script">
-(function(){
-  const $=id=>document.getElementById(id);
-  let linhas=[];
-  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const norm=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase().replace(/\s+/g,' ');
-  const soDig=v=>String(v??'').replace(/\D/g,'');
-  function filial(v){let n=soDig(v); if(n==='101'||n==='0101')return '0101'; if(n==='102'||n==='0102')return '0102'; if(n==='1020')return '1020'; return n.padStart(4,'0');}
-  function dataBR(v){
-    if(v instanceof Date && !isNaN(v)) return [String(v.getDate()).padStart(2,'0'),String(v.getMonth()+1).padStart(2,'0'),v.getFullYear()].join('/');
-    if(typeof v==='number' && window.XLSX){const d=XLSX.SSF.parse_date_code(v);if(d)return `${String(d.d).padStart(2,'0')}/${String(d.m).padStart(2,'0')}/${d.y}`;}
-    const t=String(v??'').trim(); const m=t.match(/(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/); return m?`${m[1].padStart(2,'0')}/${m[2].padStart(2,'0')}/${m[3]}`:t;
-  }
-  function hora(v){
-    if(v===null||v===undefined||v==='')return '';
-    if(typeof v==='number'){let sec=Math.round((v%1)*86400)%86400;return `${String(Math.floor(sec/3600)).padStart(2,'0')}:${String(Math.floor(sec%3600/60)).padStart(2,'0')}:${String(sec%60).padStart(2,'0')}`;}
-    const m=String(v).trim().match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);return m?`${m[1].padStart(2,'0')}:${m[2]}:${m[3]||'00'}`:'';
-  }
-  function isoSP(d,h){if(!d||!h)return null;const m=d.match(/(\d{2})\/(\d{2})\/(\d{4})/);if(!m)return null;return `${m[3]}-${m[2]}-${m[1]}T${h}-03:00`;}
-  function achar(obj,...nomes){const entries=Object.entries(obj);for(const nome of nomes){const alvo=norm(nome);const e=entries.find(([k])=>norm(k)===alvo);if(e)return e[1];}return '';}
-  function mapear(r,i){
-    const d=dataBR(achar(r,'Data'));
-    const nf=soDig(achar(r,'Nota Fiscal','NF'));
-    const hf=hora(achar(r,'Horário de Finalização','Horario de Finalizacao'));
-    const hc=hora(achar(r,'Horário da Coleta','Horario da Coleta'));
-    const emb=String(achar(r,'Embalador')||'').trim();
-    const tr=String(achar(r,'Transporte','Transportadora')||'').trim();
-    const fil=filial(achar(r,'Código da Filial','Codigo da Filial','Filial'));
-    const vol=Math.max(1,parseInt(achar(r,'Volume')||1,10)||1);
-    const erros=[]; if(!d)erros.push('sem data');if(!nf)erros.push('sem NF');if(!hc)erros.push('sem coleta');if(!['0101','0102','1020'].includes(fil))erros.push('filial inválida');
-    return {i:i+2,data:d,nf,finalizacao:hf,coleta:hc,embalador:emb,transporte:tr,filial:fil,volume:vol,erros};
-  }
-  function render(){
-    const tb=$('ce-antiga-preview');if(!tb)return;
-    tb.innerHTML=linhas.slice(0,300).map(x=>`<tr><td>${esc(x.data)}</td><td><b>${esc(x.nf)}</b></td><td>${esc(x.finalizacao||'—')}</td><td>${esc(x.coleta)}</td><td>${esc(x.embalador||'—')}</td><td>${esc(x.transporte||'—')}</td><td>${esc(x.filial)}</td><td>${x.volume}</td><td class="${x.erros.length?'ce-xml-erro':'ce-xml-ok'}">${x.erros.length?esc(x.erros.join(', ')):'PRONTO'}</td></tr>`).join('')+(linhas.length>300?`<tr><td colspan="9" class="empty">Prévia limitada a 300 linhas. Total: ${linhas.length}.</td></tr>`:'');
-    $('ce-antiga-preview-card').style.display='block';$('ce-antiga-contagem').textContent=String(linhas.length);
-  }
-  async function analisar(){
-    const f=$('ce-antiga-file')?.files?.[0];if(!f){alert('Selecione a planilha antiga.');return}
-    if(!window.XLSX){alert('Leitor de Excel não carregou. Atualize a página e tente novamente.');return}
-    try{
-      $('ce-antiga-status').textContent='Lendo planilha...';
-      const ab=await f.arrayBuffer();const wb=XLSX.read(ab,{type:'array',cellDates:false});const ws=wb.Sheets[wb.SheetNames[0]];const dados=XLSX.utils.sheet_to_json(ws,{defval:'',raw:true});
-      linhas=dados.map(mapear).filter(x=>x.nf||x.data||x.coleta);
-      render();const ok=linhas.filter(x=>!x.erros.length).length,err=linhas.length-ok;
-      $('ce-antiga-status').textContent=`${linhas.length} registro(s) · ${ok} pronto(s) · ${err} com erro(s)`;$('ce-antiga-importar').disabled=!ok;
-    }catch(e){linhas=[];$('ce-antiga-importar').disabled=true;$('ce-antiga-status').textContent='Erro ao ler: '+e.message;alert('Não foi possível ler a planilha.\n\n'+e.message)}
-  }
-  function headers(forceAnon=false){
-    const key=window.CE_SUPABASE_ANON_KEY||document.querySelector('meta[name="supabase-anon-key"]')?.content||'';
-    const token=forceAnon?key:(window.CE_AUTH?.session?.access_token||key);
-    return {apikey:key,Authorization:'Bearer '+token,'Content-Type':'application/json'};
-  }
-  function base(){return (window.CE_SUPABASE_URL||'https://njvcostescybgwbnipec.supabase.co').replace(/\/$/,'');}
-  async function fetchSupabase(url,opts={},tentativa=0){
-    const forceAnon=tentativa>=2;
-    const r=await fetch(url,{...opts,headers:{...headers(forceAnon),...(opts.headers||{})}});
-    if(r.ok)return r;
-    const corpo=await r.clone().text().catch(()=> '');
-    const jwtExpirado=r.status===401 && /jwt|expired|token/i.test(corpo);
-    if(jwtExpirado && tentativa===0){
-      try{
-        if(typeof window.CE_RENOVAR_SESSAO==='function' && await window.CE_RENOVAR_SESSAO()){
-          return fetchSupabase(url,opts,1);
-        }
-      }catch(e){}
-      return fetchSupabase(url,opts,2);
-    }
-    return r;
-  }
-  async function importar(){
-    const validas=linhas.filter(x=>!x.erros.length);if(!validas.length)return;
-    if(!confirm(`Importar ${validas.length} registro(s) como coletados da PLANILHA ANTIGA?\n\nNão será criado romaneio nem assinatura.`))return;
-    const btn=$('ce-antiga-importar');btn.disabled=true;$('ce-antiga-status').textContent='Verificando duplicidades no Supabase...';
-    try{
-      const H=headers(); if(!H.apikey)throw new Error('Configuração do Supabase não encontrada.');
-      // Busca existentes em páginas para impedir duplicação de NF+filial.
-      const existentes=new Map();
-      for(let off=0;;off+=1000){
-        const r=await fetchSupabase(base()+`/rest/v1/postagens?select=id,nf,filial,status,coleta_em&limit=1000&offset=${off}`,{cache:'no-store'});
-        if(!r.ok)throw new Error('Falha ao consultar postagens: '+await r.text());
-        const a=await r.json();
-        a.forEach(p=>{
-          const k=`${soDig(p.nf)}|${filial(p.filial)}`;
-          if(!existentes.has(k))existentes.set(k,[]);
-          existentes.get(k).push(p);
-        });
-        if(a.length<1000)break;
-      }
-      const unicas=new Map(); validas.forEach(x=>unicas.set(`${x.nf}|${x.filial}`,x));
-      const todas=[...unicas.values()];
-      const novas=todas.filter(x=>!existentes.has(`${x.nf}|${x.filial}`));
-      const atualizar=todas.filter(x=>{
-        const regs=existentes.get(`${x.nf}|${x.filial}`)||[];
-        return regs.length && !regs.some(p=>String(p.status||'').toLowerCase()==='coletado' && !!p.coleta_em);
-      });
-      const jaColetadas=todas.filter(x=>{
-        const regs=existentes.get(`${x.nf}|${x.filial}`)||[];
-        return regs.some(p=>String(p.status||'').toLowerCase()==='coletado' && !!p.coleta_em);
-      });
-      const duplicadas=jaColetadas.length;
-      if(!novas.length && !atualizar.length){
-        $('ce-antiga-status').textContent=`Nada importado · ${duplicadas} já coletado(s)`;
-        alert('Todas as NFs válidas já estão coletadas em postagens.');
-        return;
-      }
-      // Enriquecimento opcional com xmls: pedido, cliente e chave.
-      const xmlMap=new Map();
-      const processar=[...novas,...atualizar];
-      for(let i=0;i<processar.length;i+=100){const grupo=processar.slice(i,i+100);const nfs=[...new Set(grupo.map(x=>x.nf))];const filtro=nfs.map(encodeURIComponent).join(',');const r=await fetchSupabase(base()+`/rest/v1/xmls?select=nf,filial,pedido,cliente_nome,chave_nfe&nf=in.(${filtro})&limit=1000`,{cache:'no-store'});if(r.ok){(await r.json()).forEach(x=>xmlMap.set(`${soDig(x.nf)}|${filial(x.filial)}`,x));}}
-      let importados=0, atualizados=0;
-      for(let i=0;i<novas.length;i+=100){
-        const lote=novas.slice(i,i+100).map(x=>{const xm=xmlMap.get(`${x.nf}|${x.filial}`)||{};const coleta=isoSP(x.data,x.coleta);const bip=isoSP(x.data,x.finalizacao);return {
-          // Todos os objetos do lote usam exatamente as mesmas chaves.
-          // Isso evita PGRST102 quando alguma linha não possui horário de finalização
-          // ou não encontra dados complementares na tabela xmls.
-          empresa:x.filial==='1020'?'BBBATERIAS':'EQUIPATECH',
-          filial:x.filial,
-          nf:x.nf,
-          chave_nfe:xm.chave_nfe||null,
-          pedido:xm.pedido?String(xm.pedido):null,
-          cliente_nome:xm.cliente_nome||null,
-          transporte_original:x.transporte||null,
-          transporte_romaneio:x.transporte||null,
-          volume:x.volume,
-          bipador:'PLANILHA ANTIGA',
-          embalador:x.embalador||null,
-          status:'coletado',
-          bipada_em:bip||null,
-          coleta_em:coleta,
-          criado_em:bip||coleta,
-          atualizado_em:new Date().toISOString()
-        }});
-        $('ce-antiga-status').textContent=`Gravando ${Math.min(i+100,novas.length)} de ${novas.length}...`;
-        const r=await fetchSupabase(base()+'/rest/v1/postagens',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify(lote)});if(!r.ok)throw new Error('Erro ao gravar lote: '+await r.text());importados+=lote.length;
-      }
-
-      // NFs que já existem, mas ainda não estão coletadas, são atualizadas em vez de ignoradas.
-      for(let i=0;i<atualizar.length;i++){
-        const x=atualizar[i];
-        const xm=xmlMap.get(`${x.nf}|${x.filial}`)||{};
-        const coleta=isoSP(x.data,x.coleta);
-        const bip=isoSP(x.data,x.finalizacao);
-        const payload={
-          status:'coletado',
-          coleta_em:coleta,
-          bipada_em:bip||null,
-          embalador:x.embalador||null,
-          transporte_original:x.transporte||null,
-          transporte_romaneio:x.transporte||null,
-          volume:x.volume,
-          atualizado_em:new Date().toISOString()
-        };
-        const regs=existentes.get(`${x.nf}|${x.filial}`)||[];
-        for(const p of regs){
-          if(String(p.status||'').toLowerCase()==='coletado' && p.coleta_em)continue;
-          const r=await fetchSupabase(base()+`/rest/v1/postagens?id=eq.${encodeURIComponent(p.id)}`,{
-            method:'PATCH',
-            headers:{Prefer:'return=minimal'},
-            body:JSON.stringify(payload)
-          });
-          if(!r.ok)throw new Error(`Erro ao atualizar NF ${x.nf}: `+await r.text());
-          atualizados++;
-        }
-      }
-
-      $('ce-antiga-status').textContent=`${importados} novo(s) · ${atualizados} atualizado(s) para coletado · ${duplicadas} já coletado(s)`;
-      alert(`Importação concluída.\n\n${importados} novo(s)\n${atualizados} atualizado(s) para COLETADO\n${duplicadas} já coletado(s)\n\nOrigem: PLANILHA ANTIGA`);
-      try{
-        if(typeof window.ceRecarregarBaseOperacional==='function'){
-          await window.ceRecarregarBaseOperacional();
-        }
-      }catch(e){}
-      try{window.CE_VIA_RECARREGAR?.();}catch(e){}
-    }catch(e){$('ce-antiga-status').textContent='Falha na importação: '+e.message;alert('Não foi possível gravar a planilha no Supabase.\n\n'+e.message)}finally{btn.disabled=false}
-  }
-  function limpar(){linhas=[];if($('ce-antiga-file'))$('ce-antiga-file').value='';if($('ce-antiga-preview'))$('ce-antiga-preview').innerHTML='';if($('ce-antiga-preview-card'))$('ce-antiga-preview-card').style.display='none';if($('ce-antiga-contagem'))$('ce-antiga-contagem').textContent='0';if($('ce-antiga-status'))$('ce-antiga-status').textContent='Nenhum arquivo analisado.';if($('ce-antiga-importar'))$('ce-antiga-importar').disabled=true;}
-  document.addEventListener('DOMContentLoaded',()=>{$('ce-antiga-analisar')?.addEventListener('click',analisar);$('ce-antiga-importar')?.addEventListener('click',importar);$('ce-antiga-limpar')?.addEventListener('click',limpar);});
-})();
-</script>
-
 <script id="ce-v132-remove-local-operacional">
 (function(){
   try{
@@ -12723,921 +12105,297 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
 </script>
 
 
-
-
-
-<script id="ce-v144-historico-enriquecimento-xmls">
-(function(){
-  'use strict';
-
-  const CE_V144_CACHE = new Map();
-  let CE_V144_TIMER = null;
-  let CE_V144_RUNNING = false;
-
-  function txt(v){ return String(v == null ? '' : v).trim(); }
-  function normNF(v){ return txt(v).replace(/\D/g,'').replace(/^0+/,'') || '0'; }
-  function normFilial(v){ return txt(v).replace(/\D/g,'').padStart(4,'0'); }
-  function isBlank(v){ const x=txt(v); return !x || x==='—' || x==='-' || x==='–'; }
-
-  async function sb(path){
-    const base = (typeof URL!=='undefined' && typeof KEY!=='undefined') ? URL.replace(/\/$/,'') : '';
-    if(!base) return [];
-    const token = window.CE_AUTH?.session?.access_token || KEY;
-    const r = await fetch(base + '/rest/v1/' + path,{
-      headers:{apikey:KEY,Authorization:'Bearer '+token}
-    });
-    if(!r.ok) throw new Error('Supabase HTTP '+r.status);
-    return await r.json();
-  }
-
-  async function buscarXml(filial,nf,chave){
-    const ck = [normFilial(filial),normNF(nf),txt(chave)].join('|');
-    if(CE_V144_CACHE.has(ck)) return CE_V144_CACHE.get(ck);
-
-    let rows=[];
-    const select='filial,nf,pedido,cliente_codigo,cliente_nome,transportadora,chave_nfe,volume,total_unidades,data_saida_entrada,data_limite,cpf_cnpj';
-
-    if(txt(chave).length >= 40){
-      rows = await sb('xmls?select='+select+'&chave_nfe=eq.'+encodeURIComponent(txt(chave))+'&limit=1');
-    }
-    if(!rows.length && nf){
-      const nfRaw = txt(nf).replace(/\D/g,'');
-      const nfSemZero = normNF(nf);
-      const tentativas=[nfRaw,nfSemZero,String(Number(nfSemZero)||nfSemZero)];
-      const filialInformada=normFilial(filial);
-      const filiais=[...new Set([filialInformada,'0101','0102','1020'].filter(f=>/^\d{4}$/.test(f)))];
-
-      // A filial do romaneio nunca altera a filial fiscal da NF.
-      // Procuramos a NF no XML e depois usamos x.filial como fonte oficial.
-      for(const n of [...new Set(tentativas.filter(Boolean))]){
-        for(const f of filiais){
-          rows = await sb('xmls?select='+select+'&filial=eq.'+encodeURIComponent(f)+'&nf=eq.'+encodeURIComponent(n)+'&limit=1');
-          if(rows.length) break;
-        }
-        if(rows.length) break;
-      }
-    }
-    const x=rows[0]||null;
-    CE_V144_CACHE.set(ck,x);
-    return x;
-  }
-
-  function acharTabela(){
-    const view=document.querySelector('#view-postagens');
-    if(!view || view.offsetParent===null) return null;
-    const tables=[...view.querySelectorAll('table')];
-    return tables.find(t=>{
-      const h=[...t.querySelectorAll('thead th')].map(x=>txt(x.textContent).toUpperCase());
-      return h.some(x=>x.includes('STATUS')) && h.some(x=>x==='NF'||x.includes('NOTA')) && h.some(x=>x.includes('CHAVE'));
-    }) || null;
-  }
-
-  function idx(headers, nomes){
-    return headers.findIndex(h=>nomes.some(n=>h===n || h.includes(n)));
-  }
-
-  async function enriquecer(){
-    if(CE_V144_RUNNING) return;
-    const table=acharTabela();
-    if(!table) return;
-    CE_V144_RUNNING=true;
+<script id="ce-assinatura-mobile-route">
+document.addEventListener('DOMContentLoaded',()=>{
+  document.body.classList.add('ce-assinatura-only');
+  setTimeout(()=>{
     try{
-      const hs=[...table.querySelectorAll('thead th')].map(x=>txt(x.textContent).toUpperCase());
-      const iFil=idx(hs,['FILIAL']);
-      const iNF=idx(hs,['NF','NOTA']);
-      const iPed=idx(hs,['PEDIDO']);
-      const iCod=idx(hs,['CÓDIGO','CODIGO','COD. CLIENTE','CÓD CLIENTE']);
-      const iCli=idx(hs,['CLIENTE','NOME']);
-      const iTra=idx(hs,['TRANSPORTE','TRANSPORTADORA']);
-      const iCha=idx(hs,['CHAVE']);
-      const iVol=idx(hs,['VOLUME']);
-      const iQtd=idx(hs,['QTD','QUANTIDADE']);
+      document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+      const v=document.getElementById('view-assinatura');
+      if(v){v.classList.add('active');v.style.display='block'}
+      if(typeof renderListaAbertos==='function') renderListaAbertos();
+    }catch(e){console.warn(e)}
+  },500);
+});
+</script>
 
-      const rows=[...table.querySelectorAll('tbody tr')];
-      for(const tr of rows){
-        const td=[...tr.querySelectorAll('td')];
-        if(!td.length || iNF<0 || iFil<0) continue;
-        const filial=txt(td[iFil]?.textContent);
-        const nf=txt(td[iNF]?.textContent);
-        const chave=iCha>=0?txt(td[iCha]?.textContent):'';
-        if(!nf) continue;
 
-        const precisa=[iPed,iCod,iCli,iTra,iVol,iQtd].some(i=>i>=0 && isBlank(td[i]?.textContent));
-        if(!precisa) continue;
-
-        try{
-          const x=await buscarXml(filial,nf,chave);
-          if(!x) continue;
-          const set=(i,v)=>{ if(i>=0 && td[i] && isBlank(td[i].textContent) && !isBlank(v)) td[i].textContent=txt(v); };
-          // Filial fiscal vem SEMPRE do XML. Nunca do romaneio agrupado 0101,0102.
-          if(iFil>=0 && td[iFil] && !isBlank(x.filial)) td[iFil].textContent=normFilial(x.filial);
-          set(iPed,x.pedido);
-          set(iCod,x.cliente_codigo);
-          set(iCli,x.cliente_nome);
-          set(iTra,x.transportadora);
-          set(iVol,x.volume);
-          set(iQtd,x.total_unidades);
-        }catch(e){
-          console.warn('[V144] Falha ao enriquecer histórico',filial,nf,e);
-        }
-      }
-    } finally {
-      CE_V144_RUNNING=false;
-    }
-  }
-
-  function agenda(){
-    clearTimeout(CE_V144_TIMER);
-    CE_V144_TIMER=setTimeout(enriquecer,180);
-  }
-
-  document.addEventListener('click',e=>{
-    const b=e.target.closest('button,a,[data-view]');
-    if(b) setTimeout(agenda,250);
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(err => console.warn('Service Worker:', err));
   });
-  const obs=new MutationObserver(agenda);
-  obs.observe(document.documentElement,{childList:true,subtree:true});
-  window.CE_V144_ENRIQUECER_HISTORICO=enriquecer;
-  setTimeout(agenda,800);
-})();
+}
 </script>
 
 
-<script id="ce-v145-historico-nf-por-romaneio">
-(function(){
-  'use strict';
-
-  let running=false, timer=null;
-
-  const T=v=>String(v==null?'':v).trim();
-  const N=v=>T(v).replace(/\D/g,'').replace(/^0+/,'')||'0';
-  const F=v=>T(v).replace(/\D/g,'').padStart(4,'0');
-
-  function base(){
-    return (typeof URL!=='undefined' ? String(URL).replace(/\/$/,'') : '');
+<!-- V181 — rodada de ajustes dos testes operacionais -->
+<style id="ce-v181-style">
+  /* Alternância claro/escuro com contraste reforçado */
+  #ce-theme-toggle{
+    position:fixed;right:18px;bottom:18px;z-index:100050;
+    border:1px solid var(--border,#d7dde5);border-radius:999px;
+    padding:9px 13px;font-weight:800;font-size:12px;cursor:pointer;
+    background:#fff;color:#17212b;box-shadow:0 5px 18px rgba(0,0,0,.14)
   }
-  async function sb(path){
-    const token=window.CE_AUTH?.session?.access_token || KEY;
-    const r=await fetch(base()+'/rest/v1/'+path,{headers:{apikey:KEY,Authorization:'Bearer '+token}});
-    if(!r.ok) throw new Error('Supabase HTTP '+r.status);
-    return await r.json();
+  body.ce-dark{
+    --bg:#0d141c;--card:#151f2a;--text:#f4f7fa;--muted:#c3cfda;
+    --border:#344454;--blue-dark:#9dd7ff;--blue:#46aef2;
+    background:#0d141c!important;color:#f4f7fa!important
   }
-
-  function tabela(){
-    const v=document.querySelector('#view-postagens');
-    if(!v || v.offsetParent===null) return null;
-    return [...v.querySelectorAll('table')].find(t=>{
-      const h=[...t.querySelectorAll('thead th')].map(x=>T(x.textContent).toUpperCase());
-      return h.some(x=>x.includes('STATUS')) && h.some(x=>x==='NF'||x.includes('NOTA')) && h.some(x=>x.includes('CHAVE'));
-    })||null;
+  body.ce-dark main,body.ce-dark .view,body.ce-dark .page{background:#0d141c!important;color:#f4f7fa}
+  body.ce-dark .card,body.ce-dark .summary-pending-card,body.ce-dark .ce-op-window,
+  body.ce-dark .ce-op-field,body.ce-dark .ce-op-scan,body.ce-dark .modal-box,
+  body.ce-dark .operacao-destaque,body.ce-dark .romaneio-bipagem-box{
+    background:#151f2a!important;color:#f4f7fa!important;border-color:#344454!important
   }
-  function ix(h, names){return h.findIndex(x=>names.some(n=>x===n||x.includes(n)))}
-
-  async function executar(){
-    if(running) return;
-    const tb=tabela(); if(!tb) return;
-    running=true;
-    try{
-      // Official operational source: every posting is an occurrence.
-      const posts=await sb('postagens?select=*&order=created_at.asc&limit=10000');
-      if(!Array.isArray(posts)||!posts.length) return;
-
-      const romIds=[...new Set(posts.map(p=>T(p.romaneio_id)).filter(Boolean))];
-      let roms=[];
-      for(let i=0;i<romIds.length;i+=100){
-        const ids=romIds.slice(i,i+100).map(x=>'"'+x.replace(/"/g,'')+'"').join(',');
-        try{
-          const part=await sb('romaneios?select=*&id=in.('+encodeURIComponent(ids)+')');
-          if(Array.isArray(part)) roms.push(...part);
-        }catch(e){}
-      }
-      const romMap=new Map();
-      roms.forEach(r=>{
-        [r.id,r.uuid,r.codigo,r.numero,r.romaneio].forEach(k=>{if(T(k))romMap.set(T(k),r)});
-      });
-
-      const hs=[...tb.querySelectorAll('thead th')].map(x=>T(x.textContent).toUpperCase());
-      const iStatus=ix(hs,['STATUS']), iFil=ix(hs,['FILIAL']), iNF=ix(hs,['NF','NOTA']);
-      const iPed=ix(hs,['PEDIDO']), iCha=ix(hs,['CHAVE']), iRas=ix(hs,['RASTREIO']);
-      const iRom=ix(hs,['ROMANEIO']);
-
-      // Existing rendered rows are used as the visual template for each NF.
-      const body=tb.querySelector('tbody'); if(!body) return;
-      const atuais=[...body.querySelectorAll('tr')];
-      const templateByNF=new Map();
-      atuais.forEach(tr=>{
-        const td=[...tr.querySelectorAll('td')];
-        if(iNF>=0 && td[iNF]){
-          const k=F(iFil>=0?td[iFil]?.textContent:'')+'|'+N(td[iNF].textContent);
-          if(!templateByNF.has(k)) templateByNF.set(k,tr);
-        }
-      });
-
-      // Group postings by NF+romaneio. Same NF in two romaneios => two rows.
-      const grupos=new Map();
-      posts.forEach(p=>{
-        const fil=F(p.filial||p.codigo_filial||'');
-        const nf=N(p.nf||p.nota_fiscal||'');
-        const rid=T(p.romaneio_id||p.romaneio_uuid||p.romaneio||'');
-        if(!nf||nf==='0'||!rid) return;
-        const key=fil+'|'+nf+'|'+rid;
-        if(!grupos.has(key)) grupos.set(key,p);
-      });
-
-      for(const [key,p] of grupos){
-        const fil=F(p.filial||p.codigo_filial||'');
-        const nf=N(p.nf||p.nota_fiscal||'');
-        const rid=T(p.romaneio_id||p.romaneio_uuid||p.romaneio||'');
-        const baseKey=fil+'|'+nf;
-        const occurrences=[...body.querySelectorAll('tr[data-ce-v145-key]')];
-        if(occurrences.some(x=>x.dataset.ceV145Key===key)) continue;
-
-        const baseRow=templateByNF.get(baseKey);
-        if(!baseRow) continue;
-
-        // First occurrence can reuse the native row; extra occurrences are cloned.
-        let row;
-        const nativeAlready=[...body.querySelectorAll('tr')].find(x=>x.dataset.ceV145Base===baseKey);
-        if(!nativeAlready){
-          row=baseRow;
-          row.dataset.ceV145Base=baseKey;
-        }else{
-          row=baseRow.cloneNode(true);
-          body.insertBefore(row,nativeAlready.nextSibling);
-        }
-        row.dataset.ceV145Key=key;
-
-        const td=[...row.querySelectorAll('td')];
-        const rom=romMap.get(rid)||{};
-        const romLabel=T(rom.codigo||rom.numero||rom.romaneio||rom.id||rid);
-
-        // Preserve XML enrichment. A filial fiscal NÃO pode ser alterada pelo romaneio.
-        // O V144 usa xmls.filial como fonte oficial da NF.
-        if(iNF>=0&&td[iNF]) {
-          const original=T(td[iNF].textContent);
-          td[iNF].textContent=original && N(original)===nf ? original : nf.padStart(9,'0');
-        }
-        if(iPed>=0&&td[iPed]&&T(p.pedido)) td[iPed].textContent=T(p.pedido);
-        if(iCha>=0&&td[iCha]&&T(p.chave_nfe||p.chave)) td[iCha].textContent=T(p.chave_nfe||p.chave);
-        if(iRas>=0&&td[iRas]&&T(p.rastreio)) td[iRas].textContent=T(p.rastreio);
-        if(iRom>=0&&td[iRom]) td[iRom].textContent=romLabel;
-
-        if(iStatus>=0&&td[iStatus]){
-          const coletado=!!(p.coletado_em||p.data_coleta||p.coleta_em||rom.coletado_em||rom.finalizado_em);
-          const finalizado=coletado || ['finalizado','coletado','expedido','assinado'].includes(T(rom.status).toLowerCase());
-          const label=finalizado?'Expedido / coletado':'Postado — aguardando coleta';
-          td[iStatus].innerHTML='<span class="ce-v145-dot '+(finalizado?'done':'posted')+'"></span>'+label;
-        }
-      }
-      if(window.CE_V144_ENRIQUECER_HISTORICO) setTimeout(window.CE_V144_ENRIQUECER_HISTORICO,50);
-    }catch(e){
-      console.warn('[V145] Falha ao montar ocorrências NF + romaneio',e);
-    }finally{running=false}
+  body.ce-dark input,body.ce-dark select,body.ce-dark textarea{
+    background:#0f1923!important;color:#fff!important;border-color:#53687b!important
   }
+  body.ce-dark label,body.ce-dark .sub,body.ce-dark .ce-op-info,
+  body.ce-dark .rastreio-regra,body.ce-dark [style*="color:var(--muted)"]{
+    color:#cbd6df!important
+  }
+  body.ce-dark table,body.ce-dark th,body.ce-dark td{color:#f4f7fa!important;border-color:#344454!important}
+  body.ce-dark thead th{background:#1d2a36!important;color:#fff!important}
+  body.ce-dark tbody tr:hover{background:#1c2b38!important}
+  body.ce-dark #ce-theme-toggle{background:#f4f7fa;color:#111923;border-color:#f4f7fa}
+  body.ce-dark .ce-op-value,body.ce-dark .summary-kpi-value,
+  body.ce-dark #ce-op-contador{color:#fff!important;font-weight:900!important}
 
-  function agendar(){clearTimeout(timer);timer=setTimeout(executar,300)}
-  const obs=new MutationObserver(agendar);
-  obs.observe(document.documentElement,{childList:true,subtree:true});
-  document.addEventListener('click',()=>setTimeout(agendar,250));
-  window.CE_V145_RECARREGAR_HISTORICO=executar;
-  setTimeout(agendar,900);
-})();
-</script>
-<style id="ce-v145-historico-style">
-.ce-v145-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:1px;background:#f0b429}
-.ce-v145-dot.done{background:#ef4444}.ce-v145-dot.posted{background:#f0b429}
+  /* seleção individual por colaborador */
+  #ce-v181-selecao{
+    display:flex;align-items:end;gap:10px;flex-wrap:wrap;
+    padding:10px 12px;margin:0 0 10px;border:1px solid var(--border,#d7dde5);
+    border-radius:10px;background:var(--card,#fff)
+  }
+  #ce-v181-selecao .ce-v181-field{min-width:220px}
+  #ce-v181-selecao label{display:block;font-size:10px;font-weight:800;margin-bottom:4px}
+  #ce-v181-selecao select{width:100%;height:36px}
+  .ce-v181-check{width:34px;text-align:center!important}
+  .ce-v181-check input{width:17px;height:17px;cursor:pointer}
+  .ce-v181-assigned{outline:2px solid rgba(38,132,255,.22);outline-offset:-2px}
+  .ce-v181-processing{opacity:.65;cursor:not-allowed!important;pointer-events:none}
 </style>
 
-<script id="ce-painel-operacao">
+<script id="ce-v181-patch">
 (function(){
-'use strict';
-// ═══════════════════════════════════════════════════════════════════════════
-// V161 — PAINEL DA OPERAÇÃO (somente leitura / consolidação)
-// Fontes (Supabase):
-//   public.xmls       → faturados (data_saida_entrada), filial oficial, total_unidades
-//   public.postagens  → bipador, embalador, volume, bipada_em (produção) e coleta_em (expedição)
-// Nenhum dado é gravado; nada vem de localStorage. Fuso: America/Sao_Paulo.
-// ═══════════════════════════════════════════════════════════════════════════
-const TZ='America/Sao_Paulo';
-const FILIAIS=['0101','0102','1020'];
-const INTERVALO_AUTO_MS=120000;      // atualização automática (2 min)
-const OBSOLETO_MS=45000;             // ao abrir a aba, recarrega se os dados tiverem mais que isso
-const CAP_REGISTROS=30000;
-const COLS_POST='id,nf,chave_nfe,pedido,filial,volume,bipador,embalador,bipada_em,coleta_em,romaneio_id,status';
-const SEL_XML='filial,nf,pedido,chave_nfe,total_unidades,volume,data_saida_entrada,transportadora';
+  'use strict';
+  const $=id=>document.getElementById(id);
+  const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[.\-_/]+/g,' ').replace(/\s+/g,' ').trim();
 
-// ───────────────────────── utilitários ─────────────────────────
-const $=id=>document.getElementById(id);
-const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const normNome=s=>String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
-const digitos=v=>String(v??'').replace(/\D/g,'');
-const nfSemZero=v=>digitos(v).replace(/^0+/,'');
-const filialOk=v=>/^\d{4}$/.test(String(v??'').trim());
-const num=v=>{const n=Number(String(v??'').replace(',','.'));return Number.isFinite(n)?n:0;};
-const fmtN=n=>Number(n||0).toLocaleString('pt-BR');
-const fmtPct=n=>(Number.isFinite(n)?n:0).toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:1})+'%';
+  /* 1 + 2 — contador automático e resumo persistente após atualização */
+  const STORAGE_RESUMO='CE_V181_RESUMO_BIPAGEM';
+  function linhasOp(){
+    return [...document.querySelectorAll('#ce-op-tbody tr')].filter(tr=>!tr.querySelector('.ce-op-empty'));
+  }
+  function atualizarContagem(){
+    const rows=linhasOp();
+    const c=$('ce-op-contador');
+    if(c) c.textContent=String(rows.length);
+    const sub=$('sub-pendentes');
+    if(sub && document.querySelector('#tbl-pendentes')) {
+      const n=document.querySelectorAll('#tbl-pendentes tbody tr').length;
+      if(n) sub.textContent=n+' item(ns)';
+    }
+    try{
+      const resumo=rows.map(tr=>({
+        nf:(tr.children[0]?.textContent||'').trim(),
+        chave:tr.dataset.chave||'',
+        rastreio:tr.dataset.rastreio||'',
+        pedido:tr.dataset.pedido||'',
+        transporte:tr.dataset.transporteOriginal||tr.children[3]?.textContent||'',
+        colaborador:tr.dataset.embalador||'',
+        volume:(tr.children[5]?.textContent||'1').trim()
+      }));
+      localStorage.setItem(STORAGE_RESUMO,JSON.stringify({
+        salvoEm:new Date().toISOString(),
+        romaneio:$('ce-op-romaneio')?.textContent||'',
+        transportadora:$('ce-op-transportadora')?.textContent||'',
+        bipador:$('ce-op-bipador')?.textContent||'',
+        total:rows.length,itens:resumo
+      }));
+    }catch(e){}
+  }
+  function instalarObserver(){
+    const tb=$('ce-op-tbody');
+    if(!tb||tb.dataset.v181Observer)return;
+    tb.dataset.v181Observer='1';
+    new MutationObserver(atualizarContagem).observe(tb,{childList:true,subtree:true,characterData:true,attributes:true});
+    atualizarContagem();
+  }
 
-const fmtDataSP=new Intl.DateTimeFormat('en-CA',{timeZone:TZ,year:'numeric',month:'2-digit',day:'2-digit'});
-const fmtHoraSP=new Intl.DateTimeFormat('pt-BR',{timeZone:TZ,hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'});
-const hojeSP=()=>fmtDataSP.format(new Date());
-const horaAgoraSP=()=>fmtHoraSP.format(new Date());
+  /* 4 + 5 — rastreio rápido e bloqueio de chave NF-e no campo de rastreio */
+  function familiaComRastreio(v){
+    const x=norm(v);
+    return /CORREIOS|SEDEX|PAC|MERCADO LIVRE|ME2|MAGALU|ENVIOS MARKET/.test(x);
+  }
+  function prepararRastreio(){
+    const box=$('ce-op-rastreio-box'), r=$('ce-op-rastreio');
+    const t=$('ce-op-transportadora')?.textContent||'';
+    if(box && familiaComRastreio(t)) box.style.display='';
+    if(r && familiaComRastreio(t)) {
+      r.disabled=false;
+      r.placeholder=/CORREIOS|SEDEX|PAC/.test(norm(t))?'Bipe o rastreio dos Correios':'Bipe o código de rastreio';
+    }
+  }
+  function validarRastreio(e){
+    const r=e.target;
+    const raw=String(r.value||'').trim();
+    const dig=raw.replace(/\D/g,'');
+    if(dig.length===44){
+      r.value='';
+      const s=$('ce-op-status');
+      if(s)s.textContent='Rastreio inválido — foi lida uma chave NF-e de 44 dígitos';
+      alert('Este campo aceita somente o rastreio. A chave NF-e deve ser bipada no campo "Bipar chave NF-e".');
+      setTimeout(()=>$('ce-op-chave')?.focus(),30);
+      return false;
+    }
+    return true;
+  }
 
-// Offset de São Paulo para o dia (hoje -03:00 o ano todo; calculado para não fixar na marra).
-function offsetSP(dataISO){
-  try{
-    const d=new Date(dataISO+'T12:00:00Z');
-    const s=new Intl.DateTimeFormat('en-US',{timeZone:TZ,timeZoneName:'longOffset'}).formatToParts(d).find(p=>p.type==='timeZoneName').value;
-    const m=s.match(/GMT([+-]\d{2})(?::?(\d{2}))?/);
-    return m?m[1]+':'+(m[2]||'00'):'-03:00';
-  }catch(e){return '-03:00';}
-}
-// Janela [início, fim) do dia civil de São Paulo.
-function janelaDia(dataISO){
-  const [Y,M,D]=dataISO.split('-').map(Number);
-  const prox=new Date(Date.UTC(Y,M-1,D+1)).toISOString().slice(0,10);
-  const ini=`${dataISO}T00:00:00${offsetSP(dataISO)}`;
-  const fim=`${prox}T00:00:00${offsetSP(prox)}`;
-  return {ini,fim,iniMs:new Date(ini).getTime(),fimMs:new Date(fim).getTime()};
-}
-
-// ───────────────────────── núcleo de cálculo (puro) ─────────────────────────
-// raw = {fat:[xmls do dia], prod:[postagens bipadas no dia], colet:[postagens com coleta_em >= início do dia], xmlExtra:[xmls p/ enriquecer]}
-function construirModelo(raw,f,ctx){
-  const {iniMs,fimMs}=ctx.janela;
-  // Índices de XML (faturados do dia + extras). Chave NF-e é a identidade; NF(+filial) é alternativa.
-  const xPorChave=new Map(),xPorNF=new Map();
-  const indexar=x=>{
-    const ch=digitos(x.chave_nfe);
-    if(ch)xPorChave.set(ch,x);
-    const k=nfSemZero(x.nf);
-    if(k){if(!xPorNF.has(k))xPorNF.set(k,[]);xPorNF.get(k).push(x);}
+  /* 7/9 — nomes equivalentes de transportadora */
+  const ALIASES=[
+    [/^TRD(?: TRANSPORTES?)?$/,'TRD'],
+    [/^(CORREIOS|SEDEX|PAC).*$/,'CORREIOS'],
+    [/^(ME2|MERCADO LIVRE).*$/,'MERCADO LIVRE'],
+    [/^(MAGALU|ENVIOS MARKETPLACES|ENVIOS MARKET).*$/,'MAGALU'],
+    [/^LOGGI(?: POA RS)?$/,'LOGGI'],
+    [/^(MOTOBOY|MOTO BOY|MOTOBOYS|MOTO BOYS).*$/,'MOTOBOY'],
+    [/^TOTAL(?: EXPRESS)?$/,'TOTAL EXPRESS'],
+    [/^TROCA(?: EXP| EXPRESSA)?$/,'TROCA']
+  ];
+  window.CE_NORMALIZAR_TRANSPORTADORA_V181=function(v){
+    const x=norm(v);
+    for(const [rx,nome] of ALIASES) if(rx.test(x)) return nome;
+    return x;
   };
-  (raw.fat||[]).forEach(indexar);(raw.xmlExtra||[]).forEach(indexar);
-  const achaXml=p=>{
-    const ch=digitos(p.chave_nfe);
-    if(ch&&xPorChave.has(ch))return xPorChave.get(ch);
-    const c=xPorNF.get(nfSemZero(p.nf))||[];
-    if(!c.length)return null;
-    const ff=String(p.filial||'').trim();
-    return c.find(x=>filialOk(ff)&&String(x.filial||'').trim()===ff)||(c.length===1?c[0]:null);
+  window.CE_MESMA_TRANSPORTADORA_V181=(a,b)=>{
+    const A=window.CE_NORMALIZAR_TRANSPORTADORA_V181(a),B=window.CE_NORMALIZAR_TRANSPORTADORA_V181(b);
+    return !A||!B||A===B;
   };
-  // Resolve cada postagem (única por id): filial FISCAL, chave de pedido único e volumes.
-  const porId=new Map();
-  [...(raw.prod||[]),...(raw.colet||[])].forEach(p=>{if(p&&p.id!==undefined&&!porId.has(p.id))porId.set(p.id,p);});
-  const unidadesXml=new Map(),volPorKey=new Map();
-  porId.forEach(p=>{
-    const x=achaXml(p);
-    const filial=x&&filialOk(x.filial)?String(x.filial).trim():(filialOk(p.filial)?String(p.filial).trim():'');
-    const ch=digitos(x?.chave_nfe||p.chave_nfe);
-    const key=ch.length>=40?ch:`${filial||'?'}|${nfSemZero(p.nf)}`;
-    p._filial=filial;p._key=key;
-    p._vol=Math.max(1,parseInt(p.volume,10)||1);
-    volPorKey.set(key,(volPorKey.get(key)||0)+p._vol);
-    const u=x?num(x.total_unidades):0;
-    if(u>0)unidadesXml.set(key,u);
-  });
-  const unidadesDe=key=>{
-    if(unidadesXml.has(key))return unidadesXml.get(key);
-    return volPorKey.get(key)||0;   // alternativa: sem total_unidades no XML usa os volumes registrados
-  };
-  const casaFilial=fil=>!f.filial||fil===f.filial;
-  const naJanela=v=>{if(!v)return false;const t=new Date(v).getTime();return t>=iniMs&&t<fimMs;};
 
-  const prod=(raw.prod||[]).map(p=>porId.get(p.id)).filter(p=>casaFilial(p._filial));
-  const coletTodas=(raw.colet||[]).map(p=>porId.get(p.id));
-  const coletDia=coletTodas.filter(p=>casaFilial(p._filial)&&naJanela(p.coleta_em));
+  /* 8/10 — selecionar pedidos e atribuir colaboradores diferentes */
+  function nomesColaboradores(){
+    let a=[];
+    try{
+      const c=window.CONFIG_TESTE_OPERADORES||{};
+      a=[...(c.embaladores||[]),...(c.bipadores||[])];
+    }catch(e){}
+    return [...new Set(a.map(x=>String(x||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  }
+  function instalarSelecao(){
+    const wrap=document.querySelector('.ce-op-gridwrap');
+    const table=wrap?.querySelector('.ce-op-table');
+    if(!wrap||!table||$('ce-v181-selecao'))return;
 
-  const somaUn=set=>{let t=0;set.forEach(k=>{t+=unidadesDe(k);});return t;};
-  const nomeDe=(p,papel)=>String(p[papel]||'').trim();
-  // Agrupa por colaborador para um papel (bipador | embalador)
-  function agrupar(papel){
-    const g=new Map();
-    const pega=p=>{
-      const nome=nomeDe(p,papel),k=normNome(nome)||'—';
-      if(!g.has(k))g.set(k,{chave:k,nome:nome||'(não informado)',postagens:0,ped:new Set(),exp:new Set()});
-      return g.get(k);
+    const bar=document.createElement('div');
+    bar.id='ce-v181-selecao';
+    bar.innerHTML='<div class="ce-v181-field"><label>COLABORADOR DOS SELECIONADOS</label><select id="ce-v181-colaborador"><option value="">Selecione...</option></select></div>'+
+      '<button type="button" class="ce-op-btn" id="ce-v181-atribuir">Atribuir aos selecionados</button>'+
+      '<button type="button" class="ce-op-btn" id="ce-v181-marcar">Selecionar todos</button>'+
+      '<span class="ce-op-info" id="ce-v181-info">0 selecionado(s)</span>';
+    wrap.parentNode.insertBefore(bar,wrap);
+
+    const sel=$('ce-v181-colaborador');
+    sel.innerHTML='<option value="">Selecione...</option>'+nomesColaboradores().map(n=>'<option value="'+n.replace(/"/g,'&quot;')+'">'+n+'</option>').join('');
+
+    const head=table.querySelector('thead tr');
+    if(head&&!head.querySelector('.ce-v181-check')){
+      const th=document.createElement('th');th.className='ce-v181-check';th.innerHTML='<input type="checkbox" id="ce-v181-checkall" title="Selecionar todos">';
+      head.insertBefore(th,head.firstChild);
+    }
+    aplicarChecks();
+
+    $('ce-v181-atribuir').onclick=()=>{
+      const nome=sel.value;
+      if(!nome){alert('Selecione o colaborador.');return}
+      const rows=linhasOp().filter(tr=>tr.querySelector('.ce-v181-rowcheck')?.checked);
+      if(!rows.length){alert('Selecione pelo menos um pedido.');return}
+      rows.forEach(tr=>{
+        tr.dataset.embalador=nome;
+        const td=tr.children[5]; // após inserir checkbox: embalador passou a índice 5
+        if(td)td.innerHTML=nome+' <span class="ce-lote-tag">Selecionado</span>';
+        tr.classList.add('ce-v181-assigned');
+        const cb=tr.querySelector('.ce-v181-rowcheck');if(cb)cb.checked=false;
+      });
+      atualizarSelecionados();atualizarContagem();
+      const s=$('ce-op-status');if(s)s.textContent=rows.length+' pedido(s) atribuídos a '+nome;
     };
-    prod.forEach(p=>{const x=pega(p);x.postagens++;x.ped.add(p._key);});
-    coletDia.forEach(p=>{pega(p).exp.add(p._key);});
-    const totPed=new Set();prod.forEach(p=>totPed.add(p._key));
-    const total=totPed.size;
-    return [...g.values()].map(x=>({
-      chave:x.chave,nome:x.nome,postagens:x.postagens,
-      pedidos:x.ped.size,unidades:somaUn(x.ped),
-      exp:x.exp.size,unExp:somaUn(x.exp),
-      part:total?x.ped.size/total*100:0
-    }));
-  }
-  const bip=agrupar('bipador'),emb=agrupar('embalador');
-
-  // Cartões do recorte (colaborador escolhido/usuário logado ou toda a operação)
-  const cartoesDe=(pred,papel)=>{
-    const ps=pred?prod.filter(p=>pred(normNome(p[papel]))):prod;
-    const cs=pred?coletDia.filter(p=>pred(normNome(p[papel]))):coletDia;
-    const ped=new Set(ps.map(p=>p._key)),exp=new Set(cs.map(p=>p._key));
-    return {postagens:ps.length,pedidos:ped.size,unidades:somaUn(ped),exp:exp.size,unExp:somaUn(exp)};
-  };
-  const cartoes=cartoesDe(ctx.predBip,'bipador');
-  const embalagem=cartoesDe(ctx.predEmb||ctx.predBip,'embalador');
-
-  // Faturados x Expedidos (coorte: NFs faturadas no dia; expedida = existe postagem com coleta_em)
-  const coletadasKeys=new Set(coletTodas.map(p=>p._key));
-  const fatMap=new Map();
-  (raw.fat||[]).forEach(x=>{
-    if(!filialOk(x.filial))return;
-    const fil=String(x.filial).trim();
-    if(!casaFilial(fil))return;
-    const ch=digitos(x.chave_nfe);
-    const key=ch.length>=40?ch:`${fil}|${nfSemZero(x.nf)}`;
-    if(!fatMap.has(key))fatMap.set(key,{filial:fil,un:num(x.total_unidades)||num(x.volume)||0});
-  });
-  const porFilial={};
-  FILIAIS.forEach(fl=>{porFilial[fl]={fat:0,exp:0};});
-  fatMap.forEach((v,key)=>{
-    const e=coletadasKeys.has(key);
-    if(!porFilial[v.filial])porFilial[v.filial]={fat:0,exp:0};
-    porFilial[v.filial].fat++;if(e)porFilial[v.filial].exp++;
-  });
-  const fat=fatMap.size;
-  let exped=0;fatMap.forEach((v,key)=>{if(coletadasKeys.has(key))exped++;});
-  const coletadosDia=new Set(coletDia.map(p=>p._key)).size;
-  return {
-    cartoes,embalagem,bip,emb,
-    fat:{faturados:fat,expedidos:exped,pendentes:Math.max(0,fat-exped),pct:fat?exped/fat*100:0,porFilial,coletadosDia},
-    totais:{postagens:prod.length,pedidos:new Set(prod.map(p=>p._key)).size}
-  };
-}
-
-// ───────────────────────── acesso ao Supabase ─────────────────────────
-function rest(path,opt){
-  if(typeof window.CE_REST!=='function')return Promise.reject(new Error('conexão com o Supabase ainda não inicializada (faça login e tente novamente)'));
-  return opt?window.CE_REST(path,opt):window.CE_REST(path);
-}
-async function paginado(base,estado){
-  const out=[];
-  for(let off=0;off<CAP_REGISTROS;off+=1000){
-    const l=await rest(base+'&limit=1000&offset='+off);
-    if(!Array.isArray(l))throw new Error('resposta inesperada do Supabase');
-    out.push(...l);
-    if(l.length<1000)return out;
-  }
-  if(estado)estado.truncado=true;
-  return out;
-}
-function msgErro(e){
-  let m=String(e?.message||e||'erro desconhecido');
-  try{const j=JSON.parse(m);m=[j.message,j.details,j.hint].filter(Boolean).join(' — ')||m;}catch(_){}
-  return m;
-}
-// Consultas consolidadas (nunca por linha): 1 de faturados, 2 de postagens, e XML só do que faltar.
-async function carregarDados(dataISO){
-  const j=janelaDia(dataISO),estado={truncado:false};
-  const ini=encodeURIComponent(j.ini),fim=encodeURIComponent(j.fim);
-  const [fat,prod,colet,venceHoje,pendentesVia]=await Promise.all([
-    paginado(`xmls?select=${SEL_XML}&filial=in.(${FILIAIS.join(',')})&data_saida_entrada=gte.${ini}&data_saida_entrada=lt.${fim}&order=data_saida_entrada.asc,filial.asc,nf.asc`,estado),
-    paginado(`postagens?select=${COLS_POST}&bipada_em=gte.${ini}&bipada_em=lt.${fim}&order=bipada_em.asc,id.asc`,estado),
-    paginado(`postagens?select=${COLS_POST}&coleta_em=gte.${ini}&order=coleta_em.asc,id.asc`,estado),
-    paginado(`xmls?select=filial,nf,pedido,data_limite&filial=in.(${FILIAIS.join(',')})&data_limite=gte.${ini}&data_limite=lt.${fim}&order=data_limite.asc,filial.asc,nf.asc`,estado),
-    paginado(`via_leitor?select=filial,nf,pedido,data_limite&filial=in.(${FILIAIS.join(',')})&order=data_limite.asc,filial.asc,nf.asc`,estado)
-  ]);
-  // XML das postagens que não estão entre os faturados do dia (chave NF-e primeiro; NF depois).
-  const chavesFat=new Set(fat.map(x=>digitos(x.chave_nfe)).filter(Boolean));
-  const nfsFat=new Set(fat.map(x=>nfSemZero(x.nf)).filter(Boolean));
-  const unicas=new Map();[...prod,...colet].forEach(p=>{if(!unicas.has(p.id))unicas.set(p.id,p);});
-  const faltaChave=new Set(),semChave=[];
-  unicas.forEach(p=>{
-    const ch=digitos(p.chave_nfe);
-    if(ch.length>=40){if(!chavesFat.has(ch))faltaChave.add(ch);}
-    else if(!nfsFat.has(nfSemZero(p.nf)))semChave.push(p);
-  });
-  const xmlExtra=[];
-  const lc=[...faltaChave];
-  for(let i=0;i<lc.length;i+=40){
-    const xs=await rest(`xmls?select=${SEL_XML}&chave_nfe=in.(${lc.slice(i,i+40).map(c=>'"'+c+'"').join(',')})&limit=1000`);
-    if(Array.isArray(xs))xmlExtra.push(...xs);
-  }
-  const nfs=[...new Set(semChave.flatMap(p=>{const r=digitos(p.nf);return r?[r,nfSemZero(r),r.padStart(9,'0')]:[];}).filter(Boolean))];
-  for(let i=0;i<nfs.length;i+=60){
-    const xs=await rest(`xmls?select=${SEL_XML}&nf=in.(${nfs.slice(i,i+60).map(n=>'"'+n+'"').join(',')})&limit=1000`);
-    if(Array.isArray(xs))xmlExtra.push(...xs);
-  }
-  return {raw:{fat,prod,colet,xmlExtra,venceHoje,pendentesVia},janela:j,truncado:estado.truncado};
-}
-
-// ───────────────────────── metas diárias (public.metas_operacao) ─────────────────────────
-const SQL_METAS=`create table if not exists public.metas_operacao (
-  colaborador text primary key,
-  nome text not null,
-  meta_pedidos integer not null check (meta_pedidos > 0),
-  atualizado_por text,
-  atualizado_em timestamptz not null default now()
-);
-alter table public.metas_operacao enable row level security;
-grant select, insert, update, delete on public.metas_operacao to authenticated;
-drop policy if exists metas_leitura on public.metas_operacao;
-create policy metas_leitura on public.metas_operacao for select to authenticated using (true);
-drop policy if exists metas_escrita_admin on public.metas_operacao;
-create policy metas_escrita_admin on public.metas_operacao for all to authenticated
-  using (exists (select 1 from public.config_usuarios u where lower(u.email)=lower(auth.jwt()->>'email') and lower(u.perfil)='admin' and u.ativo))
-  with check (exists (select 1 from public.config_usuarios u where lower(u.email)=lower(auth.jwt()->>'email') and lower(u.perfil)='admin' and u.ativo));
-notify pgrst, 'reload schema';`;
-async function carregarMetas(){
-  try{
-    const r=await rest('metas_operacao?select=colaborador,nome,meta_pedidos&order=nome.asc&limit=1000');
-    const m=new Map();
-    (r||[]).forEach(x=>{const k=normNome(x.colaborador||x.nome),v=parseInt(x.meta_pedidos,10);if(k&&v>0)m.set(k,{nome:x.nome||x.colaborador,meta:v});});
-    return {metas:m,erro:'',ausente:false};
-  }catch(e){
-    const msg=msgErro(e);
-    return {metas:new Map(),erro:msg,ausente:/metas_operacao|PGRST205|schema cache|does not exist|404/i.test(msg)};
-  }
-}
-async function salvarMetas(){
-  const inputs=[...document.querySelectorAll('#ce-pn-corpo input[data-pn-meta]')];
-  const por=nomeUsuario()||String(perfil()?.email||'');
-  const up=[],del=[];
-  inputs.forEach(i=>{
-    const k=i.dataset.pnMeta,nome=i.dataset.pnNome||k,v=parseInt(i.value,10),antes=ST.metas.get(k)?.meta||0;
-    if(!(v>0)){if(antes)del.push(k);}
-    else if(v!==antes)up.push({colaborador:k,nome,meta_pedidos:v,atualizado_por:por,atualizado_em:new Date().toISOString()});
-  });
-  if(!up.length&&!del.length){ST.metaMsg='Nenhuma alteração para salvar.';renderizar();return;}
-  try{
-    if(up.length)await rest('metas_operacao?on_conflict=colaborador',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(up)});
-    for(const k of del)await rest('metas_operacao?colaborador=eq.'+encodeURIComponent(k),{method:'DELETE',headers:{Prefer:'return=minimal'}});
-    ST.rascunho={};
-    const r=await carregarMetas();ST.metas=r.metas;ST.metasErro=r.erro;ST.metasAusente=r.ausente;
-    ST.metaMsg='Metas salvas ('+(up.length+del.length)+' alteração(ões)).';
-  }catch(e){
-    ST.metaMsg='Erro ao salvar metas: '+msgErro(e)+' (somente ADMIN pode gravar metas).';
-  }
-  renderizar();
-}
-
-// ───────────────────────── interface ─────────────────────────
-const ST={dados:null,dataCarregada:'',ts:0,carregando:false,modo:'emb',ordem:{col:'pedidos',dir:-1},ordemCmp:{col:'pedidos',dir:-1},timer:null,hojeAnt:'',erro:'',metas:new Map(),metasErro:'',metasAusente:false,editMetas:false,rascunho:{},metaMsg:''};
-const perfil=()=>window.CE_AUTH?.perfil||null;
-const ehAdmin=()=>String(perfil()?.perfil||'').toLowerCase()==='admin';
-const nomeUsuario=()=>String(perfil()?.nome||'').trim();
-// Usuário comum ↔ nome de bipador/embalador (igualdade ou contido, sem acento/caixa).
-function predUsuario(){
-  const n=normNome(nomeUsuario());
-  if(!n)return ()=>false;
-  return k=>!!k&&k!=='—'&&(k===n||(k.length>=3&&(k.includes(n)||n.includes(k))));
-}
-function contexto(){
-  const admin=ehAdmin(),sel=$('ce-pn-colab')?.value||'';
-  let pred=null;
-  if(!admin)pred=predUsuario();
-  else if(sel)pred=k=>k===sel;
-  return {janela:ST.dados.janela,predBip:pred,predEmb:pred};
-}
-function css(){
-  if($('ce-pn-style'))return;
-  const s=document.createElement('style');s.id='ce-pn-style';
-  s.textContent=`
-#view-painel{padding:0}
-.ce-pn-title{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:12px;gap:12px;flex-wrap:wrap}
-.ce-pn-title h2{margin:0;font-size:20px;color:#102536}.ce-pn-title p{margin:3px 0 0;font-size:11px;color:#657785}
-.ce-pn-upd{text-align:right;font-size:11px;color:#314654}.ce-pn-upd b{font-size:12px}.ce-pn-upd small{display:block;font-size:9px;color:#7a8a95;margin-top:2px}
-.ce-pn-filtros{display:grid;grid-template-columns:150px 120px minmax(180px,240px) minmax(180px,240px) 100px;gap:8px;background:#fff;border:1px solid #d4dcda;border-radius:7px;padding:10px;margin-bottom:10px;align-items:end}
-.ce-pn-filtros label{display:block;font-size:9px;font-weight:800;color:#536572;margin-bottom:4px}
-.ce-pn-filtros input,.ce-pn-filtros select{width:100%;height:31px;border:1px solid #bcc8cf;border-radius:3px;padding:0 8px;font-size:11px;box-sizing:border-box;background:#fff}
-.ce-pn-filtros select:disabled{background:#eef2f5;color:#314654;font-weight:700}
-.ce-pn-btn{height:31px;border:0;border-radius:3px;background:#0878c9;color:#fff;font-size:10px;font-weight:800;cursor:pointer}.ce-pn-btn:disabled{opacity:.6;cursor:default}
-.ce-pn-quem{display:flex;gap:8px;align-items:center;font-size:11px;color:#314654;margin:0 0 8px}
-.ce-pn-chip{background:#e4eef6;color:#164764;border-radius:20px;padding:3px 10px;font-weight:800;font-size:10px}.ce-pn-chip.adm{background:#fdebd9;color:#8a3d0b}
-.ce-pn-aviso{background:#fff7e0;border:1px solid #ecd48a;color:#6b5311;border-radius:6px;padding:7px 10px;font-size:11px;margin-bottom:8px}
-.ce-pn-erro{background:#fdeceb;border:1px solid #e4a9a4;color:#8c1d14;border-radius:6px;padding:9px 12px;font-size:12px;font-weight:700;margin-bottom:8px}
-.ce-pn-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:10px}
-.ce-pn-card{background:#fff;border:1px solid #d4dcda;border-radius:7px;padding:10px 12px;border-top:3px solid #1f5c8b}
-.ce-pn-card small{display:block;font-size:9px;font-weight:800;color:#536572;letter-spacing:.2px}.ce-pn-card b{display:block;font-size:24px;color:#102536;margin-top:3px;line-height:1.1}
-.ce-pn-card em{display:block;font-style:normal;font-size:9px;color:#7a8a95;margin-top:2px}
-.ce-pn-card.exp{border-top-color:#146c43}.ce-pn-card.fat{border-top-color:#e1631c}
-.ce-pn-fx{background:#fff;border:1px solid #d4dcda;border-radius:7px;padding:14px;margin-bottom:10px}
-.ce-pn-fx h3{margin:0 0 10px;font-size:13px;color:#102536}
-.ce-pn-fxgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:12px}
-.ce-pn-fxgrid div{background:#f4f7f8;border-radius:6px;padding:10px 12px}.ce-pn-fxgrid small{display:block;font-size:9px;font-weight:800;color:#536572}
-.ce-pn-fxgrid b{font-size:28px;color:#102536;line-height:1.1}.ce-pn-fxgrid .pct b{color:#146c43}.ce-pn-fxgrid .pen b{color:#b23a2e}
-.ce-pn-barra{height:14px;background:#e3e9ec;border-radius:7px;overflow:hidden}.ce-pn-barra i{display:block;height:100%;background:#146c43;border-radius:7px;transition:width .3s}
-.ce-pn-fil{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
-.ce-pn-fil div{border:1px solid #e0e6e8;border-radius:6px;padding:7px 10px;font-size:10px;color:#314654}.ce-pn-fil b{font-size:11px;color:#102536}
-.ce-pn-fil .mini{height:6px;background:#e3e9ec;border-radius:3px;margin-top:5px;overflow:hidden}.ce-pn-fil .mini i{display:block;height:100%;background:#1f5c8b}
-.ce-pn-nota{font-size:10px;color:#6c7c87;margin-top:8px}
-.ce-pn-emb{display:flex;gap:18px;flex-wrap:wrap;background:#fff;border:1px solid #d4dcda;border-left:3px solid #7a4cc4;border-radius:7px;padding:9px 14px;margin-bottom:10px;font-size:11px;color:#314654;align-items:center}
-.ce-pn-emb b{font-size:15px;color:#102536}
-.ce-pn-bloco{background:#fff;border:1px solid #d4dcda;border-radius:7px;margin-bottom:10px;overflow:hidden}
-.ce-pn-bloco-h{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-bottom:1px solid #e0e6e8;gap:8px;flex-wrap:wrap}
-.ce-pn-bloco-h h3{margin:0;font-size:13px;color:#102536}
-.ce-pn-seg{display:inline-flex;border:1px solid #bcc8cf;border-radius:4px;overflow:hidden}.ce-pn-seg button{border:0;background:#fff;padding:5px 12px;font-size:10px;font-weight:800;color:#314654;cursor:pointer}.ce-pn-seg button.on{background:#164764;color:#fff}
-.ce-pn-tw{overflow:auto}.ce-pn-t{width:100%;border-collapse:collapse;font-size:11px;white-space:nowrap}
-.ce-pn-t th{background:#dfe4e6;border-bottom:1px solid #c5cdd1;padding:7px 10px;text-align:right;color:#314654;font-size:9px;cursor:pointer;user-select:none}
-.ce-pn-t th:first-child,.ce-pn-t td:first-child{text-align:left}.ce-pn-t td{padding:7px 10px;border-bottom:1px solid #e6eaec;color:#172b38;text-align:right}
-.ce-pn-t tbody tr:nth-child(even){background:#f6f8f8}.ce-pn-t tr.me{background:#e8f3ec!important;font-weight:800}.ce-pn-t tfoot td{background:#eef2f3;font-weight:800;border-top:2px solid #c5cdd1}
-.ce-pn-vazio{padding:18px;text-align:center;color:#7a8a95;font-size:11px}
-.ce-pn-meta{background:#fff;border:1px solid #d4dcda;border-left:4px solid #1f5c8b;border-radius:7px;padding:12px 14px;margin-bottom:10px}
-.ce-pn-meta .top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;font-size:12px;color:#314654;font-weight:700}
-.ce-pn-meta .top b{font-size:20px;color:#102536}.ce-pn-meta small{display:block;margin-top:6px;font-size:11px;color:#536572}
-.ce-pn-mbar{height:16px;background:#e3e9ec;border-radius:8px;overflow:hidden;margin-top:8px}.ce-pn-mbar i{display:block;height:100%;border-radius:8px;transition:width .3s}
-.ce-pn-meta.ok{border-left-color:#146c43;background:#f1faf4}.ce-pn-meta.vazio{border-left-color:#b8c4cb;color:#6c7c87;font-size:11px}
-.ce-pn-t .mb{display:inline-block;width:58px;height:7px;background:#e3e9ec;border-radius:4px;overflow:hidden;vertical-align:middle;margin-right:6px}.ce-pn-t .mb i{display:block;height:100%}
-.ce-pn-mf{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px;padding:10px 12px}
-.ce-pn-mf label{display:grid;grid-template-columns:1fr 86px;gap:8px;align-items:center;font-size:11px;color:#172b38;border:1px solid #e0e6e8;border-radius:6px;padding:6px 9px}
-.ce-pn-mf label span small{display:block;font-size:9px;color:#7a8a95}.ce-pn-mf input{height:28px;border:1px solid #bcc8cf;border-radius:3px;padding:0 6px;font-size:12px;width:100%;box-sizing:border-box;text-align:right}
-.ce-pn-mac{display:flex;gap:10px;align-items:center;padding:0 12px 12px;flex-wrap:wrap;font-size:11px;color:#314654}
-.ce-pn-sql{margin:10px 12px;background:#0f1b26;color:#cfe3f1;border-radius:6px;padding:10px;font-size:10px;max-height:220px;overflow:auto;white-space:pre}
-@media(max-width:1100px){.ce-pn-cards,.ce-pn-fxgrid{grid-template-columns:repeat(2,minmax(0,1fr))}.ce-pn-filtros{grid-template-columns:1fr 1fr}.ce-pn-fil{grid-template-columns:1fr}}
-`;
-  document.head.appendChild(s);
-}
-function montarSecao(){
-  if($('view-painel'))return;
-  const main=document.querySelector('main.main-content')||document.querySelector('main');
-  if(!main)return;
-  const s=document.createElement('section');s.className='view';s.id='view-painel';
-  s.innerHTML=`
-<div class="ce-pn-title"><div><h2>Painel de Operação</h2><p>Acompanhamento diário da Expedição</p></div>
-<div class="ce-pn-upd"><b id="ce-pn-upd">Última atualização: --:--:--</b><small>Atualização automática a cada 2 min</small></div></div>
-<div class="ce-pn-tabs">
- <button type="button" class="ce-pn-tab on" data-pn-aba="operacao">Resumo da Operação</button>
- <button type="button" class="ce-pn-tab" data-pn-aba="colaboradores">Painel dos Colaboradores</button>
-</div>
-<div class="ce-pn-filtros">
- <div><label>DATA</label><input type="date" id="ce-pn-data"></div>
- <div><label>FILIAL</label><select id="ce-pn-filial"><option value="">Todas</option><option>0101</option><option>0102</option><option>1020</option></select></div>
- <div><label>TRANSPORTE</label><select id="ce-pn-transporte"><option value="">Todos os transportes</option></select></div>
- <div><label>COLABORADOR</label><select id="ce-pn-colab"><option value="">Todos</option></select></div>
- <button type="button" class="ce-pn-btn" id="ce-pn-atualizar">Atualizar</button>
-</div>
-<div id="ce-pn-msg"></div>
-<div id="ce-pn-corpo"><div class="ce-pn-vazio">Carregando...</div></div>`;
-  main.appendChild(s);
-  $('ce-pn-data').value=hojeSP();ST.hojeAnt=$('ce-pn-data').value;
-  $('ce-pn-atualizar').onclick=()=>atualizar(true);
-  $('ce-pn-data').onchange=()=>atualizar(true);
-  $('ce-pn-filial').onchange=()=>renderizar();
-  $('ce-pn-transporte').onchange=()=>renderizar();
-  $('ce-pn-colab').onchange=()=>renderizar();
-  $('ce-pn-corpo').addEventListener('input',e=>{const i=e.target.closest('input[data-pn-meta]');if(i)ST.rascunho[i.dataset.pnMeta]=i.value;});
-  document.querySelectorAll('[data-pn-aba]').forEach(b=>b.onclick=()=>{ST.aba=b.dataset.pnAba||'operacao';document.querySelectorAll('[data-pn-aba]').forEach(x=>x.classList.toggle('on',x===b));renderizar();});
-  $('ce-pn-corpo').addEventListener('click',e=>{
-    const seg=e.target.closest('[data-pn-modo]');
-    if(seg){ST.modo=seg.dataset.pnModo;renderizar();return;}
-    if(e.target.closest('[data-pn-metas-toggle]')){ST.editMetas=!ST.editMetas;ST.metaMsg='';renderizar();return;}
-    if(e.target.closest('[data-pn-metas-salvar]')){salvarMetas();return;}
-    if(e.target.closest('[data-pn-sql]')){
-      try{navigator.clipboard.writeText(SQL_METAS).then(()=>{ST.metaMsg='SQL copiado. Cole no SQL Editor do Supabase e execute.';renderizar();},()=>{ST.metaMsg='Não foi possível copiar; selecione o texto manualmente.';renderizar();});}
-      catch(_){ST.metaMsg='Não foi possível copiar; selecione o texto manualmente.';renderizar();}
-      return;
-    }
-    const th=e.target.closest('th[data-pn-col]');
-    if(th){
-      const o=th.dataset.pnTab==='cmp'?ST.ordemCmp:ST.ordem,c=th.dataset.pnCol;
-      if(o.col===c)o.dir=-o.dir;else{o.col=c;o.dir=c==='nome'?1:-1;}
-      renderizar();
-    }
-  });
-}
-function popularColaboradores(m){
-  const sel=$('ce-pn-colab');if(!sel)return;
-  const admin=ehAdmin();
-  if(!admin){
-    sel.innerHTML=`<option value="">${esc(nomeUsuario()||'Usuário logado')}</option>`;sel.value='';sel.disabled=true;return;
-  }
-  sel.disabled=false;
-  const atual=sel.value,mapa=new Map();
-  [...m.bip,...m.emb].forEach(x=>{if(x.chave!=='—')mapa.set(x.chave,x.nome);});
-  try{const c=window.CONFIG_TESTE_OPERADORES||{};[...(c.bipadores||[]),...(c.embaladores||[])].forEach(n=>{const k=normNome(n);if(k&&!mapa.has(k))mapa.set(k,String(n));});}catch(e){}
-  const itens=[...mapa.entries()].sort((a,b)=>a[1].localeCompare(b[1],'pt-BR'));
-  sel.innerHTML='<option value="">Todos</option>'+itens.map(([k,n])=>`<option value="${esc(k)}">${esc(n)}</option>`).join('');
-  sel.value=itens.some(([k])=>k===atual)?atual:'';
-}
-function ordenar(lista,o){
-  const d=o.dir;
-  return [...lista].sort((a,b)=>{
-    const x=a[o.col],y=b[o.col];
-    const r=typeof x==='string'?x.localeCompare(y,'pt-BR'):(x-y);
-    return (r||a.nome.localeCompare(b.nome,'pt-BR'))*d;
-  });
-}
-function th(rotulo,col,tab,o){
-  const seta=o.col===col?(o.dir>0?' ▲':' ▼'):'';
-  return `<th data-pn-col="${col}" data-pn-tab="${tab}">${rotulo}${seta}</th>`;
-}
-const corMeta=p=>p>=100?'#146c43':p>=50?'#e1a21c':'#c0392b';
-function blocoMeta(admin,ctx2,pedidos,selNome,mm){
-  // usuário comum ou admin com colaborador selecionado → meta individual; admin "Todos" → meta da equipe
-  let meta=0,feito=pedidos,titulo,aplicaEquipe=false;
-  if(!admin){
-    const p=predUsuario();for(const [k,v] of ST.metas){if(p(k)){meta=v.meta;break;}}
-    titulo='🎯 Sua meta do dia';
-  }else if(ctx2.predBip){
-    const p=ctx2.predBip;for(const [k,v] of ST.metas){if(p(k)){meta=v.meta;break;}}
-    titulo='🎯 Meta de '+esc(selNome);
-  }else{
-    aplicaEquipe=true;titulo='🎯 Meta da equipe';
-    let f=0;ST.metas.forEach((v,k)=>{meta+=v.meta;const r=mm.bip.find(x=>x.chave===k);if(r)f+=r.pedidos;});
-    feito=f;
-  }
-  if(!(meta>0)){
-    if(aplicaEquipe)return '';
-    return `<div class="ce-pn-meta vazio">${titulo}: ainda não definida${admin?'. Use “Definir metas” abaixo.':'. Peça ao administrador para definir sua meta.'}</div>`;
-  }
-  const pct=feito/meta*100,falta=Math.max(0,meta-feito),ok=pct>=100;
-  return `<div class="ce-pn-meta${ok?' ok':''}"><div class="top"><span>${titulo}${aplicaEquipe?' <small style="display:inline;font-weight:400">(soma de quem tem meta)</small>':''}</span><b>${fmtN(feito)} / ${fmtN(meta)} pedidos · ${fmtPct(pct)}</b></div>
-<div class="ce-pn-mbar"><i style="width:${Math.min(100,pct)}%;background:${corMeta(pct)}"></i></div>
-<small>${ok?'✅ Meta batida'+(feito>meta?' — '+fmtN(feito-meta)+' pedido(s) acima da meta':''):'Faltam '+fmtN(falta)+' pedido(s) para bater a meta'}</small></div>`;
-}
-function blocoEditorMetas(m){
-  const mapa=new Map();
-  const add=(k,n)=>{if(k&&k!=='—'&&!mapa.has(k))mapa.set(k,String(n));};
-  try{(window.CONFIG_TESTE_OPERADORES?.bipadores||[]).forEach(n=>add(normNome(n),n));}catch(e){}
-  m.bip.forEach(x=>add(x.chave,x.nome));
-  ST.metas.forEach((v,k)=>add(k,v.nome));
-  const feitoDe=k=>m.bip.find(x=>x.chave===k)?.pedidos||0;
-  const itens=[...mapa.entries()].sort((a,b)=>a[1].localeCompare(b[1],'pt-BR'));
-  let corpo='';
-  if(ST.metasAusente){
-    corpo=`<div class="ce-pn-aviso" style="margin:10px 12px">A tabela de metas ainda não existe no Supabase. Execute o SQL abaixo uma única vez (SQL Editor) e depois clique em Atualizar.</div>
-<div class="ce-pn-mac"><button type="button" class="ce-pn-btn" style="padding:0 12px" data-pn-sql="1">Copiar SQL</button></div><div class="ce-pn-sql">${esc(SQL_METAS)}</div>`;
-  }else if(ST.editMetas){
-    corpo=`<div class="ce-pn-mf">${itens.map(([k,n])=>{
-      const v=ST.rascunho[k]!==undefined?ST.rascunho[k]:(ST.metas.get(k)?.meta||'');
-      return `<label><span>${esc(n)}<small>hoje: ${fmtN(feitoDe(k))} pedido(s)</small></span><input type="number" min="0" step="1" inputmode="numeric" placeholder="sem meta" value="${esc(v)}" data-pn-meta="${esc(k)}" data-pn-nome="${esc(n)}"></label>`;}).join('')||'<div class="ce-pn-vazio">Nenhum colaborador encontrado.</div>'}</div>
-<div class="ce-pn-mac"><button type="button" class="ce-pn-btn" style="padding:0 14px" data-pn-metas-salvar="1">Salvar metas</button><span>Meta diária em <b>pedidos bipados</b>. Deixe em branco para remover.</span></div>`;
-  }
-  const erro=(!ST.metasAusente&&ST.metasErro)?`<div class="ce-pn-erro" style="margin:10px 12px">Erro ao carregar metas: ${esc(ST.metasErro)}</div>`:'';
-  return `<div class="ce-pn-bloco"><div class="ce-pn-bloco-h"><h3>Metas diárias por colaborador</h3>${ST.metasAusente?'':`<button type="button" class="ce-pn-btn" style="padding:0 12px" data-pn-metas-toggle="1">${ST.editMetas?'Fechar':'Definir metas'}</button>`}</div>${ST.metaMsg?`<div class="ce-pn-aviso" style="margin:10px 12px">${esc(ST.metaMsg)}</div>`:''}${erro}${corpo}</div>`;
-}
-function renderizar(){
-  const corpo=$('ce-pn-corpo');if(!corpo)return;
-  const msg=$('ce-pn-msg');
-  msg.innerHTML=ST.erro?`<div class="ce-pn-erro">Erro ao carregar o painel: ${esc(ST.erro)}</div>`:'';
-  if(!ST.dados){corpo.innerHTML=ST.erro?'':'<div class="ce-pn-vazio">Carregando...</div>';return;}
-  const admin=ehAdmin();
-  const f={filial:$('ce-pn-filial')?.value||''};
-  const canonTransporte=v=>{
-    let t=String(v||'SEM TRANSPORTADORA').trim().toUpperCase();
-    if(!t)t='SEM TRANSPORTADORA';
-    if(t.includes('MERCADO LIVRE'))t='ME2';
-    if(t.includes('MAGALU'))t='ENVIOS - MARKETPLACES';
-    return t;
-  };
-  // Preenche o filtro apenas com transportes existentes nos faturados da data/filial.
-  const selTr=$('ce-pn-transporte');
-  if(selTr){
-    const atual=selTr.value||'';
-    const trs=[...new Set((ST.dados.raw.fat||[]).filter(x=>!f.filial||String(x?.filial||'')===f.filial).map(x=>canonTransporte(x.transportadora)))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
-    selTr.innerHTML='<option value="">Todos os transportes</option>'+trs.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');
-    if(trs.includes(atual))selTr.value=atual;
-  }
-  const transporteSel=selTr?.value||'';
-  // 1) modelo sem recorte individual só para listar colaboradores; 2) modelo do recorte atual
-  popularColaboradores(construirModelo(ST.dados.raw,f,{janela:ST.dados.janela,predBip:null,predEmb:null}));
-  const ctx2=contexto();
-  const mm=construirModelo(ST.dados.raw,f,ctx2);
-  const c=mm.cartoes,fx=mm.fat,emb=mm.embalagem;
-  // V168 — resumo operacional do dia selecionado.
-  const filOk=x=>(!f.filial||String(x?.filial||'')===f.filial)&&(!transporteSel||canonTransporte(x?.transportadora)===transporteSel);
-  const chaveNF=x=>String(x?.filial||'')+'|'+String(x?.nf||'').replace(/^0+/,'');
-  const unicos=arr=>new Set((arr||[]).filter(filOk).map(chaveNF).filter(x=>!x.endsWith('|'))).size;
-  const dataSel=$('ce-pn-data')?.value||hojeSP();
-  const pend=(ST.dados.raw.pendentesVia||[]).filter(filOk);
-  const pendHoje=pend.filter(x=>String(x.data_limite||'').slice(0,10)===dataSel);
-  const atrasados=pend.filter(x=>{const d=String(x.data_limite||'').slice(0,10);return d&&d<dataSel;});
-  const resumoOp={
-    faturados:unicos(ST.dados.raw.fat||[]),
-    precisamSair:unicos(ST.dados.raw.venceHoje||[]),
-    faltamBipar:unicos(pendHoje),
-    atrasados:unicos(atrasados)
-  };
-  // V169 — faturados do dia agrupados por transportadora (sem volume).
-  const porTransporte=new Map();
-  const vistosTransporte=new Set();
-  (ST.dados.raw.fat||[]).filter(filOk).forEach(x=>{
-    const id=chaveNF(x); if(!id||id.endsWith('|')||vistosTransporte.has(id))return;
-    vistosTransporte.add(id);
-    const tr=canonTransporte(x.transportadora);
-    porTransporte.set(tr,(porTransporte.get(tr)||0)+1);
-  });
-  const faturadosTransporte=[...porTransporte.entries()].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'pt-BR'));
-  const totalTransporte=faturadosTransporte.reduce((a,[,q])=>a+q,0);
-  const blocoTransportes=`<div class="ce-pn-bloco"><div class="ce-pn-bloco-h"><h3>Faturados do Dia por Transporte</h3><span style="font-size:10px;color:#7a8a95">${f.filial?'Filial '+esc(f.filial):'Todas as filiais'}${transporteSel?' · '+esc(transporteSel):''}</span></div>
-<div class="ce-pn-tw"><table class="ce-pn-t"><thead><tr><th style="text-align:left">TRANSPORTE</th><th>FATURADOS</th></tr></thead><tbody>${faturadosTransporte.length?faturadosTransporte.map(([tr,q])=>`<tr><td>${esc(tr)}</td><td><b>${fmtN(q)}</b></td></tr>`).join(''):`<tr><td colspan="2" class="ce-pn-vazio">Nenhum faturado encontrado na data selecionada.</td></tr>`}</tbody><tfoot><tr><td>TOTAL</td><td>${fmtN(totalTransporte)}</td></tr></tfoot></table></div></div>`;
-  const selNome=admin?($('ce-pn-colab').selectedOptions[0]?.textContent||'Todos'):nomeUsuario();
-  const quem=admin
-    ?`<span class="ce-pn-chip adm">ADMIN</span> ${ctx2.predBip?'Visão individual: <b>'+esc(selNome)+'</b>':'Operação completa'}`
-    :`<span class="ce-pn-chip">${esc(nomeUsuario()||'Usuário')}</span> Seus números do dia selecionado`;
-  const aviso=[];
-  if(ST.dados.truncado)aviso.push('Limite de registros atingido: os totais podem estar incompletos.');
-  if(!admin&&c.postagens===0)aviso.push('Nenhuma bipagem encontrada para “'+esc(nomeUsuario()||'seu usuário')+'” nesta data. O vínculo é feito pelo nome cadastrado como Bipador/Embalador.');
-  const card=(rot,val,sub,cls)=>`<div class="ce-pn-card ${cls||''}"><small>${rot}</small><b>${val}</b>${sub?`<em>${sub}</em>`:''}</div>`;
-  const fils=(f.filial?[f.filial]:FILIAIS).map(fl=>{
-    const v=mm.fat.porFilial[fl]||{fat:0,exp:0},p=v.fat?v.exp/v.fat*100:0;
-    return `<div><b>Filial ${fl}</b> · ${fmtN(v.exp)} / ${fmtN(v.fat)} (${fmtPct(p)})<div class="mini"><i style="width:${Math.min(100,p)}%"></i></div></div>`;
-  }).join('');
-  // Tabelas
-  const lista=ST.modo==='emb'?mm.emb:mm.bip;
-  const meu=admin?null:predUsuario();
-  const comMeta=ST.modo==='emb';
-  const lista2=lista.map(x=>{const meta=comMeta?(ST.metas.get(x.chave)?.meta||0):0;return {...x,meta,pctMeta:meta?x.pedidos/meta*100:-1};});
-  let linhas=ordenar(lista2,ST.ordem);
-  if(!admin)linhas=linhas.filter(x=>meu(x.chave));
-  const rotPed=ST.modo==='emb'?'EMBALAGENS':'PEDIDOS BIPADOS';
-  const marca=x=>(!admin||(ctx2.predBip&&ctx2.predBip(x.chave)))?' class="me"':'';
-  const corpoTab=linhas.length?linhas.map(x=>`<tr${marca(x)}><td>${esc(x.nome)}</td><td>${fmtN(x.postagens)}</td><td>${fmtN(x.pedidos)}</td><td>${fmtN(x.unidades)}</td><td>${fmtN(x.exp)}</td><td>${fmtN(x.unExp)}</td><td>${fmtPct(x.part)}</td>${comMeta?`<td>${x.meta?fmtN(x.meta):'—'}</td><td>${x.meta?`<span class="mb"><i style="width:${Math.min(100,x.pctMeta)}%;background:${corMeta(x.pctMeta)}"></i></span>${fmtPct(x.pctMeta)}`:'—'}</td>`:''}</tr>`).join(''):`<tr><td colspan="9" class="ce-pn-vazio">Sem produção registrada para o recorte.</td></tr>`;
-  const o=ST.ordem;
-  const tabProd=`<div class="ce-pn-bloco"><div class="ce-pn-bloco-h"><h3>Resumo dos Colaboradores · Embalagens × Meta do Dia</h3>
-<div class="ce-pn-seg"><button type="button" data-pn-modo="bip" class="${ST.modo==='bip'?'on':''}">Bipagem</button><button type="button" data-pn-modo="emb" class="${ST.modo==='emb'?'on':''}">Embalagem</button></div></div>
-<div class="ce-pn-tw"><table class="ce-pn-t"><thead><tr>${th('COLABORADOR','nome','prod',o)}${th('POSTAGENS','postagens','prod',o)}${th(rotPed,'pedidos','prod',o)}${th('UNIDADES','unidades','prod',o)}${th('EXPEDIDOS','exp','prod',o)}${th('UN. EXPEDIDAS','unExp','prod',o)}${th('% PARTICIPAÇÃO','part','prod',o)}${comMeta?th('META DO DIA','meta','prod',o)+th('% DA META','pctMeta','prod',o):''}</tr></thead><tbody>${corpoTab}</tbody></table></div></div>`;
-  let tabCmp='';
-  if(admin){
-    const mapa=new Map();
-    const junta=(arr,pre)=>arr.forEach(x=>{
-      if(!mapa.has(x.chave))mapa.set(x.chave,{chave:x.chave,nome:x.nome,pedidos:0,unidades:0,expB:0,pedE:0,unE:0,expE:0});
-      const r=mapa.get(x.chave);
-      if(pre==='b'){r.pedidos=x.pedidos;r.unidades=x.unidades;r.expB=x.exp;}else{r.pedE=x.pedidos;r.unE=x.unidades;r.expE=x.exp;}
+    $('ce-v181-marcar').onclick=()=>{
+      const cbs=linhasOp().map(tr=>tr.querySelector('.ce-v181-rowcheck')).filter(Boolean);
+      const marcar=cbs.some(cb=>!cb.checked);cbs.forEach(cb=>cb.checked=marcar);atualizarSelecionados();
+    };
+    $('ce-v181-checkall')?.addEventListener('change',e=>{
+      linhasOp().forEach(tr=>{const cb=tr.querySelector('.ce-v181-rowcheck');if(cb)cb.checked=e.target.checked});
+      atualizarSelecionados();
     });
-    junta(mm.bip,'b');junta(mm.emb,'e');
-    const oc=ST.ordemCmp,cmp=ordenar([...mapa.values()],oc);
-    const cb=cmp.length?cmp.map(x=>`<tr${ctx2.predBip&&ctx2.predBip(x.chave)?' class="me"':''}><td>${esc(x.nome)}</td><td>${fmtN(x.pedidos)}</td><td>${fmtN(x.unidades)}</td><td>${fmtN(x.pedE)}</td><td>${fmtN(x.unE)}</td><td>${fmtN(x.expB)}</td><td>${fmtN(x.expE)}</td></tr>`).join(''):`<tr><td colspan="7" class="ce-pn-vazio">Sem dados.</td></tr>`;
-    tabCmp=`<div class="ce-pn-bloco"><div class="ce-pn-bloco-h"><h3>Comparativo da equipe · quem bipou × quem embalou</h3><span style="font-size:10px;color:#7a8a95">Clique no cabeçalho para ordenar</span></div>
-<div class="ce-pn-tw"><table class="ce-pn-t"><thead><tr>${th('COLABORADOR','nome','cmp',oc)}${th('PEDIDOS BIPADOS','pedidos','cmp',oc)}${th('UN. BIPADAS','unidades','cmp',oc)}${th('PEDIDOS EMBALADOS','pedE','cmp',oc)}${th('UN. EMBALADAS','unE','cmp',oc)}${th('EXPEDIDOS (BIPADOR)','expB','cmp',oc)}${th('EXPEDIDOS (EMBALADOR)','expE','cmp',oc)}</tr></thead><tbody>${cb}</tbody></table></div></div>`;
   }
-  const aba=ST.aba||'operacao';
-  const painelOperacao=`
-<div class="ce-pn-subtitle">Resumo da Operação</div>
-<div class="ce-pn-cards">
- ${card('FATURADOS HOJE',fmtN(resumoOp.faturados),'pedidos/NFs faturados na data','fat')}
- ${card('PRECISAM SAIR',fmtN(resumoOp.precisamSair),'data limite na data selecionada')}
- ${card('FALTAM BIPAR',fmtN(resumoOp.faltamBipar),'ainda sem postagem/bipagem')}
- ${card('ATRASADOS',fmtN(resumoOp.atrasados),'data limite vencida','exp')}
-</div>
-${blocoTransportes}
-<div class="ce-pn-fx"><h3>Faturados × Expedidos${f.filial?' · Filial '+f.filial:' · Todas as filiais'}${transporteSel?' · '+esc(transporteSel):''}</h3>
- <div class="ce-pn-fxgrid"><div><small>PEDIDOS FATURADOS</small><b>${fmtN(resumoOp.faturados)}</b></div><div><small>PEDIDOS EXPEDIDOS</small><b>${fmtN(fx.expedidos)}</b></div><div class="pen"><small>AINDA PENDENTES</small><b>${fmtN(Math.max(0,resumoOp.faturados-fx.expedidos))}</b></div><div class="pct"><small>% EXPEDIDO</small><b>${fmtPct(resumoOp.faturados?fx.expedidos/resumoOp.faturados*100:0)}</b></div></div>
- <div class="ce-pn-barra"><i style="width:${Math.min(100,resumoOp.faturados?fx.expedidos/resumoOp.faturados*100:0)}%"></i></div>
- <div class="ce-pn-fil">${fils}</div>
- <div class="ce-pn-nota">Faturados = NFs em <b>xmls</b> com data de saída/entrada na data. O filtro de transporte usa a transportadora registrada no XML.</div></div>`;
-  const painelColaboradores=`
-<div class="ce-pn-subtitle">Painel dos Colaboradores</div>
-${blocoMeta(admin,ctx2,c.pedidos,selNome,mm)}
-${`<div class="ce-pn-emb"><span>📦 <b>Embalagem${admin&&ctx2.predBip?' · '+esc(selNome):(admin?' · toda a operação':' · você')}</b></span><span>Pedidos embalados: <b>${fmtN(emb.pedidos)}</b></span><span>Unidades embaladas: <b>${fmtN(emb.unidades)}</b></span><span>Expedidos: <b>${fmtN(emb.exp)}</b></span></div>`}
-${tabProd}${tabCmp}${admin?blocoEditorMetas(mm):''}`;
-  corpo.innerHTML=`
-<div class="ce-pn-quem">${quem}</div>
-${aviso.map(a=>`<div class="ce-pn-aviso">${a}</div>`).join('')}
-${aba==='colaboradores'?painelColaboradores:painelOperacao}`;
-}
-async function atualizar(forcar){
-  if(ST.carregando)return;
-  const inp=$('ce-pn-data');if(!inp)return;
-  // Virada de dia: se a data estava em "hoje" e o dia mudou, acompanha.
-  const hoje=hojeSP();
-  if(inp.value===ST.hojeAnt&&hoje!==ST.hojeAnt){inp.value=hoje;}
-  ST.hojeAnt=hoje;
-  const data=inp.value||hoje;
-  ST.carregando=true;
-  const btn=$('ce-pn-atualizar');if(btn){btn.disabled=true;btn.textContent='Atualizando...';}
-  try{
-    const [r,mt]=await Promise.all([carregarDados(data),carregarMetas()]);
-    ST.metas=mt.metas;ST.metasErro=mt.erro;ST.metasAusente=mt.ausente;
-    ST.dados=r;ST.dataCarregada=data;ST.ts=Date.now();ST.erro='';
-    const u=$('ce-pn-upd');if(u)u.textContent='Última atualização: '+horaAgoraSP();
-  }catch(e){
-    console.error('[PAINEL OPERAÇÃO]',e);
-    ST.erro=msgErro(e);
-  }finally{
-    ST.carregando=false;
-    if(btn){btn.disabled=false;btn.textContent='Atualizar';}
-    renderizar();
+  function aplicarChecks(){
+    linhasOp().forEach(tr=>{
+      if(tr.querySelector('.ce-v181-rowcheck'))return;
+      const td=document.createElement('td');td.className='ce-v181-check';
+      td.innerHTML='<input type="checkbox" class="ce-v181-rowcheck" aria-label="Selecionar pedido">';
+      tr.insertBefore(td,tr.firstChild);
+      td.querySelector('input').addEventListener('change',atualizarSelecionados);
+    });
   }
-}
-const painelVisivel=()=>{const s=$('view-painel');return !!s&&s.classList.contains('ce-nav-visible');};
-function aoAbrir(){
-  montarSecao();
-  // Identidade pode ter mudado (novo login): zera o filtro de colaborador.
-  const sel=$('ce-pn-colab');if(sel&&!ehAdmin()){sel.value='';}
-  if(!ST.dados||Date.now()-ST.ts>OBSOLETO_MS||ST.dataCarregada!==($('ce-pn-data')?.value||''))atualizar(false);
-  else renderizar();
-  if(!ST.timer)ST.timer=setInterval(()=>{
-    if(document.hidden||!painelVisivel()||!window.CE_AUTH?.session)return;
-    atualizar(false);
-  },INTERVALO_AUTO_MS);
-}
-function iniciar(){
-  css();montarSecao();
-  // Gancho oficial do menu (chamado pelo nav depois de trocar a aba).
-  const orig=window.CE_AO_CLICAR_MENU;
-  window.CE_AO_CLICAR_MENU=function(view){
-    if(view==='painel'){try{aoAbrir();}catch(e){console.error('[PAINEL]',e);}return;}
-    return typeof orig==='function'?orig.apply(this,arguments):undefined;
-  };
-}
-window.CE_PAINEL={SQL_METAS,construirModelo,janelaDia,offsetSP,normNome,_t:{carregarDados}};
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',iniciar);else iniciar();
+  function atualizarSelecionados(){
+    aplicarChecks();
+    const n=linhasOp().filter(tr=>tr.querySelector('.ce-v181-rowcheck')?.checked).length;
+    const i=$('ce-v181-info');if(i)i.textContent=n+' selecionado(s)';
+  }
+
+  /* 6/8 — trava visual e lógica dos botões enquanto processa */
+  function travarBotao(btn,texto,fn){
+    if(!btn||btn.dataset.v181Lock)return;
+    btn.dataset.v181Lock='1';
+    btn.addEventListener('click',async function(e){
+      if(this.dataset.processando==='1'){e.preventDefault();e.stopImmediatePropagation();return}
+      // handlers originais continuam responsáveis pela operação; esta trava acompanha o ciclo.
+      this.dataset.processando='1';this.disabled=true;this.classList.add('ce-v181-processing');
+      const original=this.textContent;this.dataset.originalText=original;this.textContent=texto;
+      setTimeout(()=>{
+        this.dataset.processando='0';this.disabled=false;this.classList.remove('ce-v181-processing');
+        this.textContent=this.dataset.originalText||original;
+      },2500);
+    },true);
+  }
+
+  /* 11 — modo claro/escuro persistente */
+  function instalarTema(){
+    if($('ce-theme-toggle'))return;
+    const b=document.createElement('button');b.id='ce-theme-toggle';b.type='button';
+    document.body.appendChild(b);
+    const aplicar=tema=>{
+      document.body.classList.toggle('ce-dark',tema==='dark');
+      b.textContent=tema==='dark'?'☀ Modo claro':'◐ Modo escuro';
+      try{localStorage.setItem('CE_TEMA',tema)}catch(e){}
+    };
+    let tema='light';try{tema=localStorage.getItem('CE_TEMA')||'light'}catch(e){}
+    aplicar(tema);
+    b.onclick=()=>aplicar(document.body.classList.contains('ce-dark')?'light':'dark');
+  }
+
+  /* 6 — preserva a interface operacional mesmo após atualizações/re-renderizações */
+  function vigiarInterface(){
+    instalarObserver();instalarSelecao();aplicarChecks();prepararRastreio();
+    travarBotao($('ce-op-salvar-lote'),'Salvando...');
+    travarBotao($('ce-op-finalizar'),'Processando...');
+    travarBotao($('btn-salvar-lote-romaneio'),'Salvando...');
+    const r=$('ce-op-rastreio');
+    if(r&&!r.dataset.v181Val){r.dataset.v181Val='1';r.addEventListener('change',validarRastreio);r.addEventListener('blur',validarRastreio)}
+  }
+
+  document.addEventListener('DOMContentLoaded',()=>{
+    instalarTema();vigiarInterface();
+    const host=$('ce-bipagem-operacional');
+    if(host)new MutationObserver(()=>{aplicarChecks();atualizarContagem();prepararRastreio()}).observe(host,{childList:true,subtree:true});
+    setInterval(vigiarInterface,1500);
+  });
 })();
 </script>
+
 </body>
 </html>
 
