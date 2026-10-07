@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
-<title>Central de Expedição — V31</title>
+<title>V181 — Central de Expedição — V31</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -3582,7 +3582,17 @@
   // Leitor nunca ganhava itens de verdade e por isso não aparecia na aba Romaneios.
   // IMPORTANTE: isto NUNCA mexe em rom.status — finalizar a bipagem só salva as NFs.
   // Quem fecha o romaneio de verdade é finalizarEAssinarRomaneio, na tela Romaneio.
+  // TRAVA V180: impede duas gravações simultâneas do mesmo lote.
+  // A segunda chamada aguarda/recebe a mesma Promise da primeira.
+  let ceSalvamentoPostagensEmAndamento = null;
+
   window.ceAdicionarPostagensNaBaseNativa = async function(romaneioId, itens){
+    if(ceSalvamentoPostagensEmAndamento){
+      console.warn('[POSTAGENS] Salvamento duplicado ignorado: já existe uma gravação em andamento.');
+      return ceSalvamentoPostagensEmAndamento;
+    }
+
+    ceSalvamentoPostagensEmAndamento = (async()=>{
     const rom = romaneios.find(r=>r.id===romaneioId);
     if(!rom) throw new Error('Romaneio '+romaneioId+' não encontrado');
     if(!Array.isArray(itens) || !itens.length) return [];
@@ -3590,7 +3600,43 @@
     const transporteRomaneio = rom.transportadora || rom.motorista || '';
     const criadas = [];
 
-    for(const item of itens){
+    // Identidade operacional da postagem.
+    // Não usa somente a NF porque Correios pode ter a mesma NF em volumes
+    // diferentes, desde que os rastreios sejam diferentes.
+    const chavePostagem = (x)=>[
+      String(x?.nf||'').trim(),
+      String(x?.chave||x?.chave_nfe||'').replace(/\D/g,''),
+      String(x?.rastreio||'').trim().toUpperCase(),
+      String(x?.pedido||'').trim()
+    ].join('|');
+
+    // Remove repetição idêntica dentro do próprio lote.
+    const vistosLote = new Set();
+    const itensUnicos = itens.filter(item=>{
+      const k=chavePostagem(item);
+      if(vistosLote.has(k)){
+        console.warn('[POSTAGENS] Item repetido no mesmo lote ignorado:', item?.nf);
+        return false;
+      }
+      vistosLote.add(k);
+      return true;
+    });
+
+    // Também protege contra uma repetição já presente em memória no MESMO romaneio.
+    const existentes = new Set(
+      (postagens||[])
+        .filter(p=>String(p?.romaneio_id||'')===String(rom.id))
+        .map(chavePostagem)
+    );
+
+    for(const item of itensUnicos){
+      const identidade = chavePostagem(item);
+      if(existentes.has(identidade)){
+        console.warn('[POSTAGENS] Postagem já existente neste romaneio ignorada:', item?.nf);
+        continue;
+      }
+      existentes.add(identidade);
+
       counters.postagem++;
       const p = {
         id:'PST-' + pad(counters.postagem),
@@ -3644,6 +3690,13 @@
     renderAll();
     carregarResumoDiario();
     return criadas;
+    })();
+
+    try{
+      return await ceSalvamentoPostagensEmAndamento;
+    }finally{
+      ceSalvamentoPostagensEmAndamento = null;
+    }
   };
 
   // ---------- nav ----------
@@ -9919,15 +9972,25 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
   // romaneio". Aqui só gravamos as NFs como postagens — o status do romaneio (ABERTO)
   // não muda, e ele NUNCA vai para Assinar Retirada a partir daqui. Quem fecha o
   // romaneio definitivamente é o botão "Finalizar e gerar romaneio" na tela Romaneio.
+  let ceFinalizarRomaneioColetaEmAndamento = false;
+
   async function finalizarRomaneioColeta(){
+    if(ceFinalizarRomaneioColetaEmAndamento){
+      console.warn('[POSTAGENS] Clique duplicado em Salvar lote ignorado.');
+      return false;
+    }
+    ceFinalizarRomaneioColetaEmAndamento = true;
+
     const rom = window.ceRomaneioOperacao;
     const romaneioId = rom?.id || rom?.romaneio_id;
     if(!romaneioId){
       alert('Não há romaneio selecionado para finalizar.');
+      ceFinalizarRomaneioColetaEmAndamento = false;
       return false;
     }
     if(typeof window.ceAdicionarPostagensNaBaseNativa !== 'function'){
       alert('Não foi possível salvar: a base de dados do app não está disponível.');
+      ceFinalizarRomaneioColetaEmAndamento = false;
       return false;
     }
 
@@ -9936,6 +9999,7 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
     if(divPendente){
       window.ceAbrirDivergencia?.(divPendente);
       alert('Não é possível concluir.\nExistem divergências de transporte pendentes de confirmação.');
+      ceFinalizarRomaneioColetaEmAndamento = false;
       return false;
     }
 
@@ -9943,6 +10007,7 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
     const rows = linhas().filter(tr=>tr.dataset.naoSalvar!=='1');
     if(!rows.length){
       alert('Nenhuma postagem para salvar neste romaneio.');
+      ceFinalizarRomaneioColetaEmAndamento = false;
       return false;
     }
 
@@ -9979,14 +10044,17 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
         rom.finalizado_em=new Date().toISOString();
         if(typeof window.ceSalvarRomaneioRetira==='function') await window.ceSalvarRomaneioRetira(rom);
         $('ce-op-status').textContent='NF '+nfRetira+' registrada — aguardando assinatura na aba Assinar Retirada.';
+        ceFinalizarRomaneioColetaEmAndamento = false;
         return true;
       }
 
       $('ce-op-status').textContent = itens.length+' postagem(ns) salva(s) no romaneio '+romaneioId+' — ainda ABERTO.';
+      ceFinalizarRomaneioColetaEmAndamento = false;
       return true;
     }catch(e){
       alert('Não foi possível salvar as postagens no romaneio.\n'+(e?.message||e));
       $('ce-op-status').textContent = 'Falha ao salvar. Nada foi perdido — tente novamente.';
+      ceFinalizarRomaneioColetaEmAndamento = false;
       throw e; // interrompe o fechamento da janela: o operador não perde a sequência bipada
     }
   }
@@ -12061,79 +12129,273 @@ if ('serviceWorker' in navigator) {
 </script>
 
 
-<!-- ===== AJUSTE BBDI: APP DE ASSINATURAS SEMPRE EM MODO CLARO ===== -->
-<style id="ce-assinaturas-tema-claro">
-:root, html, body, body.ce-assinatura-only {
-  color-scheme: light !important;
-  --bg: #f5f7fa !important;
-  --surface: #ffffff !important;
-  --surface-2: #f7f8fa !important;
-  --card: #ffffff !important;
-  --text: #111827 !important;
-  --muted: #667085 !important;
-  --border: #dfe3e8 !important;
-}
-html, body, body.ce-assinatura-only, body.ce-assinatura-only .app-shell {
-  background: #f5f7fa !important;
-  color: #111827 !important;
-}
-body.ce-assinatura-only .card,
-body.ce-assinatura-only .manifest,
-body.ce-assinatura-only .manifest-body,
-body.ce-assinatura-only .manifest-meta,
-body.ce-assinatura-only .ce-mobile-nfs,
-body.ce-assinatura-only .ce-mobile-nfs-lista span,
-body.ce-assinatura-only .sigpad-wrap,
-body.ce-assinatura-only #assinatura-lista,
-body.ce-assinatura-only #assinatura-detalhe {
-  background: #ffffff !important;
-  color: #111827 !important;
-  border-color: #dfe3e8 !important;
-}
-body.ce-assinatura-only input,
-body.ce-assinatura-only select,
-body.ce-assinatura-only textarea {
-  background: #ffffff !important;
-  color: #111827 !important;
-  border-color: #cfd5dc !important;
-}
-body.ce-assinatura-only input::placeholder,
-body.ce-assinatura-only textarea::placeholder { color:#98a2b3 !important; }
-body.ce-assinatura-only #sigcanvas,
-body.ce-assinatura-only canvas {
-  background: #ffffff !important;
-}
-body.ce-assinatura-only .manifest-head {
-  background: #f8fafc !important;
-  color: #111827 !important;
-  border-color: #dfe3e8 !important;
-}
-body.ce-assinatura-only .manifest-meta > div {
-  background: #ffffff !important;
-  color: #111827 !important;
-  border-color: #dfe3e8 !important;
-}
-body.ce-assinatura-only label,
-body.ce-assinatura-only .lbl,
-body.ce-assinatura-only .nome,
-body.ce-assinatura-only b,
-body.ce-assinatura-only strong,
-body.ce-assinatura-only summary { color:#111827 !important; }
-</style>
-<script>
-(function(){
-  function ceForcarAssinaturasClaro(){
-    document.documentElement.style.colorScheme='light';
-    document.documentElement.removeAttribute('data-theme');
-    document.body && document.body.removeAttribute('data-theme');
-    try { localStorage.setItem('theme','light'); } catch(e) {}
-    var meta=document.querySelector('meta[name="theme-color"]');
-    if(meta) meta.setAttribute('content','#f5f7fa');
+<!-- V181 — rodada de ajustes dos testes operacionais -->
+<style id="ce-v181-style">
+  /* Alternância claro/escuro com contraste reforçado */
+  #ce-theme-toggle{
+    position:fixed;right:18px;bottom:18px;z-index:100050;
+    border:1px solid var(--border,#d7dde5);border-radius:999px;
+    padding:9px 13px;font-weight:800;font-size:12px;cursor:pointer;
+    background:#fff;color:#17212b;box-shadow:0 5px 18px rgba(0,0,0,.14)
   }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',ceForcarAssinaturasClaro);
-  else ceForcarAssinaturasClaro();
+  body.ce-dark{
+    --bg:#0d141c;--card:#151f2a;--text:#f4f7fa;--muted:#c3cfda;
+    --border:#344454;--blue-dark:#9dd7ff;--blue:#46aef2;
+    background:#0d141c!important;color:#f4f7fa!important
+  }
+  body.ce-dark main,body.ce-dark .view,body.ce-dark .page{background:#0d141c!important;color:#f4f7fa}
+  body.ce-dark .card,body.ce-dark .summary-pending-card,body.ce-dark .ce-op-window,
+  body.ce-dark .ce-op-field,body.ce-dark .ce-op-scan,body.ce-dark .modal-box,
+  body.ce-dark .operacao-destaque,body.ce-dark .romaneio-bipagem-box{
+    background:#151f2a!important;color:#f4f7fa!important;border-color:#344454!important
+  }
+  body.ce-dark input,body.ce-dark select,body.ce-dark textarea{
+    background:#0f1923!important;color:#fff!important;border-color:#53687b!important
+  }
+  body.ce-dark label,body.ce-dark .sub,body.ce-dark .ce-op-info,
+  body.ce-dark .rastreio-regra,body.ce-dark [style*="color:var(--muted)"]{
+    color:#cbd6df!important
+  }
+  body.ce-dark table,body.ce-dark th,body.ce-dark td{color:#f4f7fa!important;border-color:#344454!important}
+  body.ce-dark thead th{background:#1d2a36!important;color:#fff!important}
+  body.ce-dark tbody tr:hover{background:#1c2b38!important}
+  body.ce-dark #ce-theme-toggle{background:#f4f7fa;color:#111923;border-color:#f4f7fa}
+  body.ce-dark .ce-op-value,body.ce-dark .summary-kpi-value,
+  body.ce-dark #ce-op-contador{color:#fff!important;font-weight:900!important}
+
+  /* seleção individual por colaborador */
+  #ce-v181-selecao{
+    display:flex;align-items:end;gap:10px;flex-wrap:wrap;
+    padding:10px 12px;margin:0 0 10px;border:1px solid var(--border,#d7dde5);
+    border-radius:10px;background:var(--card,#fff)
+  }
+  #ce-v181-selecao .ce-v181-field{min-width:220px}
+  #ce-v181-selecao label{display:block;font-size:10px;font-weight:800;margin-bottom:4px}
+  #ce-v181-selecao select{width:100%;height:36px}
+  .ce-v181-check{width:34px;text-align:center!important}
+  .ce-v181-check input{width:17px;height:17px;cursor:pointer}
+  .ce-v181-assigned{outline:2px solid rgba(38,132,255,.22);outline-offset:-2px}
+  .ce-v181-processing{opacity:.65;cursor:not-allowed!important;pointer-events:none}
+</style>
+
+<script id="ce-v181-patch">
+(function(){
+  'use strict';
+  const $=id=>document.getElementById(id);
+  const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[.\-_/]+/g,' ').replace(/\s+/g,' ').trim();
+
+  /* 1 + 2 — contador automático e resumo persistente após atualização */
+  const STORAGE_RESUMO='CE_V181_RESUMO_BIPAGEM';
+  function linhasOp(){
+    return [...document.querySelectorAll('#ce-op-tbody tr')].filter(tr=>!tr.querySelector('.ce-op-empty'));
+  }
+  function atualizarContagem(){
+    const rows=linhasOp();
+    const c=$('ce-op-contador');
+    if(c) c.textContent=String(rows.length);
+    const sub=$('sub-pendentes');
+    if(sub && document.querySelector('#tbl-pendentes')) {
+      const n=document.querySelectorAll('#tbl-pendentes tbody tr').length;
+      if(n) sub.textContent=n+' item(ns)';
+    }
+    try{
+      const resumo=rows.map(tr=>({
+        nf:(tr.children[0]?.textContent||'').trim(),
+        chave:tr.dataset.chave||'',
+        rastreio:tr.dataset.rastreio||'',
+        pedido:tr.dataset.pedido||'',
+        transporte:tr.dataset.transporteOriginal||tr.children[3]?.textContent||'',
+        colaborador:tr.dataset.embalador||'',
+        volume:(tr.children[5]?.textContent||'1').trim()
+      }));
+      localStorage.setItem(STORAGE_RESUMO,JSON.stringify({
+        salvoEm:new Date().toISOString(),
+        romaneio:$('ce-op-romaneio')?.textContent||'',
+        transportadora:$('ce-op-transportadora')?.textContent||'',
+        bipador:$('ce-op-bipador')?.textContent||'',
+        total:rows.length,itens:resumo
+      }));
+    }catch(e){}
+  }
+  function instalarObserver(){
+    const tb=$('ce-op-tbody');
+    if(!tb||tb.dataset.v181Observer)return;
+    tb.dataset.v181Observer='1';
+    new MutationObserver(atualizarContagem).observe(tb,{childList:true,subtree:true,characterData:true,attributes:true});
+    atualizarContagem();
+  }
+
+  /* 4 + 5 — rastreio rápido e bloqueio de chave NF-e no campo de rastreio */
+  function familiaComRastreio(v){
+    const x=norm(v);
+    return /CORREIOS|SEDEX|PAC|MERCADO LIVRE|ME2|MAGALU|ENVIOS MARKET/.test(x);
+  }
+  function prepararRastreio(){
+    const box=$('ce-op-rastreio-box'), r=$('ce-op-rastreio');
+    const t=$('ce-op-transportadora')?.textContent||'';
+    if(box && familiaComRastreio(t)) box.style.display='';
+    if(r && familiaComRastreio(t)) {
+      r.disabled=false;
+      r.placeholder=/CORREIOS|SEDEX|PAC/.test(norm(t))?'Bipe o rastreio dos Correios':'Bipe o código de rastreio';
+    }
+  }
+  function validarRastreio(e){
+    const r=e.target;
+    const raw=String(r.value||'').trim();
+    const dig=raw.replace(/\D/g,'');
+    if(dig.length===44){
+      r.value='';
+      const s=$('ce-op-status');
+      if(s)s.textContent='Rastreio inválido — foi lida uma chave NF-e de 44 dígitos';
+      alert('Este campo aceita somente o rastreio. A chave NF-e deve ser bipada no campo "Bipar chave NF-e".');
+      setTimeout(()=>$('ce-op-chave')?.focus(),30);
+      return false;
+    }
+    return true;
+  }
+
+  /* 7/9 — nomes equivalentes de transportadora */
+  const ALIASES=[
+    [/^TRD(?: TRANSPORTES?)?$/,'TRD'],
+    [/^(CORREIOS|SEDEX|PAC).*$/,'CORREIOS'],
+    [/^(ME2|MERCADO LIVRE).*$/,'MERCADO LIVRE'],
+    [/^(MAGALU|ENVIOS MARKETPLACES|ENVIOS MARKET).*$/,'MAGALU'],
+    [/^LOGGI(?: POA RS)?$/,'LOGGI'],
+    [/^(MOTOBOY|MOTO BOY|MOTOBOYS|MOTO BOYS).*$/,'MOTOBOY'],
+    [/^TOTAL(?: EXPRESS)?$/,'TOTAL EXPRESS'],
+    [/^TROCA(?: EXP| EXPRESSA)?$/,'TROCA']
+  ];
+  window.CE_NORMALIZAR_TRANSPORTADORA_V181=function(v){
+    const x=norm(v);
+    for(const [rx,nome] of ALIASES) if(rx.test(x)) return nome;
+    return x;
+  };
+  window.CE_MESMA_TRANSPORTADORA_V181=(a,b)=>{
+    const A=window.CE_NORMALIZAR_TRANSPORTADORA_V181(a),B=window.CE_NORMALIZAR_TRANSPORTADORA_V181(b);
+    return !A||!B||A===B;
+  };
+
+  /* 8/10 — selecionar pedidos e atribuir colaboradores diferentes */
+  function nomesColaboradores(){
+    let a=[];
+    try{
+      const c=window.CONFIG_TESTE_OPERADORES||{};
+      a=[...(c.embaladores||[]),...(c.bipadores||[])];
+    }catch(e){}
+    return [...new Set(a.map(x=>String(x||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  }
+  function instalarSelecao(){
+    const wrap=document.querySelector('.ce-op-gridwrap');
+    const table=wrap?.querySelector('.ce-op-table');
+    if(!wrap||!table||$('ce-v181-selecao'))return;
+
+    const bar=document.createElement('div');
+    bar.id='ce-v181-selecao';
+    bar.innerHTML='<div class="ce-v181-field"><label>COLABORADOR DOS SELECIONADOS</label><select id="ce-v181-colaborador"><option value="">Selecione...</option></select></div>'+
+      '<button type="button" class="ce-op-btn" id="ce-v181-atribuir">Atribuir aos selecionados</button>'+
+      '<button type="button" class="ce-op-btn" id="ce-v181-marcar">Selecionar todos</button>'+
+      '<span class="ce-op-info" id="ce-v181-info">0 selecionado(s)</span>';
+    wrap.parentNode.insertBefore(bar,wrap);
+
+    const sel=$('ce-v181-colaborador');
+    sel.innerHTML='<option value="">Selecione...</option>'+nomesColaboradores().map(n=>'<option value="'+n.replace(/"/g,'&quot;')+'">'+n+'</option>').join('');
+
+    const head=table.querySelector('thead tr');
+    if(head&&!head.querySelector('.ce-v181-check')){
+      const th=document.createElement('th');th.className='ce-v181-check';th.innerHTML='<input type="checkbox" id="ce-v181-checkall" title="Selecionar todos">';
+      head.insertBefore(th,head.firstChild);
+    }
+    aplicarChecks();
+
+    $('ce-v181-atribuir').onclick=()=>{
+      const nome=sel.value;
+      if(!nome){alert('Selecione o colaborador.');return}
+      const rows=linhasOp().filter(tr=>tr.querySelector('.ce-v181-rowcheck')?.checked);
+      if(!rows.length){alert('Selecione pelo menos um pedido.');return}
+      rows.forEach(tr=>{
+        tr.dataset.embalador=nome;
+        const td=tr.children[5]; // após inserir checkbox: embalador passou a índice 5
+        if(td)td.innerHTML=nome+' <span class="ce-lote-tag">Selecionado</span>';
+        tr.classList.add('ce-v181-assigned');
+        const cb=tr.querySelector('.ce-v181-rowcheck');if(cb)cb.checked=false;
+      });
+      atualizarSelecionados();atualizarContagem();
+      const s=$('ce-op-status');if(s)s.textContent=rows.length+' pedido(s) atribuídos a '+nome;
+    };
+    $('ce-v181-marcar').onclick=()=>{
+      const cbs=linhasOp().map(tr=>tr.querySelector('.ce-v181-rowcheck')).filter(Boolean);
+      const marcar=cbs.some(cb=>!cb.checked);cbs.forEach(cb=>cb.checked=marcar);atualizarSelecionados();
+    };
+    $('ce-v181-checkall')?.addEventListener('change',e=>{
+      linhasOp().forEach(tr=>{const cb=tr.querySelector('.ce-v181-rowcheck');if(cb)cb.checked=e.target.checked});
+      atualizarSelecionados();
+    });
+  }
+  function aplicarChecks(){
+    linhasOp().forEach(tr=>{
+      if(tr.querySelector('.ce-v181-rowcheck'))return;
+      const td=document.createElement('td');td.className='ce-v181-check';
+      td.innerHTML='<input type="checkbox" class="ce-v181-rowcheck" aria-label="Selecionar pedido">';
+      tr.insertBefore(td,tr.firstChild);
+      td.querySelector('input').addEventListener('change',atualizarSelecionados);
+    });
+  }
+  function atualizarSelecionados(){
+    aplicarChecks();
+    const n=linhasOp().filter(tr=>tr.querySelector('.ce-v181-rowcheck')?.checked).length;
+    const i=$('ce-v181-info');if(i)i.textContent=n+' selecionado(s)';
+  }
+
+  /* 6/8 — trava visual e lógica dos botões enquanto processa */
+  function travarBotao(btn,texto,fn){
+    if(!btn||btn.dataset.v181Lock)return;
+    btn.dataset.v181Lock='1';
+    btn.addEventListener('click',async function(e){
+      if(this.dataset.processando==='1'){e.preventDefault();e.stopImmediatePropagation();return}
+      // handlers originais continuam responsáveis pela operação; esta trava acompanha o ciclo.
+      this.dataset.processando='1';this.disabled=true;this.classList.add('ce-v181-processing');
+      const original=this.textContent;this.dataset.originalText=original;this.textContent=texto;
+      setTimeout(()=>{
+        this.dataset.processando='0';this.disabled=false;this.classList.remove('ce-v181-processing');
+        this.textContent=this.dataset.originalText||original;
+      },2500);
+    },true);
+  }
+
+  /* 11 — modo claro/escuro persistente */
+  function instalarTema(){
+    if($('ce-theme-toggle'))return;
+    const b=document.createElement('button');b.id='ce-theme-toggle';b.type='button';
+    document.body.appendChild(b);
+    const aplicar=tema=>{
+      document.body.classList.toggle('ce-dark',tema==='dark');
+      b.textContent=tema==='dark'?'☀ Modo claro':'◐ Modo escuro';
+      try{localStorage.setItem('CE_TEMA',tema)}catch(e){}
+    };
+    let tema='light';try{tema=localStorage.getItem('CE_TEMA')||'light'}catch(e){}
+    aplicar(tema);
+    b.onclick=()=>aplicar(document.body.classList.contains('ce-dark')?'light':'dark');
+  }
+
+  /* 6 — preserva a interface operacional mesmo após atualizações/re-renderizações */
+  function vigiarInterface(){
+    instalarObserver();instalarSelecao();aplicarChecks();prepararRastreio();
+    travarBotao($('ce-op-salvar-lote'),'Salvando...');
+    travarBotao($('ce-op-finalizar'),'Processando...');
+    travarBotao($('btn-salvar-lote-romaneio'),'Salvando...');
+    const r=$('ce-op-rastreio');
+    if(r&&!r.dataset.v181Val){r.dataset.v181Val='1';r.addEventListener('change',validarRastreio);r.addEventListener('blur',validarRastreio)}
+  }
+
+  document.addEventListener('DOMContentLoaded',()=>{
+    instalarTema();vigiarInterface();
+    const host=$('ce-bipagem-operacional');
+    if(host)new MutationObserver(()=>{aplicarChecks();atualizarContagem();prepararRastreio()}).observe(host,{childList:true,subtree:true});
+    setInterval(vigiarInterface,1500);
+  });
 })();
 </script>
+
 </body>
 </html>
 
