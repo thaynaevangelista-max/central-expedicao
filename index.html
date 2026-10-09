@@ -15,7 +15,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
-<title>Central de Expedição — V31</title>
+<title>V182 — Central de Expedição — V31</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -3672,44 +3672,59 @@
   // Leitor nunca ganhava itens de verdade e por isso não aparecia na aba Romaneios.
   // IMPORTANTE: isto NUNCA mexe em rom.status — finalizar a bipagem só salva as NFs.
   // Quem fecha o romaneio de verdade é finalizarEAssinarRomaneio, na tela Romaneio.
-  window.ceAdicionarPostagensNaBaseNativa = async function(romaneioId, itens){
-    const alvo=String(romaneioId||'').trim();
-    let rom = romaneios.find(r=>
-      String(r.id||'').trim()===alvo ||
-      String(r.uuid||'').trim()===alvo ||
-      String(r.codigo||'').trim()===alvo
-    );
+  let ceSalvamentoPostagensEmAndamento = null;
 
-    // Se a memória da tela estiver desatualizada, busca o romaneio diretamente no Supabase.
-    if(!rom && alvo){
-      const filtro=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(alvo)
-        ? 'id=eq.'+encodeURIComponent(alvo)
-        : 'codigo=eq.'+encodeURIComponent(alvo);
-      const rows=await ceOpReq('GET','romaneios?select=*&'+filtro+'&limit=1');
-      const x=Array.isArray(rows)?rows[0]:null;
-      if(x){
-        rom={
-          id:x.codigo||x.id, uuid:x.id, codigo:x.codigo||'',
-          motorista:x.transportadora||'', transportadora:x.transportadora||'',
-          empresa:x.empresa||'', filial:x.filial||'',
-          data:x.data?new Date(x.data+'T12:00:00').toLocaleDateString('pt-BR'):'',
-          data_iso:x.data||'', itens:[], status:x.status||'aberto',
-          criado_em:x.criado_em||'', assinatura:x.assinatura||null,
-          assinado_em:x.assinado_em||null, motorista_nome:x.motorista_nome||'',
-          motorista_cpf:x.motorista_cpf||''
-        };
-        const pos=romaneios.findIndex(r=>String(r.uuid||'')===String(x.id));
-        if(pos>=0) romaneios[pos]=rom; else romaneios.push(rom);
-      }
+window.ceAdicionarPostagensNaBaseNativa = async function(romaneioId, itens){
+    if(ceSalvamentoPostagensEmAndamento){
+      console.warn('[POSTAGENS] Salvamento duplicado ignorado: já existe uma gravação em andamento.');
+      return ceSalvamentoPostagensEmAndamento;
     }
 
-    if(!rom) throw new Error('Romaneio '+romaneioId+' não encontrado no Supabase');
+    ceSalvamentoPostagensEmAndamento = (async()=>{
+    const rom = romaneios.find(r=>r.id===romaneioId);
+    if(!rom) throw new Error('Romaneio '+romaneioId+' não encontrado');
     if(!Array.isArray(itens) || !itens.length) return [];
 
     const transporteRomaneio = rom.transportadora || rom.motorista || '';
     const criadas = [];
 
-    for(const item of itens){
+    // Identidade operacional da postagem.
+    // Não usa somente a NF porque Correios pode ter a mesma NF em volumes
+    // diferentes, desde que os rastreios sejam diferentes.
+    const chavePostagem = (x)=>[
+      String(x?.nf||'').trim(),
+      String(x?.chave||x?.chave_nfe||'').replace(/\D/g,''),
+      String(x?.rastreio||'').trim().toUpperCase(),
+      String(x?.pedido||'').trim()
+    ].join('|');
+
+    // Remove repetição idêntica dentro do próprio lote.
+    const vistosLote = new Set();
+    const itensUnicos = itens.filter(item=>{
+      const k=chavePostagem(item);
+      if(vistosLote.has(k)){
+        console.warn('[POSTAGENS] Item repetido no mesmo lote ignorado:', item?.nf);
+        return false;
+      }
+      vistosLote.add(k);
+      return true;
+    });
+
+    // Também protege contra uma repetição já presente em memória no MESMO romaneio.
+    const existentes = new Set(
+      (postagens||[])
+        .filter(p=>String(p?.romaneio_id||'')===String(rom.id))
+        .map(chavePostagem)
+    );
+
+    for(const item of itensUnicos){
+      const identidade = chavePostagem(item);
+      if(existentes.has(identidade)){
+        console.warn('[POSTAGENS] Postagem já existente neste romaneio ignorada:', item?.nf);
+        continue;
+      }
+      existentes.add(identidade);
+
       counters.postagem++;
       const p = {
         id:'PST-' + pad(counters.postagem),
@@ -3763,6 +3778,13 @@
     renderAll();
     carregarResumoDiario();
     return criadas;
+    })();
+
+    try{
+      return await ceSalvamentoPostagensEmAndamento;
+    }finally{
+      ceSalvamentoPostagensEmAndamento = null;
+    }
   };
 
   // ---------- nav ----------
@@ -9315,6 +9337,11 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
     <div class="ce-op-scan"><label>Volume</label><input id="ce-op-volume" type="number" min="1" value="1"></div>
     <div class="ce-op-field"><label>Status</label><div class="ce-op-value" id="ce-op-status">Aguardando leitura</div></div>
    </div>
+   <div id="ce-v184-atribuicao" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0 10px">
+    <select id="ce-v184-colaborador" style="min-width:210px;height:34px"><option value="">Colaborador dos selecionados</option></select>
+    <button type="button" class="ce-op-btn" id="ce-v184-atribuir">Atribuir selecionados</button>
+    <span class="ce-op-info" id="ce-v184-resumo-salvo"></span>
+   </div>
    <div class="ce-op-gridwrap">
     <table class="ce-op-table">
      <thead><tr><th>NF</th><th>CHAVE / RASTREIO</th><th>PEDIDO</th><th>TRANSPORTE</th><th>EMBALADOR</th><th>VOLUME</th><th>STATUS</th></tr></thead>
@@ -9545,10 +9572,15 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
     if(!x) return '';
     // Aliases operacionais conhecidos: PAC/SEDEX pertencem à família CORREIOS.
     if(familiaCorreios(x)) return 'CORREIOS';
-    // Remove apenas complementos descritivos que não mudam a transportadora.
+    // V184: aliases operacionais sem alterar o nome original gravado.
     x=x.replace(/\s+/g,' ').trim();
-    if(/^LOGGI(?:\s*-?\s*POA\s*RS)?$/.test(x)) return 'LOGGI - POA RS';
+    if(/^TRD(?: TRANSPORTES?)?$/.test(x)) return 'TRD';
+    if(/^LOGGI(?:\s*-?\s*POA\s*RS)?$/.test(x)) return 'LOGGI';
     if(/^TROCA(?:\s+EXP\.?|\s+EXPRESSA)?$/.test(x)) return 'TROCA';
+    if(/^(MERCADO LIVRE|ME2|ENVIOS MARKET.*)$/.test(x)) return 'MERCADO LIVRE';
+    if(/^(MAGALU|MAGAZINE LUIZA|ENVIOS - MARKETPLACES|ENVIOS MARKETPLACES)$/.test(x)) return 'MAGALU';
+    if(/^(MOTOBOY|MOTO BOY|MOTOBOYS|MOTO BOYS)$/.test(x)) return 'MOTOBOY';
+    if(/^(TOTAL|TOTAL EXPRESS)$/.test(x)) return 'TOTAL EXPRESS';
     return x;
   }
   function mesmoTransporte(a,b){
@@ -9707,11 +9739,12 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
       '<td>'+ (item.transporte||'—') +'</td>'+
       '<td>—</td>'+
       '<td class="ce-volume-editavel" contenteditable="true" inputmode="numeric" title="Clique para alterar o volume">'+Math.max(1,parseInt($('ce-op-volume')?.value||item.volume||1,10)||1)+'</td>'+
-      '<td class="ce-status-cell">'+statusHtml+'</td>';
+      '<td class="ce-status-cell"><input type="checkbox" class="ce-v184-selecionar" title="Selecionar para atribuir colaborador" style="width:16px;height:16px;margin-right:7px;vertical-align:middle">'+statusHtml+'</td>';
     if(item.divergente) tr.querySelector('.ce-div-detalhes').onclick=()=>window.ceAbrirDivergencia(tr);
     else if(item.reenvioAceito) tr.querySelector('.ce-reenvio-detalhes').onclick=()=>window.ceAbrirReenvio?.(tr);
     tb.prepend(tr);
     $('ce-op-contador').textContent=linhas().length;
+    try{localStorage.setItem('ce_resumo_bipagem_'+String(tr.dataset.romaneio||''),JSON.stringify({total:linhas().filter(x=>x.dataset.naoSalvar!=='1').length,atualizado:new Date().toISOString()}));}catch(e){}
     $('ce-op-status').textContent=item.divergente
       ? 'DIVERGÊNCIA — '+(item.transporte||'SEM TRANSPORTE')+' → '+(item.transporteRomaneio||transporteRomaneio()||'SEM ROMANEIO')
       : 'NF '+item.nf+' adicionada';
@@ -9948,6 +9981,16 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
     const r=norm($('ce-op-rastreio')?.value);
     if(!r)return;
 
+    // V184: chave NF-e (44 dígitos) nunca pode ser aceita como rastreio.
+    const digitosRastreio=String(r).replace(/\D/g,'');
+    if(digitosRastreio.length===44){
+      $('ce-op-rastreio').value='';
+      $('ce-op-status').textContent='RASTREIO INVÁLIDO — foi lida uma chave NF-e';
+      alert('Este campo aceita somente o rastreio. A chave NF-e possui 44 dígitos e não pode ser usada como rastreio.');
+      setTimeout(()=>$('ce-op-rastreio')?.focus(),40);
+      return;
+    }
+
     // CORREIOS/PAC/SEDEX: mesma NF/chave é permitida em múltiplos volumes;
     // o que não pode repetir é o rastreio, nem na sessão nem nas postagens já salvas.
     if(rastreioJaUsado(r)){
@@ -9992,15 +10035,25 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
   // romaneio". Aqui só gravamos as NFs como postagens — o status do romaneio (ABERTO)
   // não muda, e ele NUNCA vai para Assinar Retirada a partir daqui. Quem fecha o
   // romaneio definitivamente é o botão "Finalizar e gerar romaneio" na tela Romaneio.
-  async function finalizarRomaneioColeta(){
+  let ceFinalizarRomaneioColetaEmAndamento = false;
+
+async function finalizarRomaneioColeta(){
+    if(ceFinalizarRomaneioColetaEmAndamento){
+      console.warn('[POSTAGENS] Clique duplicado em Salvar lote ignorado.');
+      return false;
+    }
+    ceFinalizarRomaneioColetaEmAndamento = true;
+
     const rom = window.ceRomaneioOperacao;
     const romaneioId = rom?.id || rom?.romaneio_id;
     if(!romaneioId){
       alert('Não há romaneio selecionado para finalizar.');
+      ceFinalizarRomaneioColetaEmAndamento = false;
       return false;
     }
     if(typeof window.ceAdicionarPostagensNaBaseNativa !== 'function'){
       alert('Não foi possível salvar: a base de dados do app não está disponível.');
+      ceFinalizarRomaneioColetaEmAndamento = false;
       return false;
     }
 
@@ -10009,6 +10062,7 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
     if(divPendente){
       window.ceAbrirDivergencia?.(divPendente);
       alert('Não é possível concluir.\nExistem divergências de transporte pendentes de confirmação.');
+      ceFinalizarRomaneioColetaEmAndamento = false;
       return false;
     }
 
@@ -10016,6 +10070,7 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
     const rows = linhas().filter(tr=>tr.dataset.naoSalvar!=='1');
     if(!rows.length){
       alert('Nenhuma postagem para salvar neste romaneio.');
+      ceFinalizarRomaneioColetaEmAndamento = false;
       return false;
     }
 
@@ -10032,15 +10087,9 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
       filial: tr.dataset.filial || '',
       bipador: tr.dataset.bipador || window.ceBipadorSessao || '',
       embalador: tr.dataset.embalador || '',
-      volumes: parseInt((tr.children[5]?.textContent || '').trim(), 10) || 1
+      volumes: parseInt((tr.children[5]?.textContent || '').trim(), 10) || 1,
+      criado_em: new Date().toISOString()
     }));
-
-    // V154: momento oficial da postagem = clique em "Salvar lote".
-    const ceMomentoSalvarLote = new Date().toISOString();
-    itens.forEach(item=>{
-      item.bipada_em = ceMomentoSalvarLote;
-      item.criado_em = ceMomentoSalvarLote;
-    });
 
     $('ce-op-status').textContent = 'Salvando '+itens.length+' postagem(ns) no romaneio...';
 
@@ -10058,14 +10107,17 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
         rom.finalizado_em=new Date().toISOString();
         if(typeof window.ceSalvarRomaneioRetira==='function') await window.ceSalvarRomaneioRetira(rom);
         $('ce-op-status').textContent='NF '+nfRetira+' registrada — aguardando assinatura na aba Assinar Retirada.';
+        ceFinalizarRomaneioColetaEmAndamento = false;
         return true;
       }
 
       $('ce-op-status').textContent = itens.length+' postagem(ns) salva(s) no romaneio '+romaneioId+' — ainda ABERTO.';
+      ceFinalizarRomaneioColetaEmAndamento = false;
       return true;
     }catch(e){
       alert('Não foi possível salvar as postagens no romaneio.\n'+(e?.message||e));
       $('ce-op-status').textContent = 'Falha ao salvar. Nada foi perdido — tente novamente.';
+      ceFinalizarRomaneioColetaEmAndamento = false;
       throw e; // interrompe o fechamento da janela: o operador não perde a sequência bipada
     }
   }
@@ -10217,7 +10269,7 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
   <div class="ce-res-cards">
    <div class="ce-res-card"><small>Romaneio</small><b id="ce-res-rom">—</b></div>
    <div class="ce-res-card"><small>Transportadora</small><b id="ce-res-transp">—</b></div>
-   <div class="ce-res-card"><small>Total bipado</small><b id="ce-res-total">0</b></div>
+   <div class="ce-res-card"><small>Total de NFs salvas e bipadas</small><b id="ce-res-total">0</b></div>
    <div class="ce-res-card"><small>Divergências</small><b id="ce-res-div">0</b></div>
    <div class="ce-res-card"><small>Não serão salvos</small><b id="ce-res-nao">0</b></div>
   </div>
@@ -10268,12 +10320,59 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
    atual.forEach(x=>mapa.set(chaveUnicaPostagem(x),x));
    return [...mapa.values()];
  }
- function abrir(){
-   const a=consolidar();
-   $('ce-res-rom').textContent=romId()||'—';$('ce-res-transp').textContent=$('ce-op-transportadora')?.textContent||'—';
-   $('ce-res-total').textContent=a.length;$('ce-res-div').textContent=a.filter(x=>x.divergencia).length;$('ce-res-nao').textContent=a.filter(x=>x.naoSalvar).length;
-   $('ce-res-tbody').innerHTML=a.length?a.map(x=>`<tr><td>${x.data}</td><td>${x.hora}</td><td><b>${x.nf}</b></td><td>${x.pedido||'—'}</td><td>${x.chave||'—'}</td><td>${x.rastreio||'—'}</td><td>${x.transporte||'—'}</td><td>${x.bipador||'—'}</td><td>${x.embalador||'—'}</td><td>${x.volume}</td><td>${x.status||'OK'}</td></tr>`).join(''):'<tr><td colspan="11" class="ce-res-empty">Nenhuma postagem registrada neste romaneio.</td></tr>';
+ function texto(x){return String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+ function dataHora(v){if(!v)return {data:'—',hora:'—'};const d=new Date(v);return Number.isNaN(d.getTime())?{data:'—',hora:'—'}:{data:d.toLocaleDateString('pt-BR'),hora:d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})};}
+ async function consultarSalvas(){
+   if(typeof window.CE_REST!=='function')throw Error('Conexão com Supabase indisponível.');
+   const r=window.ceRomaneioOperacao||{};
+   let uuid=String(r.uuid||r.romaneio_uuid||'').trim();
+   const id=romId();
+   if(!uuid&&/^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(id))uuid=id;
+   if(!uuid){
+     const rows=await window.CE_REST('romaneios?select=id,codigo&codigo=eq.'+encodeURIComponent(id)+'&limit=1');
+     uuid=String(rows?.[0]?.id||'');
+   }
+   if(!uuid)throw Error('Não foi possível localizar o romaneio no banco.');
+   const rows=await window.CE_REST('postagens?select=*&romaneio_id=eq.'+encodeURIComponent(uuid)+'&order=criado_em.asc&limit=10000');
+   if(!Array.isArray(rows))throw Error('A consulta das postagens não retornou uma lista.');
+   return rows.map(p=>{
+     const dt=dataHora(p.bipada_em||p.criado_em);
+     return {data:dt.data,hora:dt.hora,nf:p.nf||'',pedido:p.pedido||'',chave:p.chave_nfe||'',rastreio:p.rastreio||'',
+       transporte:p.transporte_original||p.transporte_romaneio||'',bipador:p.bipador||'',embalador:p.embalador||'',
+       volume:p.volume??1,divergencia:p.divergencia||'',naoSalvar:false,status:p.status||'Salva',salva:true,id:p.id||''};
+   });
+ }
+ function unir(salvas,atuais){
+   const mapa=new Map();
+   // A identidade do registro salvo é o ID do banco. Para leituras ainda não salvas,
+   // evita apenas a repetição exata da mesma chave/rastreio/volume na sessão.
+   salvas.forEach(x=>mapa.set('DB:'+x.id,x));
+   atuais.forEach(x=>{
+     const duplicada=salvas.some(y=>String(y.chave||'')===String(x.chave||'')&&String(y.nf||'')===String(x.nf||'')&&String(y.rastreio||'')===String(x.rastreio||'')&&String(y.volume||'')===String(x.volume||''));
+     if(!duplicada)mapa.set('ATUAL:'+String(x.chave||x.nf)+'|'+String(x.rastreio||'')+'|'+String(x.volume||''),{...x,salva:false});
+   });
+   return [...mapa.values()];
+ }
+ function render(a){
+   $('ce-res-total').textContent=a.length;
+   $('ce-res-div').textContent=a.filter(x=>x.divergencia).length;
+   $('ce-res-nao').textContent=a.filter(x=>x.naoSalvar).length;
+   $('ce-res-tbody').innerHTML=a.length?a.map(x=>`<tr><td>${texto(x.data)}</td><td>${texto(x.hora)}</td><td><b>${texto(x.nf)}</b></td><td>${texto(x.pedido||'—')}</td><td>${texto(x.chave||'—')}</td><td>${texto(x.rastreio||'—')}</td><td>${texto(x.transporte||'—')}</td><td>${texto(x.bipador||'—')}</td><td>${texto(x.embalador||'—')}</td><td>${texto(x.volume)}</td><td>${texto(x.salva?'Salva · ':'Bipada · ')}${texto(x.status||'Pendente')}</td></tr>`).join(''):'<tr><td colspan="11" class="ce-res-empty">Nenhuma NF salva ou bipada neste romaneio.</td></tr>';
+ }
+ async function abrir(){
+   $('ce-res-rom').textContent=romId()||'—';
+   $('ce-res-transp').textContent=$('ce-op-transportadora')?.textContent||'—';
    $('ce-res-overlay').classList.add('show');
+   $('ce-res-tbody').innerHTML='<tr><td colspan="11" class="ce-res-empty">Consultando postagens salvas...</td></tr>';
+   const atual=capturarSessao();
+   try{
+     const salvas=await consultarSalvas();
+     render(unir(salvas,atual));
+   }catch(e){
+     console.error('[RESUMO ROMANEIO]',e);
+     render(atual.map(x=>({...x,salva:false})));
+     $('ce-res-tbody').insertAdjacentHTML('afterbegin','<tr><td colspan="11" style="padding:10px;color:#a13b22;background:#fff2ed">Não foi possível consultar as NFs já salvas no Supabase: '+texto(e.message)+'. Exibindo somente as leituras desta sessão.</td></tr>');
+   }
  }
  $('ce-op-resumo')?.addEventListener('click',abrir);$('ce-res-x')?.addEventListener('click',()=>$('ce-res-overlay').classList.remove('show'));
 
@@ -13537,19 +13636,33 @@ function renderizar(){
     return `<div><b>Filial ${fl}</b> · ${fmtN(v.exp)} / ${fmtN(v.fat)} (${fmtPct(p)})<div class="mini"><i style="width:${Math.min(100,p)}%"></i></div></div>`;
   }).join('');
   // Tabelas
-  const lista=ST.modo==='emb'?mm.emb:mm.bip;
+  // V189: indicadores independentes por papel. Bipagens pertencem ao bipador;
+  // embalagens pertencem ao embalador, mesmo quando são pessoas diferentes.
+  const porPessoa=new Map();
+  mm.bip.forEach(x=>porPessoa.set(x.chave,{...x,postagens:x.postagens,embalagens:0}));
+  mm.emb.forEach(x=>{
+    const anterior=porPessoa.get(x.chave);
+    if(anterior){
+      anterior.embalagens=x.pedidos;
+      anterior.nome=anterior.nome==='(não informado)'?x.nome:anterior.nome;
+      if(ST.modo==='emb')Object.assign(anterior,{pedidos:x.pedidos,unidades:x.unidades,exp:x.exp,unExp:x.unExp,part:x.part});
+    }else{
+      porPessoa.set(x.chave,{...x,postagens:0,embalagens:x.pedidos});
+    }
+  });
+  const lista=[...porPessoa.values()];
   const meu=admin?null:predUsuario();
   const comMeta=ST.modo==='emb';
-  const lista2=lista.map(x=>{const meta=comMeta?(ST.metas.get(x.chave)?.meta||0):0;return {...x,meta,pctMeta:meta?x.pedidos/meta*100:-1};});
+  const lista2=lista.map(x=>{const meta=comMeta?(ST.metas.get(x.chave)?.meta||0):0;return {...x,meta,pctMeta:meta?x.embalagens/meta*100:-1};});
   let linhas=ordenar(lista2,ST.ordem);
   if(!admin)linhas=linhas.filter(x=>meu(x.chave));
   const rotPed=ST.modo==='emb'?'EMBALAGENS':'PEDIDOS BIPADOS';
   const marca=x=>(!admin||(ctx2.predBip&&ctx2.predBip(x.chave)))?' class="me"':'';
-  const corpoTab=linhas.length?linhas.map(x=>`<tr${marca(x)}><td>${esc(x.nome)}</td><td>${fmtN(x.postagens)}</td><td>${fmtN(x.pedidos)}</td><td>${fmtN(x.unidades)}</td><td>${fmtN(x.exp)}</td><td>${fmtN(x.unExp)}</td><td>${fmtPct(x.part)}</td>${comMeta?`<td>${x.meta?fmtN(x.meta):'—'}</td><td>${x.meta?`<span class="mb"><i style="width:${Math.min(100,x.pctMeta)}%;background:${corMeta(x.pctMeta)}"></i></span>${fmtPct(x.pctMeta)}`:'—'}</td>`:''}</tr>`).join(''):`<tr><td colspan="9" class="ce-pn-vazio">Sem produção registrada para o recorte.</td></tr>`;
+  const corpoTab=linhas.length?linhas.map(x=>`<tr${marca(x)}><td>${esc(x.nome)}</td><td>${fmtN(x.postagens)}</td><td>${fmtN(x.embalagens)}</td><td>${fmtN(x.unidades)}</td><td>${fmtN(x.exp)}</td><td>${fmtN(x.unExp)}</td><td>${fmtPct(x.part)}</td>${comMeta?`<td>${x.meta?fmtN(x.meta):'—'}</td><td>${x.meta?`<span class="mb"><i style="width:${Math.min(100,x.pctMeta)}%;background:${corMeta(x.pctMeta)}"></i></span>${fmtPct(x.pctMeta)}`:'—'}</td>`:''}</tr>`).join(''):`<tr><td colspan="9" class="ce-pn-vazio">Sem produção registrada para o recorte.</td></tr>`;
   const o=ST.ordem;
   const tabProd=`<div class="ce-pn-bloco"><div class="ce-pn-bloco-h"><h3>Resumo dos Colaboradores · Embalagens × Meta do Dia</h3>
 <div class="ce-pn-seg"><button type="button" data-pn-modo="bip" class="${ST.modo==='bip'?'on':''}">Bipagem</button><button type="button" data-pn-modo="emb" class="${ST.modo==='emb'?'on':''}">Embalagem</button></div></div>
-<div class="ce-pn-tw"><table class="ce-pn-t"><thead><tr>${th('COLABORADOR','nome','prod',o)}${th('POSTAGENS','postagens','prod',o)}${th(rotPed,'pedidos','prod',o)}${th('UNIDADES','unidades','prod',o)}${th('EXPEDIDOS','exp','prod',o)}${th('UN. EXPEDIDAS','unExp','prod',o)}${th('% PARTICIPAÇÃO','part','prod',o)}${comMeta?th('META DO DIA','meta','prod',o)+th('% DA META','pctMeta','prod',o):''}</tr></thead><tbody>${corpoTab}</tbody></table></div></div>`;
+<div class="ce-pn-tw"><table class="ce-pn-t"><thead><tr>${th('COLABORADOR','nome','prod',o)}${th('POSTAGENS','postagens','prod',o)}${th('EMBALAGENS','embalagens','prod',o)}${th('UNIDADES','unidades','prod',o)}${th('EXPEDIDOS','exp','prod',o)}${th('UN. EXPEDIDAS','unExp','prod',o)}${th('% PARTICIPAÇÃO','part','prod',o)}${comMeta?th('META DO DIA','meta','prod',o)+th('% DA META','pctMeta','prod',o):''}</tr></thead><tbody>${corpoTab}</tbody></table></div></div>`;
   let tabCmp='';
   if(admin){
     const mapa=new Map();
@@ -13638,6 +13751,415 @@ window.CE_PAINEL={SQL_METAS,construirModelo,janelaDia,offsetSP,normNome,_t:{carr
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',iniciar);else iniciar();
 })();
 </script>
+
+<!-- V185 — ajustes leves + modo escuro completo -->
+
+
+<style id="ce-v184-css">
+#ce-v184-theme{position:fixed;right:16px;bottom:16px;z-index:99999;border:1px solid #cbd5df;border-radius:18px;padding:7px 11px;background:#fff;color:#17212b;font-size:11px;font-weight:800;cursor:pointer}
+.ce-v184-processando{opacity:.65!important;cursor:not-allowed!important}
+.ce-v184-row-atribuida{outline:2px solid rgba(31,128,255,.22);outline-offset:-2px}
+
+/* =====================================================================
+   V186 — MODO ESCURO PREMIUM
+   Somente aparência. Escopo exclusivo: body.ce-v184-dark (tela apenas).
+   Camadas: fundo > superfície > elevado > hover. Acento azul-aço + ouro
+   discreto (já usado no menu). Semânticas suaves (ok / alerta / erro).
+   ===================================================================== */
+@media screen{
+
+/* ---------- 1. Fundação e tokens ---------- */
+html:has(body.ce-v184-dark){color-scheme:dark;background:#080d13}
+body.ce-v184-dark{
+  color-scheme:dark;
+  --d-bg:#0a1017;
+  --d-bg-2:#0d141c;
+  --d-surface:#111a24;
+  --d-surface-2:#16212e;
+  --d-surface-3:#1c2939;
+  --d-input:#0c141c;
+  --d-line:#223142;
+  --d-line-2:#2d4057;
+  --d-text:#e8eef5;
+  --d-text-2:#b4c1d0;
+  --d-muted:#8496a9;
+  --d-accent:#62afea;
+  --d-accent-2:#2f80c6;
+  --d-accent-soft:rgba(98,175,234,.14);
+  --d-gold:#d6b668;
+  --d-ok:#58cb92;   --d-ok-soft:rgba(88,203,146,.14);
+  --d-warn:#f2b762; --d-warn-soft:rgba(242,183,98,.13);
+  --d-bad:#f58f86;  --d-bad-soft:rgba(245,143,134,.13);
+  --d-shadow:0 1px 2px rgba(0,0,0,.35),0 6px 18px rgba(0,0,0,.22);
+  --d-shadow-lg:0 24px 70px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.04);
+
+  /* tokens do próprio sistema, remapeados para o escuro */
+  --paper:var(--d-bg);
+  --card:var(--d-surface);
+  --line:var(--d-line);
+  --text:var(--d-text);
+  --ink:var(--d-text);
+  --muted:var(--d-muted);
+  --blue:#2f80c6;
+  --blue-dark:#8cc7f3;
+  --orange:#f08240;
+  --success:var(--d-ok);
+  --success-bg:var(--d-ok-soft);
+  --danger:var(--d-bad);
+  --danger-bg:var(--d-bad-soft);
+
+  background-color:var(--d-bg)!important;
+  background-image:radial-gradient(1100px 520px at 85% -8%,rgba(47,128,198,.08),transparent 62%),radial-gradient(900px 480px at -10% 105%,rgba(214,182,104,.035),transparent 60%)!important;
+  background-attachment:fixed!important;
+  color:var(--d-text)!important;
+}
+body.ce-v184-dark :is(main,.page,.view,main.main-content){background:transparent!important;color:var(--d-text)!important}
+body.ce-v184-dark ::selection{background:rgba(98,175,234,.35);color:#fff}
+body.ce-v184-dark ::placeholder{color:#6b7e92!important;opacity:1}
+body.ce-v184-dark :focus-visible{outline-color:var(--d-accent)}
+body.ce-v184-dark hr{border-color:var(--d-line)}
+
+/* scrollbars discretas */
+body.ce-v184-dark *{scrollbar-width:thin;scrollbar-color:#2d4057 transparent}
+body.ce-v184-dark ::-webkit-scrollbar{width:10px;height:10px}
+body.ce-v184-dark ::-webkit-scrollbar-track{background:transparent}
+body.ce-v184-dark ::-webkit-scrollbar-thumb{background:#2a3b4f;border-radius:10px;border:2px solid transparent;background-clip:padding-box}
+body.ce-v184-dark ::-webkit-scrollbar-thumb:hover{background:#3b516b;background-clip:padding-box;border:2px solid transparent}
+body.ce-v184-dark ::-webkit-scrollbar-corner{background:transparent}
+
+/* botão de tema */
+body.ce-v184-dark #ce-v184-theme{background:var(--d-surface-2);color:var(--d-text);border-color:var(--d-line-2);box-shadow:0 8px 22px rgba(0,0,0,.5);transition:background .15s,border-color .15s}
+body.ce-v184-dark #ce-v184-theme:hover{background:var(--d-surface-3);border-color:var(--d-accent)}
+
+/* ---------- 2. Topbar, menu lateral, toast ---------- */
+body.ce-v184-dark header.topbar{background:linear-gradient(180deg,#0f1822,#0b121a)!important;border-bottom:1px solid var(--d-line)!important;box-shadow:0 1px 0 rgba(255,255,255,.02),0 8px 24px rgba(0,0,0,.35)}
+body.ce-v184-dark .brand-text .t2{color:#8aa0b5}
+body.ce-v184-dark .clock{color:#a7b7c7}
+body.ce-v184-dark .topbar-icon-btn{background:rgba(255,255,255,.04);border-color:var(--d-line-2)}
+body.ce-v184-dark .topbar-icon-btn:hover{background:rgba(98,175,234,.14);border-color:rgba(98,175,234,.45)}
+body.ce-v184-dark nav.tabs.main-nav{background:linear-gradient(180deg,#0c141d,#09101a)!important;border-right:1px solid var(--d-line)!important}
+body.ce-v184-dark nav.tabs.main-nav::before{color:#5d7188}
+body.ce-v184-dark nav.tabs.main-nav .tab-btn{color:#a9b7c6!important;transition:background .15s,color .15s}
+body.ce-v184-dark nav.tabs.main-nav .tab-btn:hover{background:rgba(255,255,255,.055)!important;color:#fff!important}
+body.ce-v184-dark nav.tabs.main-nav .tab-btn.active{background:linear-gradient(180deg,#dcbd72,#c9a85a)!important;color:#141a22!important;box-shadow:0 4px 14px rgba(214,182,104,.22)}
+body.ce-v184-dark nav.tabs.main-nav .count-pill{background:rgba(255,255,255,.09)!important;color:#c9d5e1!important}
+body.ce-v184-dark nav.tabs.main-nav .tab-btn.active .count-pill{background:rgba(20,26,34,.16)!important;color:#141a22!important}
+body.ce-v184-dark .toast{background:var(--d-surface-3);color:var(--d-text);border:1px solid var(--d-line-2);box-shadow:0 14px 36px rgba(0,0,0,.55)}
+
+/* ---------- 3. Títulos e tipografia ---------- */
+body.ce-v184-dark :is(.section-title h2,.dashboard-head-title h2,.summary-section-head h3,.via-leitor-head h2,.ce-hp-title h2,.ce-pn-title h2,.startup-title,.modal-head h3,.pasta-nome,.startup-option .name,.back-link){color:var(--d-text)!important}
+body.ce-v184-dark :is(.section-title .sub,.via-leitor-head .sub,.ce-hp-title p,.ce-pn-title p,.modal-sub,.empty){color:var(--d-muted)!important}
+body.ce-v184-dark .back-link{color:var(--d-accent)!important}
+body.ce-v184-dark label{color:var(--d-muted)}
+body.ce-v184-dark :is(.kpi-value,.sla-card .value,.summary-kpi-value,.transport-card-pro .name,.transport-card-pro .count){color:var(--d-text)!important}
+
+/* ---------- 4. Superfícies (cards, painéis, caixas) ---------- */
+body.ce-v184-dark :is(.card,.transport-card,.transport-card-pro,.summary-kpi,.summary-toolbar,.summary-pending-card,.pending-filter-bar,.romaneio-filtro-data,.romaneio-bipagem-box,.embalador-box,.embalador-editor,.config-item,.conferencia-card,.manifest,.operacao-destaque,.geral-bipado-resumo>div,.visualizar-postados-card,.divergencias-resumo,.romaneio-card,.startup-option,.ce-start-op,.ce-login-op,.ce-via-colfilters,.ce-pn-filtros,.ce-pn-fx,.ce-pn-bloco,.ce-hp-filtros,.ce-hp-box,.ce-op-gridwrap,.ce-res-card,.ce-ro-meta>div,.ce-ret-info,.ce-ret-view-sign,.table-wrap,.table-container,.geral-table-wrap,.geral-bipado-table-wrap,.tbl-visualizar-romaneio-table){
+  background-color:var(--d-surface)!important;border-color:var(--d-line)!important;color:var(--d-text)!important;
+}
+body.ce-v184-dark :is(.card,.transport-card,.transport-card-pro,.summary-kpi,.summary-toolbar,.summary-pending-card,.pending-filter-bar,.romaneio-filtro-data,.romaneio-bipagem-box,.embalador-box,.romaneio-card,.config-item,.manifest,.operacao-destaque,.ce-pn-filtros,.ce-pn-fx,.ce-pn-bloco,.ce-hp-filtros,.ce-via-colfilters){box-shadow:var(--d-shadow)}
+/* cartões com faixa de destaque: preservam o lado colorido */
+body.ce-v184-dark :is(.kpi-card,.ce-pn-emb,.ce-pn-meta){background-color:var(--d-surface)!important;border-top-color:var(--d-line)!important;border-right-color:var(--d-line)!important;border-bottom-color:var(--d-line)!important;box-shadow:var(--d-shadow);color:var(--d-text)}
+body.ce-v184-dark :is(.sla-card,.ce-pn-card){background-color:var(--d-surface)!important;border-left-color:var(--d-line)!important;border-right-color:var(--d-line)!important;border-bottom-color:var(--d-line)!important;box-shadow:var(--d-shadow);color:var(--d-text)}
+body.ce-v184-dark .kpi-card{border-left-color:var(--d-accent-2)}
+body.ce-v184-dark .kpi-card.orange{border-left-color:var(--orange)}
+body.ce-v184-dark .kpi-card.green{border-left-color:var(--d-ok)}
+body.ce-v184-dark .sla-card{border-top-color:var(--d-accent-2)}
+body.ce-v184-dark .sla-card.orange{border-top-color:var(--orange)}
+body.ce-v184-dark .ce-pn-card{border-top-color:var(--d-accent-2)}
+body.ce-v184-dark .ce-pn-card.exp{border-top-color:#2fa06c}
+body.ce-v184-dark .ce-pn-card.fat{border-top-color:var(--orange)}
+body.ce-v184-dark .ce-pn-emb{border-left-color:#9b72e0}
+body.ce-v184-dark .ce-pn-meta{border-left-color:var(--d-accent-2)}
+body.ce-v184-dark .ce-pn-meta.ok{background-color:rgba(88,203,146,.07)!important;border-left-color:#2fa06c}
+body.ce-v184-dark .ce-pn-meta.vazio{border-left-color:#3a4d62;color:var(--d-muted)}
+
+body.ce-v184-dark .romaneio-card{transition:border-color .15s,box-shadow .15s,background-color .15s}
+body.ce-v184-dark .romaneio-card:hover{border-color:var(--d-accent-2)!important;background-color:var(--d-surface-2)!important;box-shadow:0 8px 22px rgba(0,0,0,.4)}
+body.ce-v184-dark .romaneio-card.selected{border-color:var(--orange)!important;box-shadow:0 0 0 2px rgba(240,130,64,.2)}
+body.ce-v184-dark :is(.startup-option,.ce-start-op,.ce-login-op):hover{border-color:var(--d-accent-2)!important;background-color:var(--d-surface-2)!important}
+body.ce-v184-dark :is(.startup-option.selected,.ce-start-op.selected,.ce-login-op.selected){border-color:var(--orange)!important;background-color:rgba(240,130,64,.09)!important;box-shadow:0 0 0 2px rgba(240,130,64,.16)}
+body.ce-v184-dark :is(.ce-start-op b,.ce-login-op b){color:var(--d-text)!important}
+body.ce-v184-dark :is(.ce-start-op span,.ce-login-op span){color:var(--d-muted)!important}
+
+/* faixa "operação em destaque" */
+body.ce-v184-dark .operacao-destaque-transportadora{background-color:rgba(47,128,198,.12)!important;border-right-color:var(--d-accent-2)!important}
+body.ce-v184-dark .operacao-destaque-embalador{background-color:rgba(240,130,64,.07)!important}
+body.ce-v184-dark :is(.operacao-destaque-transportadora,.operacao-destaque-embalador) :is(strong,b,h3,h4,.nome,.valor){color:var(--d-text)!important}
+
+/* pastas (Postagens) */
+body.ce-v184-dark .pasta-card{background-color:#17202b!important;border-color:#33465c!important;color:var(--d-text)!important;box-shadow:0 2px 10px rgba(0,0,0,.3)}
+body.ce-v184-dark .pasta-card::before{background-color:#17202b!important;border-color:#33465c!important}
+body.ce-v184-dark .pasta-card:hover{border-color:var(--orange)!important;box-shadow:0 12px 26px rgba(0,0,0,.5)}
+body.ce-v184-dark .pasta-card.alerta{background-color:#2a1d14!important;border-color:var(--orange)!important;box-shadow:0 0 0 1px rgba(240,130,64,.28),0 8px 22px rgba(0,0,0,.4)}
+body.ce-v184-dark .pasta-card.alerta::before{background-color:#2a1d14!important;border-color:var(--orange)!important}
+body.ce-v184-dark .pasta-card.nova{background-color:rgba(47,128,198,.07)!important;border-color:#2f6ea3!important;color:var(--d-accent)!important;box-shadow:none}
+body.ce-v184-dark .pasta-card.nova:hover{background-color:rgba(47,128,198,.15)!important;border-color:var(--d-accent)!important}
+body.ce-v184-dark .transport-card-pro.alerta{background-color:#2a1d14!important;border-color:var(--orange)!important}
+body.ce-v184-dark :is(.pasta-card,.romaneio-card,.transport-card) :is(small,.sub,.pasta-sub,.pasta-meta,.meta){color:var(--d-muted)!important}
+body.ce-v184-dark :is(.pasta-alerta-solicitar,.romaneio-card-solicitar,.transport-card-pro .tag){background-color:rgba(242,183,98,.14)!important;color:var(--d-warn)!important;border:1px solid rgba(242,183,98,.28)}
+body.ce-v184-dark .pasta-excluir{color:var(--d-bad)}
+
+/* alertas / avisos / lotes */
+body.ce-v184-dark .solicitar-alerta{background-color:rgba(240,130,64,.1)!important;border-color:rgba(240,130,64,.6)!important;color:#f6c9a8!important}
+body.ce-v184-dark .lote-alerta{background-color:rgba(242,183,98,.1)!important;border-color:rgba(242,183,98,.35)!important;color:var(--d-warn)!important}
+body.ce-v184-dark :is(.ce-reenvio-alerta,.ce-dup-note,.confirm-modal-warning,.ce-pn-aviso){background-color:rgba(242,183,98,.1)!important;border-color:rgba(242,183,98,.32)!important;color:#f0cf96!important}
+body.ce-v184-dark .ce-pn-erro{background-color:var(--d-bad-soft)!important;border-color:rgba(245,143,134,.4)!important;color:#ffb4ad!important}
+
+/* ---------- 5. Formulários ---------- */
+body.ce-v184-dark :is(input,select,textarea):not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=button]):not([type=submit]){
+  background-color:var(--d-input)!important;color:var(--d-text)!important;border-color:var(--d-line-2)!important;
+  transition:border-color .15s,box-shadow .15s,background-color .15s;
+}
+body.ce-v184-dark :is(input,select,textarea):not([type=checkbox]):not([type=radio]):hover{border-color:#3b5470!important}
+body.ce-v184-dark :is(input,select,textarea):not([type=checkbox]):not([type=radio]):focus{border-color:var(--d-accent)!important;box-shadow:0 0 0 3px rgba(98,175,234,.18)!important;outline:none!important;background-color:#0e1822!important}
+body.ce-v184-dark :is(input,select,textarea):disabled{background-color:#0f1821!important;color:#6f8296!important;opacity:.85}
+body.ce-v184-dark select option,body.ce-v184-dark select optgroup{background-color:#121c27;color:var(--d-text)}
+body.ce-v184-dark input[type=date]::-webkit-calendar-picker-indicator,body.ce-v184-dark input[type=time]::-webkit-calendar-picker-indicator{filter:invert(.78) brightness(1.1);cursor:pointer}
+body.ce-v184-dark input[type=checkbox],body.ce-v184-dark input[type=radio]{accent-color:var(--d-accent-2)}
+body.ce-v184-dark input[type=file]::file-selector-button{background-color:var(--d-surface-3);color:var(--d-text);border:1px solid var(--d-line-2);border-radius:5px;cursor:pointer}
+body.ce-v184-dark input:-webkit-autofill{-webkit-box-shadow:0 0 0 40px #0c141c inset!important;-webkit-text-fill-color:var(--d-text)!important;caret-color:var(--d-text)}
+body.ce-v184-dark :is(.ce-pn-filtros,.ce-hp-campo,.ce-op-field,.ce-op-scan,.ce-cfg-field,.ce-ret-field,.ce-emb-modal,.field) :is(label,small){color:var(--d-muted)!important}
+body.ce-v184-dark :is(.ce-op-scan,.ce-emb-modal) input,body.ce-v184-dark #ce-bipagem-operacional #ce-op-rastreio-box.ativo input{border-width:2px!important;border-color:var(--d-accent-2)!important}
+body.ce-v184-dark :is(.ce-op-scan,.ce-emb-modal) input:focus{box-shadow:0 0 0 4px rgba(98,175,234,.2)!important;border-color:var(--d-accent)!important}
+body.ce-v184-dark :is(.ce-pn-filtros select:disabled){background-color:var(--d-surface-2)!important;color:var(--d-text-2)!important}
+body.ce-v184-dark :is(.ce-op-value){background-color:var(--d-surface-2)!important;border-color:var(--d-line-2)!important;color:var(--d-text)!important}
+body.ce-v184-dark .switch-track{background:#2a3a4d}
+body.ce-v184-dark .switch input:checked + .switch-track{background:var(--orange)}
+body.ce-v184-dark .switch-track::before{background:#f2f6fa}
+
+/* autocomplete / listas suspensas */
+body.ce-v184-dark :is(.colab-autocomplete-list,#embalador-lista){background-color:#14202c!important;border:1px solid var(--d-line-2)!important;box-shadow:0 18px 40px rgba(0,0,0,.55)!important}
+body.ce-v184-dark .colab-autocomplete-item{color:var(--d-text)!important}
+body.ce-v184-dark .colab-autocomplete-item:hover{background-color:var(--d-accent-soft)!important;color:#fff!important}
+
+/* ---------- 6. Botões ---------- */
+body.ce-v184-dark .btn-primary,body.ce-v184-dark :is(.ce-pn-btn,.ce-hp-atualizar,.ce-rom-open,.ce-rom-create,.ce-div-yes,#ceObsSalvar,.ce-op-btn.primary,.ce-cfg-primary,.ce-admin-save,#ce-login-btn){
+  background:linear-gradient(180deg,#3a8dd3,#2c78bb)!important;color:#fff!important;border-color:#2c78bb!important;box-shadow:0 1px 0 rgba(255,255,255,.12) inset,0 2px 8px rgba(0,0,0,.3);
+}
+body.ce-v184-dark .btn-primary:hover,body.ce-v184-dark :is(.ce-pn-btn,.ce-hp-atualizar,.ce-rom-open,.ce-rom-create,.ce-div-yes,#ceObsSalvar,.ce-op-btn.primary,.ce-cfg-primary,.ce-admin-save,#ce-login-btn):hover{filter:brightness(1.1)}
+body.ce-v184-dark .btn-orange{background:linear-gradient(180deg,#f58f4f,#e0702d)!important;color:#fff!important;box-shadow:0 1px 0 rgba(255,255,255,.14) inset,0 2px 8px rgba(0,0,0,.3)}
+body.ce-v184-dark .ce-hp-relatorio{background:linear-gradient(180deg,#27966a,#1c7b55)!important;color:#fff!important;box-shadow:0 1px 0 rgba(255,255,255,.12) inset}
+body.ce-v184-dark :is(.btn-ghost,.ce-op-btn:not(.primary),#ce-op-salvar-lote,.ce-admin-add,.ce-cfg-cancel,.ce-senha-actions button,.ce-ro-foot button,.ce-ret-cancel,.ce-rel-cancelar,.ce-div-no,.ce-sb-pager button,.ce-via-colfilters button,.ce-pn-tab,.ce-pn-seg button,.ce-google-btn,.ce-ret-btn,.ce-rast-mais,#ce-bip-cancelar){
+  background-color:var(--d-surface-2)!important;color:var(--d-text-2)!important;border-color:var(--d-line-2)!important;
+}
+body.ce-v184-dark :is(.btn-ghost,.ce-op-btn:not(.primary),#ce-op-salvar-lote,.ce-admin-add,.ce-cfg-cancel,.ce-senha-actions button,.ce-ro-foot button,.ce-ret-cancel,.ce-rel-cancelar,.ce-div-no,.ce-sb-pager button,.ce-via-colfilters button,.ce-pn-tab,.ce-pn-seg button,.ce-google-btn,.ce-ret-btn,.ce-rast-mais,#ce-bip-cancelar):hover{
+  background-color:var(--d-surface-3)!important;color:#fff!important;border-color:#456080!important;
+}
+body.ce-v184-dark :is(.ce-op-btn:not(.primary),#ce-op-salvar-lote,.ce-admin-add,.ce-ret-btn,.ce-rast-mais){color:var(--d-accent)!important;border-color:rgba(98,175,234,.4)!important}
+body.ce-v184-dark :is(.ce-op-btn:not(.primary),#ce-op-salvar-lote,.ce-admin-add,.ce-ret-btn,.ce-rast-mais):hover{background-color:var(--d-accent-soft)!important;color:#bfe0fa!important}
+body.ce-v184-dark .ce-ret-btn.ver{color:var(--d-ok)!important;border-color:rgba(88,203,146,.4)!important;background-color:var(--d-ok-soft)!important}
+body.ce-v184-dark .btn-danger{color:var(--d-bad)!important;border-color:rgba(245,143,134,.4)!important;background:transparent!important}
+body.ce-v184-dark .btn-danger:hover{background:var(--d-bad-soft)!important}
+body.ce-v184-dark :is(.ce-cfg-danger){background:linear-gradient(180deg,#d64545,#b63030)!important;color:#fff!important}
+body.ce-v184-dark :is(.ce-admin-delete){background-color:transparent!important;color:var(--d-bad)!important;border-color:rgba(245,143,134,.45)!important}
+body.ce-v184-dark :is(.ce-admin-close,.ce-cfg-form-close,.ce-ro-close,.ce-admin-tabs button,#ceObsExcluir,#ceObsTela .ce-quick button){background-color:var(--d-surface-3)!important;color:var(--d-text-2)!important;border-color:transparent}
+body.ce-v184-dark :is(.ce-admin-close,.ce-cfg-form-close,.ce-ro-close,.ce-admin-tabs button,#ceObsExcluir,#ceObsTela .ce-quick button):hover{background-color:#26364a!important;color:#fff!important}
+body.ce-v184-dark :is(.ce-admin-tabs button.active,.ce-pn-tab.on,.ce-pn-seg button.on,.via-leitor-btn.active){background:linear-gradient(180deg,#3a8dd3,#2c78bb)!important;border-color:#2c78bb!important;color:#fff!important}
+body.ce-v184-dark :is(.ce-div-detalhes,.ce-hp-rom-link,.ce-ret-limpar){color:var(--d-accent)!important}
+body.ce-v184-dark .ce-hp-rom-link:hover{color:#bfe0fa!important}
+body.ce-v184-dark :is(.ce-rom-x,.ce-op-close,.ce-res-x,#ceObsTela .ce-x){color:var(--d-text-2)}
+body.ce-v184-dark :is(.ce-rom-x,.ce-op-close,.ce-res-x,#ceObsTela .ce-x):hover{color:#fff}
+body.ce-v184-dark .btn:disabled{opacity:.4}
+body.ce-v184-dark .modal-close{color:var(--d-text-2)}
+
+/* ---------- 7. Tabelas ---------- */
+body.ce-v184-dark table{color:var(--d-text)}
+body.ce-v184-dark th{background-color:var(--d-surface-2)!important;color:#93a5b8!important;border-color:var(--d-line)!important;font-weight:700}
+body.ce-v184-dark td{border-color:var(--d-line)!important}
+body.ce-v184-dark tbody tr{transition:background-color .12s}
+body.ce-v184-dark tbody tr:nth-child(even){background-color:rgba(255,255,255,.018)}
+body.ce-v184-dark tbody tr:hover{background-color:rgba(98,175,234,.08)}
+body.ce-v184-dark :is(.divergencias-resumo th,.summary-pending-card thead th,.geral-table-wrap thead th,.geral-bipado-table-wrap thead th,.ce-ro-table th,.ce-res-table th,.ce-op-table th,.ce-hp-table th,.ce-xml-result-table th,.manifest-itens-postagens th,.ce-pn-t th){background-color:var(--d-surface-2)!important;color:#93a5b8!important;border-color:var(--d-line)!important}
+body.ce-v184-dark :where(.geral-bipado-table-wrap tbody td,.manifest-itens-postagens td,.ce-hp-table td,.ce-pn-t td,.ce-ro-table td,.ce-res-table td,.ce-op-table td,.ce-admin-table td,.ce-xml-result-table td){color:var(--d-text)!important}
+body.ce-v184-dark :is(.geral-bipado-table-wrap tbody td,.manifest-itens-postagens td,.ce-hp-table td,.ce-pn-t td,.ce-ro-table td,.ce-res-table td,.ce-op-table td,.ce-admin-table td,.ce-xml-result-table td){border-color:var(--d-line)!important;background-color:transparent}
+body.ce-v184-dark :is(.ce-hp-table tbody tr:nth-child(even),.manifest-itens-postagens tbody tr:nth-child(even),.tbl-visualizar-romaneio-table tbody tr:nth-child(even),.ce-pn-t tbody tr:nth-child(even),.via-exp-table tbody tr:nth-child(even)){background-color:rgba(255,255,255,.022)!important}
+body.ce-v184-dark :is(.ce-op-table tr:nth-child(even) td){background-color:rgba(255,255,255,.022)!important}
+body.ce-v184-dark :is(.geral-bipado-table-wrap tbody tr:hover,.tbl-visualizar-romaneio-table tbody tr:hover,.manifest-itens-postagens tbody tr:hover,.ce-hp-table tbody tr:hover,.ce-pn-t tbody tr:hover,.via-exp-table tbody tr:hover){background-color:rgba(98,175,234,.1)!important}
+body.ce-v184-dark :is(.ce-lote-salvo td){background-color:rgba(98,175,234,.08)!important}
+body.ce-v184-dark .ce-pn-t tr.me{background-color:rgba(88,203,146,.12)!important}
+body.ce-v184-dark .ce-pn-t tfoot td{background-color:var(--d-surface-2)!important;border-top:2px solid var(--d-line-2)!important;color:var(--d-text)!important}
+body.ce-v184-dark :is(.ce-pn-t .mb,.ce-pn-barra,.ce-pn-mbar,.ce-pn-fil .mini){background-color:#1d2b3b!important}
+body.ce-v184-dark .ce-pn-fxgrid>div{background-color:var(--d-surface-2)!important}
+body.ce-v184-dark .ce-pn-fil>div,body.ce-v184-dark .ce-pn-mf label{border-color:var(--d-line)!important;background-color:var(--d-bg-2)}
+body.ce-v184-dark .ce-pn-bloco-h{border-bottom-color:var(--d-line)!important}
+body.ce-v184-dark .ce-pn-seg{border-color:var(--d-line-2)!important}
+body.ce-v184-dark .ce-pn-tabs{border-bottom-color:var(--d-line)!important}
+body.ce-v184-dark .ce-pn-chip{background-color:var(--d-accent-soft)!important;color:#a9d6f6!important}
+body.ce-v184-dark .ce-pn-chip.adm{background-color:rgba(240,130,64,.15)!important;color:#f4b185!important}
+body.ce-v184-dark .ce-pn-sql{background-color:#070c12;color:#b9d3e6;border:1px solid var(--d-line)}
+body.ce-v184-dark .ce-pn-fxgrid .pct b{color:var(--d-ok)!important}
+body.ce-v184-dark .ce-pn-fxgrid .pen b{color:var(--d-bad)!important}
+/* textos escuros "fixos" do Painel / Histórico */
+body.ce-v184-dark :is(.ce-pn-card b,.ce-pn-fxgrid b,.ce-pn-fx h3,.ce-pn-fil b,.ce-pn-emb b,.ce-pn-bloco-h h3,.ce-pn-meta .top b,.ce-pn-subtitle,.ce-pn-mf label,.ce-res-card b,.geral-bipado-resumo b,.volume-texto,#itens-romaneio-ativo .volume-romaneio-texto,.ce-ro-head :is(h1,h2,h3,h4),.ce-ret-info b,.ce-ret-head h3,.ce-emb-modal h3,.ce-rel-card h3,.ce-rom-head h2,.ce-rom-sec h3,.ce-rom-name,.ce-cfg-form-head h3,.ce-login-start-card h2,.ce-login-card h2,.ce-gravar-sucesso-text,.ce-admin-head h2,#modal-entregador .modal-head h3){color:var(--d-text)!important}
+body.ce-v184-dark :is(.ce-pn-upd,.ce-pn-quem,.ce-pn-emb,.ce-pn-fil div,.ce-pn-mac,.ce-pn-meta .top,.ce-pn-filtros label,.ce-pn-card small,.ce-pn-fxgrid small,.ce-pn-meta small,.ce-hp-campo label,.ce-hp-legenda,.ce-op-field label,.ce-op-scan label,.ce-op-info,.ce-rom-sub,.ce-rom-meta,.ce-emb-modal p,.ce-emb-modal label,.ce-div-modal p,.ce-div-question,.ce-res-card small,.ce-ro-meta small,.ce-ro-note,.ce-ro-table th,.ce-ret-info small,.ce-cfg-field label,.ce-admin-msg,.ce-admin-table th,.ce-login-card p,.ce-obs-inline,#ceObsTela .ce-ref,.via-leitor-btn,.ce-pn-tab,.ce-pn-seg button){color:var(--d-text-2)!important}
+body.ce-v184-dark :is(.ce-pn-card em,.ce-pn-upd small,.ce-pn-nota,.ce-pn-vazio,.ce-pn-mf label span small,.ce-op-empty,.ce-hp-vazio,.ce-res-empty,.ce-rom-empty){color:var(--d-muted)!important}
+body.ce-v184-dark :is(.ce-pn-tab.on,.ce-pn-seg button.on,.via-leitor-btn.active,.ce-admin-tabs button.active){color:#fff!important}
+body.ce-v184-dark :is(.ce-hp-legenda,.ce-hp-title){color:var(--d-text-2)}
+body.ce-v184-dark .ce-hp-box{border-radius:8px;box-shadow:var(--d-shadow)}
+body.ce-v184-dark :is(#ce-historico-postagens,#ce-bipagem-operacional){background-color:transparent!important}
+body.ce-v184-dark .ce-hp-dot{box-shadow:0 0 0 3px rgba(255,255,255,.04)}
+
+/* ---------- 8. Selos, badges, status ---------- */
+body.ce-v184-dark .count-pill{background:rgba(255,255,255,.08)}
+body.ce-v184-dark .badge{border:1px solid transparent}
+body.ce-v184-dark :is(.badge-pendente,.badge-aberto){background-color:var(--d-warn-soft)!important;color:var(--d-warn)!important;border-color:rgba(242,183,98,.25)!important}
+body.ce-v184-dark .badge-romaneio{background-color:var(--d-accent-soft)!important;color:#a9d6f6!important;border-color:rgba(98,175,234,.25)!important}
+body.ce-v184-dark .badge-assinado{background-color:var(--d-ok-soft)!important;color:var(--d-ok)!important;border-color:rgba(88,203,146,.25)!important}
+body.ce-v184-dark .badge[style*="fff3cd" i]{background-color:var(--d-warn-soft)!important;color:var(--d-warn)!important;border-color:rgba(242,183,98,.3)!important}
+body.ce-v184-dark :is(.config-item-tag,.modal-item .tag-nova){background-color:var(--d-accent-soft)!important;color:#a9d6f6!important}
+body.ce-v184-dark .status-dentro{background-color:var(--d-ok-soft)!important;color:var(--d-ok)!important}
+body.ce-v184-dark .status-fora{background-color:var(--d-bad-soft)!important;color:var(--d-bad)!important}
+body.ce-v184-dark .gb-status{background-color:var(--d-ok-soft)!important;color:var(--d-ok)!important}
+body.ce-v184-dark .divergencias-count{background-color:var(--d-warn-soft)!important;color:var(--d-warn)!important}
+body.ce-v184-dark .summary-status-pill{background-color:var(--d-surface-2)!important;border-color:var(--d-line-2)!important;color:var(--d-text-2)!important}
+body.ce-v184-dark .summary-kpi-icon{background-color:var(--d-accent-soft)!important;color:var(--d-accent)!important}
+body.ce-v184-dark .summary-kpi.green .summary-kpi-icon{background-color:var(--d-ok-soft)!important;color:var(--d-ok)!important}
+body.ce-v184-dark .summary-kpi.orange .summary-kpi-icon{background-color:var(--d-warn-soft)!important;color:var(--d-warn)!important}
+body.ce-v184-dark .summary-kpi.red .summary-kpi-icon{background-color:var(--d-bad-soft)!important;color:var(--d-bad)!important}
+body.ce-v184-dark :is(.summary-kpi,.kpi-card,.sla-card) :is(.label,small,.summary-kpi-label,.kpi-label){color:var(--d-muted)!important}
+body.ce-v184-dark .transport-count{background:linear-gradient(180deg,#3a8dd3,#2c78bb);color:#fff}
+body.ce-v184-dark .stamp{border-color:var(--d-ok);color:var(--d-ok);background:rgba(10,16,23,.6)}
+body.ce-v184-dark .ce-op-ok,body.ce-v184-dark .ce-xml-ok,body.ce-v184-dark .ce-div-status.aceita{color:var(--d-ok)!important}
+body.ce-v184-dark .ce-op-alerta,body.ce-v184-dark .ce-div-status.pendente{color:var(--d-warn)!important}
+body.ce-v184-dark .linha-atrasada td{background-color:rgba(245,143,134,.07)!important}
+body.ce-v184-dark :is(.ce-reenvio-row td){background-color:rgba(242,183,98,.1)!important}
+body.ce-v184-dark :is(.ce-dup-row td,.ce-op-divergente td){background-color:rgba(245,143,134,.1)!important}
+body.ce-v184-dark .ce-dup-audit div{border-bottom-color:var(--d-line)!important}
+body.ce-v184-dark .ce-dup-audit div:nth-child(odd){background-color:var(--d-surface-2)!important}
+body.ce-v184-dark :is(.conferencia-card.erro){border-color:rgba(245,143,134,.5)!important;background-color:rgba(245,143,134,.07)!important}
+body.ce-v184-dark .conferencia-opcao{background-color:var(--d-surface-2)!important;color:var(--d-text-2)!important;border-color:var(--d-line-2)!important}
+body.ce-v184-dark .conferencia-opcao.ativo-sim{background-color:var(--d-ok-soft)!important;border-color:rgba(88,203,146,.55)!important;color:var(--d-ok)!important}
+body.ce-v184-dark .conferencia-opcao.ativo-nao{background-color:var(--d-bad-soft)!important;border-color:rgba(245,143,134,.55)!important;color:var(--d-bad)!important}
+body.ce-v184-dark .conferencia-decisao-previa.sim{background-color:var(--d-ok-soft)!important;border-color:rgba(88,203,146,.4)!important;color:var(--d-ok)!important}
+body.ce-v184-dark .conferencia-decisao-previa.nao{background-color:var(--d-bad-soft)!important;border-color:rgba(245,143,134,.4)!important;color:var(--d-bad)!important}
+
+/* ---------- 9. Modais e overlays ---------- */
+body.ce-v184-dark :is(.modal-overlay,.ce-rom-overlay,.ce-emb-overlay,.ce-div-overlay,.ce-res-overlay,.ce-ro-overlay,#ce-admin-modal,.ce-cfg-form-overlay){background-color:rgba(3,7,12,.72)!important}
+body.ce-v184-dark #ceObsTela{background-color:rgba(3,7,12,.78)!important}
+body.ce-v184-dark :is(.modal-box,.startup-box,.confirm-modal,.ce-rom-modal,.ce-emb-modal,.ce-div-modal,.ce-res-modal,.ce-rel-card,.ce-senha-box,.ce-admin-box,.ce-cfg-form-box,.ce-ro-modal,.ce-ret-card,.ce-login-card,.ce-login-start-card,.ce-op-window){
+  background-color:var(--d-surface)!important;color:var(--d-text)!important;border:1px solid var(--d-line-2)!important;box-shadow:var(--d-shadow-lg)!important;
+}
+body.ce-v184-dark :is(#ceObsTela .ce-card,#modal-entregador .modal-finalizar-padrao,#ce-gravar-sucesso .ce-gravar-sucesso-box){background-color:var(--d-surface)!important;color:var(--d-text)!important;border:1px solid var(--d-line-2)!important;box-shadow:var(--d-shadow-lg)!important}
+body.ce-v184-dark #ceObsTela .ce-head{background:linear-gradient(180deg,#16212e,#101a24)!important;border-bottom:1px solid var(--d-line)}
+body.ce-v184-dark #ceObsTela .ce-foot{border-top-color:var(--d-line)!important}
+body.ce-v184-dark #ceObsTexto{background-color:var(--d-input)!important;color:var(--d-text)!important;border-color:var(--d-line-2)!important}
+body.ce-v184-dark .ce-res-head,body.ce-v184-dark .ce-op-title{background:linear-gradient(180deg,#1b2a3a,#14202c)!important;color:#fff!important;border-bottom:1px solid var(--d-line-2)}
+body.ce-v184-dark :is(.modal-head,.ce-rom-head,.ce-ro-head,.ce-admin-head,.ce-cfg-form-head,.ce-admin-tabs,.ce-ro-foot,.modal-foot,.ce-cfg-form-actions,.ce-op-top){border-color:var(--d-line)!important}
+body.ce-v184-dark .modal-head[style*="background:#fff" i],body.ce-v184-dark .modal-foot[style*="background:#fff" i]{background-color:var(--d-surface)!important}
+body.ce-v184-dark :is(.confirm-modal-actions){background-color:var(--d-bg-2)!important;border-top-color:var(--d-line)!important}
+body.ce-v184-dark .confirm-modal-item{background-color:var(--d-surface-2)!important;border-color:var(--d-line)!important;color:var(--d-text)!important}
+body.ce-v184-dark .confirm-modal-icon{background-color:rgba(240,130,64,.14)!important;color:var(--orange)!important}
+body.ce-v184-dark .modal-item{background-color:var(--d-surface-2);border-color:var(--d-line);color:var(--d-text)}
+body.ce-v184-dark .modal-item:hover{background-color:var(--d-accent-soft)!important;border-color:var(--d-accent-2)!important}
+body.ce-v184-dark :is(.ce-rom-list,.ce-div-compare){border-color:var(--d-line)!important;background-color:var(--d-bg-2)}
+body.ce-v184-dark :is(.ce-rom-item,.ce-div-row){border-bottom-color:var(--d-line)!important}
+body.ce-v184-dark :is(.ce-rom-search,.ce-rom-select,.ce-hp-rel-data){background-color:var(--d-input)!important;color:var(--d-text)!important;border-color:var(--d-line-2)!important}
+body.ce-v184-dark #modal-entregador :is(select,input[type=text]){background-color:var(--d-input)!important;color:var(--d-text)!important;border-color:var(--d-line-2)!important}
+body.ce-v184-dark #modal-entregador .field label{color:var(--d-text-2)!important}
+body.ce-v184-dark #modal-entregador .finalizar-check{background-color:var(--d-surface-2)!important;border-color:var(--d-line-2)!important}
+body.ce-v184-dark #modal-entregador .finalizar-check span{color:var(--d-text-2)!important}
+body.ce-v184-dark #ce-gravar-sucesso .ce-gravar-sucesso-box{border-color:rgba(88,203,146,.35)!important}
+body.ce-v184-dark .ce-login-sep{color:var(--d-muted)}
+body.ce-v184-dark .ce-login-sep:before,body.ce-v184-dark .ce-login-sep:after{background:var(--d-line-2)}
+body.ce-v184-dark .ce-google-btn{background-color:var(--d-surface-2)!important;color:var(--d-text)!important}
+body.ce-v184-dark :is(.ce-login-erro,.ce-cfg-form-error){color:var(--d-bad)!important}
+body.ce-v184-dark :is(.ce-login-logo){background:linear-gradient(180deg,#3a8dd3,#2c78bb);box-shadow:0 8px 20px rgba(47,128,198,.3)}
+body.ce-v184-dark :is(.ce-admin-table th,.ce-admin-table td){border-bottom-color:var(--d-line)!important}
+body.ce-v184-dark .ce-admin-table :is(input,select){background-color:var(--d-input)!important;color:var(--d-text)!important;border-color:var(--d-line-2)!important}
+body.ce-v184-dark #ce-admin-modal [style*="color:#64748b" i]{color:var(--d-muted)!important}
+/* telas cheias de login / início (fundo) */
+body.ce-v184-dark :is(#ce-login-overlay,#startup-overlay){background:radial-gradient(900px 520px at 70% -10%,rgba(47,128,198,.14),transparent 60%),#080d13!important}
+body.ce-v184-dark .visualizar-postados-overlay{background-color:var(--d-bg)!important}
+
+/* ---------- 10. Romaneio (manifesto / assinatura) ---------- */
+body.ce-v184-dark .manifest{overflow:hidden}
+body.ce-v184-dark .manifest-head{background:linear-gradient(180deg,#16222f,#0f1822)!important;border-bottom:1px solid var(--d-line)}
+body.ce-v184-dark .sigpad-wrap{background-color:#f1f5f9!important;border-color:#5b7390!important}   /* área de assinatura permanece clara: traço escuro */
+body.ce-v184-dark .sig-preview img,body.ce-v184-dark .ce-ret-signbox{background-color:#f1f5f9!important;border-color:#5b7390!important}
+body.ce-v184-dark .ce-volume-editavel:focus{background-color:var(--d-surface-3)!important;box-shadow:inset 0 0 0 1px var(--d-accent)!important}
+
+/* ---------- 11. Via Leitor ---------- */
+body.ce-v184-dark .via-leitor-menu{background-color:var(--d-bg-2)!important;border-color:var(--d-line)!important}
+body.ce-v184-dark .via-leitor-btn:not(.active):hover{background-color:rgba(255,255,255,.05)}
+body.ce-v184-dark #tbl-via-hoje th,body.ce-v184-dark #tbl-via-geral th{color:#93a5b8!important}
+body.ce-v184-dark :is(#view-resumo,#view-resumo .via-exp-toolbar,#view-resumo .via-exp-filtros,#view-resumo .via-exp-grid,#view-resumo .via-exp-legenda){background-color:var(--d-surface)!important;color:var(--d-text)!important;border-color:var(--d-line)!important}
+body.ce-v184-dark #view-resumo{background-color:transparent!important}
+body.ce-v184-dark #view-resumo .via-exp-toolbar{background-color:var(--d-surface-2)!important}
+body.ce-v184-dark #view-resumo .via-exp-legenda{background-color:var(--d-bg-2)!important;color:var(--d-muted)!important}
+body.ce-v184-dark #view-resumo .via-exp-title strong{color:var(--d-text)!important}
+body.ce-v184-dark #view-resumo :is(.via-exp-title span,.via-exp-actions label,.via-exp-filtros label,.via-exp-total span,.via-exp-empty){color:var(--d-muted)!important}
+body.ce-v184-dark #view-resumo :is(.via-exp-actions select,.via-exp-filtros select,.via-exp-filtros input){background-color:var(--d-input)!important;color:var(--d-text)!important;border-color:var(--d-line-2)!important}
+body.ce-v184-dark #view-resumo :is(.via-exp-actions select option,.via-exp-filtros select option){background-color:#121c27!important;color:var(--d-text)!important}
+body.ce-v184-dark #view-resumo .via-exp-total{background-color:var(--d-accent-soft)!important;border-color:rgba(98,175,234,.28)!important}
+body.ce-v184-dark #view-resumo .via-exp-total strong{color:var(--d-accent)!important}
+body.ce-v184-dark #view-resumo .via-exp-table{background-color:var(--d-surface)!important;color:var(--d-text)!important}
+body.ce-v184-dark #view-resumo .via-exp-table :is(thead,th){background-color:var(--d-surface-2)!important;color:#93a5b8!important;border-color:var(--d-line)!important}
+body.ce-v184-dark #view-resumo .via-exp-table td{background-color:transparent!important;color:var(--d-text)!important;border-color:var(--d-line)!important}
+body.ce-v184-dark #view-resumo .via-exp-table tbody tr:nth-child(even) td{background-color:rgba(255,255,255,.022)!important}
+body.ce-v184-dark #view-resumo .via-exp-table tbody tr:hover td{background-color:rgba(98,175,234,.1)!important}
+body.ce-v184-dark #view-resumo .via-exp-table a{color:var(--d-accent)!important}
+body.ce-v184-dark #view-resumo .via-exp-table .mono{color:var(--d-text)!important}
+body.ce-v184-dark #view-resumo button.btn-ghost{background-color:var(--d-surface-2)!important;color:var(--d-text-2)!important;border-color:var(--d-line-2)!important}
+body.ce-v184-dark :is(.via-dot.late,.prazo-dot.fora){box-shadow:0 0 0 3px rgba(239,62,54,.18)}
+body.ce-v184-dark .via-exp-legenda,body.ce-v184-dark .ce-sb-pager{background-color:var(--d-bg-2)!important;border-color:var(--d-line)!important;color:var(--d-muted)!important}
+
+/* ---------- 12. Nodes com estilo inline gerado por JS ---------- */
+body.ce-v184-dark tr[style*="FFF1F1" i]{background-color:rgba(245,143,134,.12)!important}
+body.ce-v184-dark div[style*="#FFF7F7" i]{background-color:var(--d-bad-soft)!important;border-color:rgba(245,143,134,.4)!important;color:var(--d-text)!important}
+body.ce-v184-dark div[style*="background:#FEE4E2" i]{background-color:var(--d-bad-soft)!important;border-color:rgba(245,143,134,.4)!important;color:#ffb4ad!important}
+body.ce-v184-dark div[style*="background:#f5f7f8" i]{background-color:var(--d-surface-2)!important;color:var(--d-text-2)!important}
+body.ce-v184-dark button[style*="background:#FEF3F2" i]{background-color:var(--d-bad-soft)!important;color:#ffb4ad!important;border-color:rgba(245,143,134,.45)!important}
+body.ce-v184-dark button[style*="background:#fff;" i]:not(.btn){background-color:var(--d-surface-2)!important;border-color:var(--d-line-2)!important}
+body.ce-v184-dark [style*="color:#64748b" i],body.ce-v184-dark [style*="color:#667085" i],body.ce-v184-dark [style*="color:#475467" i],body.ce-v184-dark [style*="color:#475569" i],body.ce-v184-dark [style*="color:#64707b" i],body.ce-v184-dark [style*="color:#5b6670" i],body.ce-v184-dark [style*="color:#788893" i],body.ce-v184-dark [style*="color:#657785" i],body.ce-v184-dark [style*="color:#7a8a95" i],body.ce-v184-dark [style*="color:#6b7c8c" i],body.ce-v184-dark [style*="color:#94a3b8" i]{color:var(--d-muted)!important}
+body.ce-v184-dark [style*="color:#b42318" i]:not(button),body.ce-v184-dark [style*="color:#c62828" i]:not(button),body.ce-v184-dark [style*="color:#9b1c1c" i],body.ce-v184-dark [style*="color:#a61b1b" i],body.ce-v184-dark [style*="color:#9f1d1d" i],body.ce-v184-dark [style*="color:#912018" i],body.ce-v184-dark [style*="color:#7a271a" i],body.ce-v184-dark [style*="color:#7a1111" i]{color:var(--d-bad)!important}
+body.ce-v184-dark [style*="color:#8a5a00" i]{color:var(--d-warn)!important}
+body.ce-v184-dark [style*="color:#102536" i],body.ce-v184-dark [style*="color:#172b38" i],body.ce-v184-dark [style*="color:#1a2430" i]{color:var(--d-text)!important}
+
+/* ---------- 13. Mínimos: bordas finas, cantos e transições ---------- */
+body.ce-v184-dark :is(.card,.romaneio-card,.kpi-card,.sla-card,.summary-kpi,.ce-pn-card,.pasta-card){transition:border-color .15s,box-shadow .2s,transform .15s,background-color .15s}
+body.ce-v184-dark :is(.ce-hp-title,.ce-pn-title){border-bottom:0}
+body.ce-v184-dark .empty .big{filter:grayscale(.3) brightness(.9)}
+}
+</style>
+<button type="button" id="ce-v184-theme">Modo escuro</button>
+<script id="ce-v184-js">
+(function(){
+ 'use strict';
+ const $=id=>document.getElementById(id);
+ function aplicarTema(t){document.body.classList.toggle('ce-v184-dark',t==='dark');const b=$('ce-v184-theme');if(b)b.textContent=t==='dark'?'Modo claro':'Modo escuro';try{localStorage.setItem('ce_tema',t)}catch(e){}}
+ function preparar(){
+   const b=$('ce-v184-theme'); if(b&&!b.dataset.ok){b.dataset.ok='1';b.onclick=()=>aplicarTema(document.body.classList.contains('ce-v184-dark')?'light':'dark')}
+   let t='light';try{t=localStorage.getItem('ce_tema')||'light'}catch(e){} aplicarTema(t);
+   const sel=$('ce-v184-colaborador');
+   if(sel){
+     const nomes=[...new Set([...(window.CONFIG_TESTE_OPERADORES?.embaladores||[]),...(window.CONFIG_TESTE_OPERADORES?.bipadores||[])])];
+     sel.innerHTML='<option value="">Colaborador dos selecionados</option>'+nomes.map(n=>'<option value="'+String(n).replace(/"/g,'&quot;')+'">'+n+'</option>').join('');
+   }
+   const atr=$('ce-v184-atribuir'); if(atr&&!atr.dataset.ok){atr.dataset.ok='1';atr.onclick=()=>{
+     const nome=sel?.value||''; if(!nome){alert('Selecione o colaborador.');return}
+     const rows=[...document.querySelectorAll('#ce-op-tbody tr')].filter(tr=>tr.querySelector('.ce-v184-selecionar')?.checked);
+     if(!rows.length){alert('Selecione pelo menos um pedido.');return}
+     rows.forEach(tr=>{tr.dataset.embalador=nome;const td=tr.children[4];if(td)td.textContent=nome;const cb=tr.querySelector('.ce-v184-selecionar');if(cb)cb.checked=false;tr.classList.add('ce-v184-row-atribuida')});
+     const st=$('ce-op-status');if(st)st.textContent=rows.length+' pedido(s) atribuídos a '+nome;
+   }}
+ }
+ document.addEventListener('DOMContentLoaded',preparar);
+ window.addEventListener('load',preparar,{once:true});
+ // Atualiza controles somente quando a tela de bipagem é aberta, sem timer/observer.
+ const old=window.ceAbrirBipagemOperacional;
+ if(typeof old==='function') window.ceAbrirBipagemOperacional=function(r,b){const v=old.apply(this,arguments);preparar();try{const k='ce_resumo_bipagem_'+String(r?.id||r?.romaneio_id||r?.codigo||r?.numero||'');const x=JSON.parse(localStorage.getItem(k)||'null');const el=$('ce-v184-resumo-salvo');if(el)el.textContent=x?.total?('Último resumo salvo: '+x.total+' postagem(ns)'):'';}catch(e){}return v};
+})();
+</script>
+
+
+<style id="ce-v187-atribuicao-layout">
+/* Ajuste pontual: seletor de colaborador cortado na bipagem de postagens. */
+#ce-bipagem-operacional #ce-v184-atribuicao{display:flex!important;align-items:center!important;gap:8px!important;flex-wrap:wrap!important;margin:10px 0 12px!important;}
+#ce-bipagem-operacional #ce-v184-colaborador{display:block!important;flex:0 1 300px!important;width:300px!important;max-width:100%!important;min-width:210px!important;height:40px!important;min-height:40px!important;line-height:normal!important;padding:0 34px 0 12px!important;box-sizing:border-box!important;overflow:visible!important;text-overflow:ellipsis!important;vertical-align:middle!important;font-size:13px!important;}
+#ce-bipagem-operacional #ce-v184-atribuir{height:40px!important;min-height:40px!important;align-self:center!important;}
+#ce-bipagem-operacional #ce-v184-resumo-salvo{min-width:0!important;}
+</style>
 </body>
 </html>
 
