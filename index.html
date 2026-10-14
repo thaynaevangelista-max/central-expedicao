@@ -1,5 +1,14 @@
 <!DOCTYPE html>
 <!-- V178: Histórico consulta postagens diretamente no Supabase por NF+filial para definir coletado -->
+<!-- V189k: Importar XML e Planilha antiga em abas (abre em XML) -->
+<!-- V189j: Importar XML e Planilha Antiga com layout profissional; XML em lotes de 50 (até 2.000 por seleção) -->
+<!-- V189i: Configurações do ADMIN confirmam a gravação (erro real quando o banco bloqueia) -->
+<!-- V189h: aviso na tela quando a configuração não carrega (mostra usuário, perfil e papel do token) -->
+<!-- V189g: OPERACIONAL visualiza as Configurações (somente leitura); apenas ADMIN altera -->
+<!-- V189f: sessão persiste ao atualizar a página (renovação em voo único; erro pós-login não apaga a sessão) -->
+<!-- V189d: ADMIN pode excluir romaneio ASSINADO (confirmação digitada + backup JSON); edição de NF em assinado segue bloqueada -->
+<!-- V189c: OPERACIONAL pode editar/remover NF de romaneio aberto ou aguardando assinatura; só ASSINADO é bloqueado -->
+<!-- V189b: Via Leitor e Painel ignoram pedidos faturados antes de 13/10/2026 (início da operação) -->
 <!-- V176: Histórico corrigido para reconhecer COLETADO diretamente em postagens, inclusive Planilha Antiga sem romaneio -->
 <!-- V175: Histórico reconhece postagens status=coletado sem romaneio e recarrega a base após importação -->
 <!-- V174: Planilha Antiga atualiza NFs existentes ainda não coletadas, em vez de ignorá-las -->
@@ -15,7 +24,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
-<title>Central de Expedição — V31</title>
+<title>V189 — Central de Expedição</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -2807,21 +2816,49 @@
 
 
 
-  <!-- VIEW: IMPORTAR XML — contingência manual -->
+  <!-- VIEW: IMPORTAR XML — contingência manual (V189j: layout profissional, envio em lotes) -->
   <section class="view" id="view-importarxml">
     <div class="section-title"><h2>Importar XML</h2><span class="sub">contingência para NFs que não chegaram automaticamente</span></div>
-    <div class="card ce-xml-upload-card">
-      <div class="ce-xml-upload-head">
-        <div>
-          <strong>Selecione 1 ou vários arquivos XML</strong>
-          <p>Os arquivos são enviados ao Agente XML local e gravados na tabela xmls. A chave NF-e impede duplicidade.</p>
+
+    <div class="ce-imp-abas" role="tablist" id="ce-imp-abas">
+      <button type="button" role="tab" class="ativo" data-aba="xml" aria-selected="true">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>
+        Importar XML
+      </button>
+      <button type="button" role="tab" data-aba="antiga" aria-selected="false">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 9h16M4 15h16M10 3v18"/></svg>
+        Planilha antiga
+      </button>
+    </div>
+
+    <div class="ce-imp-pane" id="ce-imp-pane-xml">
+    <div class="card ce-imp-card ce-xml-upload-card">
+      <div class="ce-imp-head">
+        <div class="ce-imp-titulo">
+          <span class="ce-imp-ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 14l-2 2 2 2M15 14l2 2-2 2"/></svg>
+          </span>
+          <div>
+            <strong>Notas fiscais em XML</strong>
+            <p>Os arquivos são enviados ao Agente XML local e gravados na tabela <b>xmls</b>. A chave NF-e impede duplicidade.</p>
+          </div>
         </div>
-        <span class="badge badge-romaneio">até 50 por envio</span>
+        <div class="ce-imp-badges">
+          <span id="ce-xml-agente" class="ce-imp-chip ce-imp-chip-neutro" title="Conexão com o Agente XML (porta 8766)"><i></i><span>Verificando agente…</span></span>
+          <span class="ce-imp-chip ce-imp-chip-info" title="A seleção é enviada em lotes de 50 arquivos">até 2.000 por seleção</span>
+        </div>
       </div>
 
-      <div class="grid2" style="align-items:end;">
-        <div class="field">
-          <label>Filial</label>
+      <label class="ce-imp-drop" id="ce-xml-drop" for="ce-xml-files" tabindex="0">
+        <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
+        <b>Arraste os arquivos XML aqui</b>
+        <span>ou clique para selecionar · vários arquivos de uma vez</span>
+        <input id="ce-xml-files" type="file" accept=".xml,text/xml,application/xml" multiple>
+      </label>
+
+      <div class="ce-imp-linha">
+        <div class="ce-imp-campo">
+          <label for="ce-xml-filial">Filial</label>
           <select id="ce-xml-filial">
             <option value="">Identificar automaticamente</option>
             <option value="0101">0101</option>
@@ -2829,50 +2866,94 @@
             <option value="1020">1020</option>
           </select>
         </div>
-        <div class="field">
-          <label>Arquivos XML</label>
-          <input id="ce-xml-files" type="file" accept=".xml,text/xml,application/xml" multiple>
-        </div>
+        <div class="ce-imp-resumo-sel" id="ce-xml-selecao">Nenhum arquivo selecionado.</div>
       </div>
 
-      <div class="btn-row">
-        <button class="btn btn-primary" type="button" id="ce-xml-enviar">Importar XML selecionado</button>
+      <div class="ce-imp-progresso" id="ce-xml-prog" hidden>
+        <div class="ce-imp-barra"><div id="ce-xml-prog-fill"></div></div>
+        <div class="ce-imp-prog-txt" id="ce-xml-prog-txt"></div>
+      </div>
+
+      <div class="ce-imp-acoes">
+        <button class="btn btn-primary" type="button" id="ce-xml-enviar" disabled>Importar XML</button>
+        <button class="btn btn-ghost" type="button" id="ce-xml-cancelar" hidden>Cancelar envio</button>
         <button class="btn btn-ghost" type="button" id="ce-xml-limpar">Limpar</button>
-        <span id="ce-xml-status" style="font-size:12px;color:var(--muted);align-self:center;">Nenhum arquivo selecionado.</span>
+        <span id="ce-xml-status" class="ce-imp-status">Nenhum arquivo selecionado.</span>
       </div>
     </div>
 
-    <div class="card" style="padding:0;overflow:auto;">
-      <table class="ce-xml-result-table">
-        <thead><tr><th>ARQUIVO</th><th>FILIAL</th><th>NF</th><th>CHAVE</th><th>STATUS</th><th>DETALHE</th></tr></thead>
-        <tbody id="ce-xml-resultados"><tr><td colspan="6" class="empty">O resultado da importação aparecerá aqui.</td></tr></tbody>
-      </table>
+    <div class="ce-imp-stats" id="ce-xml-stats" hidden>
+      <div class="ce-imp-stat"><span>Processados</span><b id="ce-xml-n-proc">0</b></div>
+      <div class="ce-imp-stat ce-ok"><span>Importados</span><b id="ce-xml-n-imp">0</b></div>
+      <div class="ce-imp-stat ce-info"><span>Atualizados</span><b id="ce-xml-n-atu">0</b></div>
+      <div class="ce-imp-stat ce-warn"><span>Ignorados</span><b id="ce-xml-n-ign">0</b></div>
+      <div class="ce-imp-stat ce-bad"><span>Erros</span><b id="ce-xml-n-err">0</b></div>
     </div>
 
+    <div class="card ce-imp-resultado">
+      <div class="ce-imp-res-head">
+        <strong>Resultado da importação</strong>
+        <div class="ce-imp-filtros" id="ce-xml-filtros">
+          <button type="button" data-f="" class="ativo">Todos</button>
+          <button type="button" data-f="importado">Importados</button>
+          <button type="button" data-f="ignorado">Ignorados</button>
+          <button type="button" data-f="erro">Erros</button>
+        </div>
+        <button class="btn btn-ghost btn-sm" type="button" id="ce-xml-csv" disabled>Exportar CSV</button>
+      </div>
+      <div style="overflow:auto;max-height:460px">
+        <table class="ce-xml-result-table">
+          <thead><tr><th>ARQUIVO</th><th>FILIAL</th><th>NF</th><th>CHAVE</th><th>STATUS</th><th>DETALHE</th></tr></thead>
+          <tbody id="ce-xml-resultados"><tr><td colspan="6" class="empty">O resultado da importação aparecerá aqui.</td></tr></tbody>
+        </table>
+      </div>
+    </div>
 
-    <div class="card ce-antiga-card" style="margin-top:16px;">
-      <div class="ce-xml-upload-head">
-        <div>
-          <strong>Planilha Antiga</strong>
-          <p>Importe o relatório antigo de coletas. Os registros são gravados diretamente no Supabase como já coletados, sem criar romaneio ou assinatura.</p>
+    </div>
+
+    <div class="ce-imp-pane" id="ce-imp-pane-antiga" hidden>
+    <div class="card ce-imp-card ce-antiga-card">
+      <div class="ce-imp-head">
+        <div class="ce-imp-titulo">
+          <span class="ce-imp-ico ce-imp-ico-verde" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 9h16M4 15h16M10 3v18"/></svg>
+          </span>
+          <div>
+            <strong>Planilha antiga de coletas</strong>
+            <p>Importa o relatório antigo diretamente no Supabase como <b>já coletado</b>, sem criar romaneio nem assinatura.</p>
+          </div>
         </div>
-        <span class="badge badge-romaneio">Excel ou CSV</span>
+        <div class="ce-imp-badges"><span class="ce-imp-chip ce-imp-chip-info">Excel ou CSV</span></div>
       </div>
-      <div class="grid2" style="align-items:end;">
-        <div class="field">
-          <label>Arquivo da planilha antiga</label>
-          <input id="ce-antiga-file" type="file" accept=".xlsx,.xls,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel">
-        </div>
-        <div class="field">
-          <label>Registros encontrados</label>
-          <div id="ce-antiga-contagem" style="height:38px;display:flex;align-items:center;font-weight:800;">0</div>
-        </div>
+
+      <ol class="ce-imp-passos" id="ce-antiga-passos">
+        <li class="ativo" data-p="1"><i>1</i> Selecionar arquivo</li>
+        <li data-p="2"><i>2</i> Analisar</li>
+        <li data-p="3"><i>3</i> Importar</li>
+      </ol>
+
+      <label class="ce-imp-drop ce-imp-drop-compacto" id="ce-antiga-drop" for="ce-antiga-file" tabindex="0">
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
+        <b id="ce-antiga-nome">Arraste a planilha aqui ou clique para selecionar</b>
+        <span>.xlsx, .xls ou .csv</span>
+        <input id="ce-antiga-file" type="file" accept=".xlsx,.xls,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel">
+      </label>
+
+      <div class="ce-imp-stats ce-imp-stats-3">
+        <div class="ce-imp-stat"><span>Registros encontrados</span><b id="ce-antiga-contagem">0</b></div>
+        <div class="ce-imp-stat ce-ok"><span>Prontos</span><b id="ce-antiga-n-ok">0</b></div>
+        <div class="ce-imp-stat ce-bad"><span>Com erro</span><b id="ce-antiga-n-err">0</b></div>
       </div>
-      <div class="btn-row">
-        <button class="btn btn-primary" type="button" id="ce-antiga-analisar">Analisar planilha</button>
+
+      <div class="ce-imp-progresso" id="ce-antiga-prog" hidden>
+        <div class="ce-imp-barra"><div id="ce-antiga-prog-fill"></div></div>
+      </div>
+
+      <div class="ce-imp-acoes">
+        <button class="btn btn-ghost" type="button" id="ce-antiga-analisar">Analisar planilha</button>
         <button class="btn btn-primary" type="button" id="ce-antiga-importar" disabled>Importar como coletados</button>
         <button class="btn btn-ghost" type="button" id="ce-antiga-limpar">Limpar</button>
-        <span id="ce-antiga-status" style="font-size:12px;color:var(--muted);align-self:center;">Nenhum arquivo analisado.</span>
+        <span id="ce-antiga-status" class="ce-imp-status">Nenhum arquivo analisado.</span>
       </div>
     </div>
 
@@ -2881,6 +2962,7 @@
         <thead><tr><th>DATA</th><th>NF</th><th>FINALIZAÇÃO</th><th>COLETA</th><th>EMBALADOR</th><th>TRANSPORTE</th><th>FILIAL</th><th>VOLUME</th><th>VALIDAÇÃO</th></tr></thead>
         <tbody id="ce-antiga-preview"></tbody>
       </table>
+    </div>
     </div>
   </section>
 
@@ -3380,9 +3462,18 @@
     const msg=String(j?.message||j?.msg||t||'').toLowerCase();
     return status===401 && (msg.includes('jwt')||msg.includes('expired')||msg.includes('token'));
   }
-  async function ceRenovarSessao(){
+  // V189f: renovação em voo único — o refresh token do Supabase é de uso único; chamadas simultâneas
+  // (várias consultas recebendo 401 ao mesmo tempo) faziam a 2ª falhar e derrubavam o login.
+  let CE_RENOVANDO=null;
+  function ceRenovarSessao(){
+    if(CE_RENOVANDO)return CE_RENOVANDO;
+    CE_RENOVANDO=ceRenovarSessaoInterno().finally(()=>{CE_RENOVANDO=null;});
+    return CE_RENOVANDO;
+  }
+  async function ceRenovarSessaoInterno(){
     const sess=window.CE_AUTH?.session;
     const refresh=sess?.refresh_token;
+    window.CE_AUTH_FALHA_REDE=false;
     if(!refresh)return false;
     try{
       const r=await fetch(CE_OP_SB_URL+'/auth/v1/token?grant_type=refresh_token',{
@@ -3394,7 +3485,7 @@
       window.CE_AUTH.session=j;
       try{localStorage.setItem('ce_auth_session_v1',JSON.stringify(j));}catch(e){}
       return true;
-    }catch(e){console.error('[AUTH REFRESH]',e);return false;}
+    }catch(e){console.error('[AUTH REFRESH]',e);window.CE_AUTH_FALHA_REDE=true;return false;}
   }
   window.CE_RENOVAR_SESSAO=ceRenovarSessao;
   async function ceOpReq(method,path,body,prefer='',tentativa=0){
@@ -3425,18 +3516,70 @@
       atualizado_em:new Date().toISOString(),
       ...(rom.motorista_nome?{motorista_nome:rom.motorista_nome}:{}),
       ...(rom.motorista_cpf?{motorista_cpf:String(rom.motorista_cpf).replace(/\D/g,'')}:{}),
-      ...(rom.assinatura?{assinatura:rom.assinatura}:{}),
+      ...(rom.assinatura&&rom._sigDirty?{assinatura:rom.assinatura}:{}),
       ...(rom.assinado_em?{assinado_em:rom.assinado_em}:{})
     };
   }
+  // V189 (P0-1): vínculo NF -> romaneio SOMENTE por correspondência exata (uuid ou código único).
+  // Antes, um romaneio_id vazio casava com romaneios[0] e gravava a NF no romaneio errado.
+  // V189: código de romaneio vindo da SEQUENCE do banco (função ce_proximo_codigo_romaneio, SQL fase_b_01 / B1).
+  // Enquanto a função não existir no banco (404), cai no contador local de sempre (max+1).
+  // Evita dois usuários gerarem o mesmo código ao mesmo tempo.
+  let CE_RPC_COD_DISPONIVEL=true;
+  async function ceNovoCodigoRomaneio(){
+    if(CE_RPC_COD_DISPONIVEL){
+      for(let t=0;t<3;t++){
+        try{
+          const r=await ceOpReq('POST','rpc/ce_proximo_codigo_romaneio',{});
+          const cod=String(Array.isArray(r)?(r[0]?.ce_proximo_codigo_romaneio??r[0]??''):(r??'')).trim();
+          if(/^RM-\d+$/.test(cod)&&!romaneios.some(x=>String(x.id)===cod)){
+            counters.romaneio=Math.max(counters.romaneio||0,parseInt(cod.replace(/\D/g,''),10)||0);
+            return cod;
+          }
+          // código já presente na memória: pede o próximo
+        }catch(e){
+          if(e&&(e.status===404||e.status===400)){CE_RPC_COD_DISPONIVEL=false;break;}  // função ainda não criada
+          console.warn('[CÓDIGO ROMANEIO] falha na sequência, usando contador local',e);break;
+        }
+      }
+    }
+    counters.romaneio++;
+    return 'RM-'+pad(counters.romaneio);
+  }
+  const CE_IDX={arr:null,len:-1,uuid:new Map(),cod:new Map()};
+  function ceIdxRom(){
+    if(CE_IDX.arr===romaneios&&CE_IDX.len===romaneios.length)return CE_IDX;
+    CE_IDX.arr=romaneios;CE_IDX.len=romaneios.length;CE_IDX.uuid.clear();CE_IDX.cod.clear();
+    for(const r of romaneios){
+      const u=String(r.uuid||'').trim(),c=String(r.id||'').trim();
+      if(u)CE_IDX.uuid.set(u,r);
+      if(c){const l=CE_IDX.cod.get(c);if(l)l.push(r);else CE_IDX.cod.set(c,[r]);}
+    }
+    return CE_IDX;
+  }
+  function ceOpAcharRomaneioExato(ref,post){
+    const alvo=String(ref==null?'':ref).trim();
+    if(!alvo)return null;
+    const ix=ceIdxRom();
+    let porUuid=ix.uuid.get(alvo);
+    if(porUuid&&String(porUuid.uuid||'').trim()!==alvo)porUuid=null;       // índice defasado
+    if(!porUuid)porUuid=romaneios.find(r=>String(r.uuid||'').trim()===alvo);  // confirma por varredura antes de dar como inexistente
+    if(porUuid)return porUuid;
+    let porCodigo=(ix.cod.get(alvo)||[]).filter(r=>String(r.id||'').trim()===alvo);
+    if(!porCodigo.length)porCodigo=romaneios.filter(r=>String(r.id||'').trim()===alvo);
+    if(porCodigo.length===1)return porCodigo[0];
+    if(porCodigo.length>1&&post){
+      // Código repetido: só desempata se a NF já consta, de forma inequívoca, nos itens de UM dos romaneios.
+      const pid=String(post.uuid||post.id||'');
+      const donos=porCodigo.filter(r=>(r.itens||[]).some(i=>String(i)===pid));
+      if(donos.length===1)return donos[0];
+    }
+    if(porCodigo.length>1)throw new Error('Código de romaneio ambíguo ('+alvo+'): '+porCodigo.length+' romaneios com o mesmo código. Gravação bloqueada.');
+    return null;
+  }
   function ceOpPostDb(p){
-    const alvo=String(p.romaneio_id||'').trim();
-    const rom=romaneios.find(r=>
-      String(r.id||'').trim()===alvo ||
-      String(r.uuid||'').trim()===alvo ||
-      String(r.codigo||'').trim()===alvo
-    );
-    if(!rom)throw new Error('Romaneio '+p.romaneio_id+' não encontrado para a NF '+p.nf);
+    const rom=ceOpAcharRomaneioExato(p.romaneio_id,p);
+    if(!rom)throw new Error('Romaneio '+(String(p.romaneio_id||'').trim()||'(não informado)')+' não encontrado para a NF '+(p.nf||'?')+'. Gravação bloqueada para não vincular a NF a outro romaneio.');
     if(!rom.uuid)rom.uuid=ceOpUUID();
     if(!p.uuid)p.uuid=ceOpUUID();
     return {
@@ -3453,7 +3596,7 @@
       atualizado_em:new Date().toISOString(),...(p.coleta_em?{coleta_em:p.coleta_em}:{})
     };
   }
-  async function ceOpUpsert(table,rows){
+  async function ceOpUpsert(table,rows,minimal){
     if(!rows.length)return [];
 
     // PostgREST exige que todos os objetos enviados no MESMO lote tenham
@@ -3469,67 +3612,258 @@
     for(const grupo of grupos.values()){
       for(let i=0;i<grupo.length;i+=100){
         const lote=grupo.slice(i,i+100);
+        // V189: gravações em lote usam return=minimal (não devolvem as linhas = menos Egress).
+        // Gravações unitárias que precisam de confirmação continuam com return=representation.
         const r=await ceOpReq(
           'POST',
           table+'?on_conflict=id',
           lote,
-          'resolution=merge-duplicates,return=representation'
+          'resolution=merge-duplicates,return='+(minimal?'minimal':'representation')
         );
         out.push(...(Array.isArray(r)?r:[]));
       }
     }
     return out;
   }
-  async function loadAll(){
-    try{
-      const [rs,ps]=await Promise.all([
-        ceOpReq('GET','romaneios?select=*&order=criado_em.asc&limit=10000'),
-        ceOpReq('GET','postagens?select=*&order=criado_em.asc&limit=50000')
-      ]);
-      const porUuid=new Map();
-      romaneios=(rs||[]).map(x=>{
-        const r={
-          id:x.codigo||x.id,uuid:x.id,motorista:x.transportadora||'',transportadora:x.transportadora||'',
-          empresa:x.empresa||'',filial:x.filial||'',data:x.data?new Date(x.data+'T12:00:00').toLocaleDateString('pt-BR'):'',
-          data_iso:x.data||'',itens:[],status:x.status||'aberto',criado_em:x.criado_em||'',
-          assinatura:x.assinatura||null,assinado_em:x.assinado_em||null,motorista_nome:x.motorista_nome||'',
-          motorista_cpf:x.motorista_cpf||''
-        };porUuid.set(x.id,r);return r;
-      });
-      postagens=(ps||[]).map(x=>{
-        const rom=porUuid.get(x.romaneio_id);
-        const p={
-          id:x.id,uuid:x.id,romaneio_id:rom?.id||x.romaneio_id,empresa:x.empresa||'',filial:x.filial||'',
-          nf:x.nf||'',pedido:x.pedido||'',cliente_nome:x.cliente_nome||'',chave:x.chave_nfe||'',
-          chave_nfe:x.chave_nfe||'',rastreio:x.rastreio||'',transporte:x.transporte_romaneio||x.transporte_original||'',
-          transporte_original:x.transporte_original||'',transporte_romaneio:x.transporte_romaneio||'',
-          volumes:x.volume||1,volume:x.volume||1,bipador:x.bipador||'',embalador:x.embalador||'',
-          status:x.status||'em_romaneio',divergencia:x.divergencia===true,criado_em:x.criado_em||x.bipada_em||'',
-          bipada_em:x.bipada_em||x.criado_em||'',coleta_em:x.coleta_em||null,
-          dataPostagem:(()=>{const v=x.bipada_em||x.criado_em||'';if(!v)return '';try{return new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(v));}catch(e){return '';}})(),
-          horaPostagem:(()=>{const v=x.bipada_em||x.criado_em||'';if(!v)return '';try{return new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(new Date(v));}catch(e){return '';}})()
-        };
-        if(rom&&!rom.itens.includes(p.id))rom.itens.push(p.id);
-        return p;
-      });
-      const numsR=romaneios.map(r=>parseInt(String(r.id||'').replace(/\D/g,''))||0);
-      counters.romaneio=Math.max(0,...numsR);
-      counters.postagem=postagens.length;
-      renderAll();
-    }catch(e){
-      console.error('[SUPABASE OPERACIONAL] Falha ao carregar',e);
-      postagens=[];romaneios=[];counters={postagem:0,romaneio:0};renderAll();
-      alert('Não foi possível carregar Romaneios/Postagens do Supabase.\n\nNenhum dado local será usado.\n\n'+(e.message||e));
-    }
+
+  /* ===== V189 — CARGA INCREMENTAL + GRAVAÇÃO SOMENTE DO QUE MUDOU =====
+     Antes: loadAll baixava romaneios(select=*, com assinatura base64) + postagens(select=*) inteiros a cada
+     60 s e saveRomaneios/savePostagens regravavam TODA a memória a cada ação.
+     Agora: 1ª carga completa e enxuta (sem assinatura); recargas seguintes trazem só o que mudou
+     (atualizado_em > cursor); a cada CE_FULL_RELOAD_MS faz uma carga completa para pegar exclusões
+     feitas por outros usuários. Gravação compara com o último estado conhecido e envia só o diferente. */
+  const CE_SNAP={rom:new Map(),post:new Map()};
+  const CE_SYNC={cursorRom:null,cursorPost:null,ultimoSync:0,ultimoFull:0,voo:null,primeira:true};
+  const CE_FULL_RELOAD_MS=15*60*1000;
+  const CE_MIN_INTERVALO_MS=20*1000;
+  const CE_ROM_COLS='id,codigo,empresa,filial,transportadora,data,status,criado_em,atualizado_em,assinado_em,motorista_nome,motorista_cpf';
+  const CE_POST_COLS='id,romaneio_id,empresa,filial,nf,chave_nfe,rastreio,pedido,cliente_nome,transporte_original,transporte_romaneio,volume,bipador,embalador,status,divergencia,bipada_em,criado_em,atualizado_em,coleta_em';
+  function ceStable(row){
+    const o={...row};delete o.atualizado_em;
+    return JSON.stringify(Object.keys(o).sort().map(k=>[k,o[k]]));
   }
+  function ceAssinaturaOrfa(p){
+    return 'ORFA:'+JSON.stringify([p.romaneio_id,p.status,p.coleta_em||null,p.rastreio||'',p.volume||p.volumes||1,p.divergencia===true,p.nf||'']);
+  }
+  function ceMarcarRomLimpo(r){
+    try{CE_SNAP.rom.set(r.uuid,ceStable(ceOpRomDb(r)));}catch(e){CE_SNAP.rom.delete(r.uuid);}
+  }
+  function ceMarcarPostLimpo(p){
+    try{CE_SNAP.post.set(p.uuid||p.id,ceStable(ceOpPostDb(p)));}
+    catch(e){CE_SNAP.post.set(p.uuid||p.id,ceAssinaturaOrfa(p));}
+  }
+  // Pagina até a página vir vazia: nunca trunca em silêncio caso o Max Rows do PostgREST seja menor que o pedido.
+  async function ceOpPaginar(path,tamanho){
+    const out=[];tamanho=tamanho||1000;const sep=path.includes('?')?'&':'?';
+    for(let i=0;i<1000;i++){
+      const lote=await ceOpReq('GET',path+sep+'limit='+tamanho+'&offset='+out.length);
+      if(!Array.isArray(lote)||!lote.length)return out;
+      out.push(...lote);
+    }
+    throw new Error('Paginação excedeu o limite de segurança ('+path.split('?')[0]+'); carga abortada para não gravar sobre dados incompletos.');
+  }
+  function ceMapRom(x){
+    return {
+      id:x.codigo||x.id,uuid:x.id,motorista:x.transportadora||'',transportadora:x.transportadora||'',
+      empresa:x.empresa||'',filial:x.filial||'',data:x.data?new Date(x.data+'T12:00:00').toLocaleDateString('pt-BR'):'',
+      data_iso:x.data||'',itens:[],status:x.status||'aberto',criado_em:x.criado_em||'',
+      // V189: assinatura NÃO vem na carga geral; é buscada sob demanda (ceGarantirAssinatura).
+      assinatura:null,assinado_em:x.assinado_em||null,motorista_nome:x.motorista_nome||'',
+      motorista_cpf:x.motorista_cpf||''
+    };
+  }
+  function ceMapPost(x,rom){
+    return {
+      id:x.id,uuid:x.id,romaneio_id:rom?.id||x.romaneio_id,empresa:x.empresa||'',filial:x.filial||'',
+      nf:x.nf||'',pedido:x.pedido||'',cliente_nome:x.cliente_nome||'',chave:x.chave_nfe||'',
+      chave_nfe:x.chave_nfe||'',rastreio:x.rastreio||'',transporte:x.transporte_romaneio||x.transporte_original||'',
+      transporte_original:x.transporte_original||'',transporte_romaneio:x.transporte_romaneio||'',
+      volumes:x.volume||1,volume:x.volume||1,bipador:x.bipador||'',embalador:x.embalador||'',
+      status:x.status||'em_romaneio',divergencia:x.divergencia===true,criado_em:x.criado_em||x.bipada_em||'',
+      bipada_em:x.bipada_em||x.criado_em||'',coleta_em:x.coleta_em||null,
+      dataPostagem:(()=>{const v=x.bipada_em||x.criado_em||'';if(!v)return '';try{return new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(v));}catch(e){return '';}})(),
+      horaPostagem:(()=>{const v=x.bipada_em||x.criado_em||'';if(!v)return '';try{return new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(new Date(v));}catch(e){return '';}})()
+    };
+  }
+  function ceMaiorTs(lista,atual){
+    let m=atual||null;
+    for(const x of lista){const t=x?.atualizado_em;if(t&&(!m||t>m))m=t;}
+    return m;
+  }
+  function ceCursor(ts){
+    if(!ts)return null;
+    const d=new Date(ts);if(isNaN(d))return null;
+    return new Date(d.getTime()-5*60*1000).toISOString(); // sobreposição de 5 min (relógios/transações)
+  }
+  function ceRecalcContadores(){
+    const numsR=romaneios.map(r=>parseInt(String(r.id||'').replace(/\D/g,''))||0);
+    counters.romaneio=Math.max(0,...numsR);
+    counters.postagem=postagens.length;
+  }
+  async function ceCargaCompleta(){
+    const [rs,ps]=await Promise.all([
+      ceOpPaginar('romaneios?select='+CE_ROM_COLS+'&order=criado_em.asc,id.asc'),
+      ceOpPaginar('postagens?select='+CE_POST_COLS+'&order=criado_em.asc,id.asc')
+    ]);
+    const porUuid=new Map();
+    const novosRom=rs.map(x=>{const r=ceMapRom(x);porUuid.set(x.id,r);return r;});
+    const novasPost=ps.map(x=>{
+      const rom=porUuid.get(x.romaneio_id);
+      const p=ceMapPost(x,rom);
+      if(rom&&!rom.itens.includes(p.id))rom.itens.push(p.id);
+      return p;
+    });
+    // Só troca a memória depois de a carga inteira ter dado certo.
+    romaneios=novosRom;postagens=novasPost;
+    CE_SNAP.rom.clear();CE_SNAP.post.clear();
+    romaneios.forEach(ceMarcarRomLimpo);postagens.forEach(ceMarcarPostLimpo);
+    CE_SYNC.cursorRom=ceCursor(ceMaiorTs(rs,null));
+    CE_SYNC.cursorPost=ceCursor(ceMaiorTs(ps,null));
+    CE_SYNC.ultimoFull=Date.now();
+    return true;
+  }
+  function ceRomSujo(r){
+    try{return CE_SNAP.rom.get(r.uuid)!==ceStable(ceOpRomDb(r));}catch(e){return false;}
+  }
+  function cePostSujo(p){
+    try{return CE_SNAP.post.get(p.uuid||p.id)!==ceStable(ceOpPostDb(p));}catch(e){return false;}
+  }
+  async function ceCargaDelta(){
+    const qR='romaneios?select='+CE_ROM_COLS+'&order=atualizado_em.asc,id.asc'+(CE_SYNC.cursorRom?'&atualizado_em=gt.'+encodeURIComponent(CE_SYNC.cursorRom):'');
+    const qP='postagens?select='+CE_POST_COLS+'&order=atualizado_em.asc,id.asc'+(CE_SYNC.cursorPost?'&atualizado_em=gt.'+encodeURIComponent(CE_SYNC.cursorPost):'');
+    const [rs,ps]=await Promise.all([ceOpPaginar(qR),ceOpPaginar(qP)]);
+    const cR=ceCursor(ceMaiorTs(rs,null)),cP=ceCursor(ceMaiorTs(ps,null));
+    let mudou=false;
+    for(const x of rs){
+      const novo=ceMapRom(x);
+      const atual=romaneios.find(r=>r.uuid===x.id);
+      if(atual){
+        if(ceRomSujo(atual))continue;                       // alteração local pendente: não sobrescreve
+        let igual=false;try{igual=CE_SNAP.rom.get(x.id)===ceStable(ceOpRomDb(novo));}catch(e){}
+        if(igual&&atual.status===novo.status)continue;       // já conhecido
+        const itens=atual.itens,ass=atual.assinatura;
+        Object.assign(atual,novo);atual.itens=itens;atual.assinatura=ass||null;
+        ceMarcarRomLimpo(atual);
+      }else{romaneios.push(novo);ceMarcarRomLimpo(novo);}
+      mudou=true;
+    }
+    for(const x of ps){
+      const rom=romaneios.find(r=>r.uuid===x.romaneio_id);
+      const novo=ceMapPost(x,rom);
+      const idx=postagens.findIndex(p=>p.id===x.id||p.uuid===x.id);
+      if(idx>=0){
+        const velho=postagens[idx];
+        const idLocal=velho.id;
+        if(cePostSujo(velho))continue;
+        let igual=false;try{igual=CE_SNAP.post.get(x.id)===ceStable(ceOpPostDb(novo));}catch(e){}
+        if(igual)continue;
+        if(velho.romaneio_id!==novo.romaneio_id){
+          romaneios.forEach(r=>{r.itens=(r.itens||[]).filter(i=>i!==idLocal);});
+        }
+        Object.assign(velho,novo,{id:idLocal});
+        if(rom&&!rom.itens.includes(idLocal))rom.itens.push(idLocal);
+        ceMarcarPostLimpo(velho);
+      }else{
+        postagens.push(novo);
+        if(rom&&!rom.itens.includes(x.id))rom.itens.push(x.id);
+        ceMarcarPostLimpo(novo);
+      }
+      mudou=true;
+    }
+    if(cR&&(!CE_SYNC.cursorRom||cR>CE_SYNC.cursorRom))CE_SYNC.cursorRom=cR;
+    if(cP&&(!CE_SYNC.cursorPost||cP>CE_SYNC.cursorPost))CE_SYNC.cursorPost=cP;
+    return mudou;
+  }
+  // opts.full=true força carga completa; opts.force=true ignora o intervalo mínimo.
+  async function loadAll(opts){
+    opts=opts||{};
+    if(CE_SYNC.voo)return CE_SYNC.voo;               // single-flight
+    const agora=Date.now();
+    if(!opts.force&&!opts.full&&!CE_SYNC.primeira&&agora-CE_SYNC.ultimoSync<CE_MIN_INTERVALO_MS)return false;
+    CE_SYNC.voo=(async()=>{
+      try{
+        const completa=opts.full||CE_SYNC.primeira||(agora-CE_SYNC.ultimoFull>CE_FULL_RELOAD_MS)||!CE_SYNC.cursorPost&&!CE_SYNC.cursorRom;
+        let mudou=true;
+        if(completa){await ceCargaCompleta();}
+        else{mudou=await ceCargaDelta();}
+        CE_SYNC.primeira=false;CE_SYNC.ultimoSync=Date.now();
+        window.CE_CARGA_OK=true;
+        if(mudou){ceRecalcContadores();renderAll();}
+        return true;
+      }catch(e){
+        // V189 (P0-4): falha NÃO zera mais memória/contadores. Mantém o último estado bom.
+        console.error('[SUPABASE OPERACIONAL] Falha ao carregar',e);
+        window.CE_CARGA_OK=false;
+        const semDados=!romaneios.length&&!postagens.length;
+        try{showToast('Falha ao atualizar do Supabase: '+(e.message||e)+(semDados?'':' — mantendo os dados já carregados.'));}catch(_){}
+        if(semDados&&CE_SYNC.primeira)alert('Não foi possível carregar Romaneios/Postagens do Supabase.\n\nNenhum dado local será usado.\n\n'+(e.message||e));
+        return false;
+      }finally{CE_SYNC.voo=null;}
+    })();
+    return CE_SYNC.voo;
+  }
+  window.ceLoadAllOperacional=loadAll;
+
+  // Assinatura sob demanda (antes vinha embutida em toda carga).
+  const CE_CACHE_ASSINATURA=new Map();
+  window.ceGarantirAssinatura=async function(rom){
+    if(!rom||rom.assinatura||!rom.uuid)return rom?.assinatura||null;
+    if(String(rom.status||'').toLowerCase()!=='assinado'&&!rom.assinado_em)return null;
+    if(CE_CACHE_ASSINATURA.has(rom.uuid)){rom.assinatura=CE_CACHE_ASSINATURA.get(rom.uuid);return rom.assinatura;}
+    try{
+      const r=await ceOpReq('GET','romaneios?id=eq.'+encodeURIComponent(rom.uuid)+'&select=assinatura&limit=1');
+      const a=r?.[0]?.assinatura||null;
+      if(a){CE_CACHE_ASSINATURA.set(rom.uuid,a);rom.assinatura=a;}
+      return a;
+    }catch(e){console.warn('[ASSINATURA] falha ao buscar',e);return null;}
+  };
+  // <img data-ce-sig="UUID"> é preenchida automaticamente quando aparece na tela.
+  (function(){
+    async function hidratar(img){
+      if(img.dataset.ceSigOk)return;img.dataset.ceSigOk='1';
+      const rom=romaneios.find(r=>r.uuid===img.dataset.ceSig);
+      const a=await window.ceGarantirAssinatura(rom);
+      if(a)img.src=a;else{img.style.display='none';}
+    }
+    const varrer=n=>{if(n.nodeType!==1)return;if(n.matches?.('img[data-ce-sig]'))hidratar(n);n.querySelectorAll?.('img[data-ce-sig]').forEach(hidratar);};
+    const obs=new MutationObserver(ms=>ms.forEach(m=>m.addedNodes.forEach(varrer)));
+    const iniciar=()=>obs.observe(document.body,{childList:true,subtree:true});
+    if(document.body)iniciar();else document.addEventListener('DOMContentLoaded',iniciar);
+  })();
+
+  // ---- gravações: somente o que mudou em relação ao último estado conhecido ----
   async function saveRomaneios(){
     const unicos=[...new Map(romaneios.map(r=>[r.uuid||r.id,r])).values()];
-    await ceOpUpsert('romaneios',unicos.map(ceOpRomDb));
+    const pend=[];
+    for(const r of unicos){
+      const row=ceOpRomDb(r);
+      const h=ceStable(row);
+      if(CE_SNAP.rom.get(row.id)!==h)pend.push({r,row,h});
+    }
+    if(!pend.length)return;
+    await ceOpUpsert('romaneios',pend.map(x=>x.row),true);
+    pend.forEach(x=>{x.r.criado_em=x.row.criado_em;delete x.r._sigDirty;ceMarcarRomLimpo(x.r);});
   }
   async function savePostagens(){
     // Fonte oficial: Supabase. Nenhuma postagem é persistida localmente.
     await saveRomaneios();
-    await ceOpUpsert('postagens',postagens.map(ceOpPostDb));
+    const pend=[],erros=[];
+    for(const p of postagens){
+      const chave=p.uuid||p.id;
+      let row;
+      try{row=ceOpPostDb(p);}
+      catch(e){
+        // Órfã já existente no banco e sem alteração: ignora. Órfã nova/alterada: erro real.
+        if(CE_SNAP.post.get(chave)===ceAssinaturaOrfa(p))continue;
+        erros.push((p.nf||'SEM NF')+': '+(e.message||e));continue;
+      }
+      const h=ceStable(row);
+      if(CE_SNAP.post.get(row.id)!==h)pend.push({p,row,h});
+    }
+    if(erros.length)throw new Error('Postagem(ns) não gravada(s): '+erros.slice(0,5).join(' | ')+(erros.length>5?' (+'+(erros.length-5)+')':''));
+    if(!pend.length)return;
+    await ceOpUpsert('postagens',pend.map(x=>x.row),true);
+    pend.forEach(x=>{CE_SNAP.post.set(x.row.id,x.h);x.p.criado_em=x.row.criado_em;x.p.bipada_em=x.row.bipada_em;});
   }
 
   async function ceSalvarSomentePostagensNovas(itens){
@@ -3541,10 +3875,12 @@
 
     // Salva NF por NF para conseguir informar exatamente qual registro falhou.
     for(const item of itens){
-      const payload=ceOpPostDb(item);
       try{
+        const payload=ceOpPostDb(item);
         const retorno=await ceOpUpsert('postagens',[payload]);
         if(Array.isArray(retorno) && retorno.length===1){
+          CE_SNAP.post.set(payload.id,ceStable(payload));
+          item.criado_em=payload.criado_em;item.bipada_em=payload.bipada_em;
           gravadas.push(item);
         }else{
           falhas.push({item,erro:'Supabase não confirmou a gravação'});
@@ -3558,7 +3894,7 @@
       const err=new Error(
         gravadas.length+' de '+itens.length+' NF(s) gravada(s). '+
         falhas.length+' falharam: '+
-        falhas.map(f=>String(f.item?.nf||'SEM NF')).join(', ')
+        falhas.map(f=>String(f.item?.nf||'SEM NF')+' ('+f.erro+')').join('; ')
       );
       err.ce_parcial=true;
       err.gravadas=gravadas;
@@ -3568,23 +3904,42 @@
     return gravadas;
   }
 
-  async function ceRecarregarOperacionalSupabase(){
-    await loadAll();
+  async function ceRecarregarOperacionalSupabase(opts){
+    await loadAll(opts);
     return {romaneios:romaneios.length,postagens:postagens.length};
   }
   async function saveCounters(){ return true; }
+
+  // V189 (P0-3): romaneio assinado é histórico — não se edita/remove NF dele.
+  // Só o romaneio ASSINADO é bloqueado (para todos, inclusive ADMIN). Romaneio aberto ou aguardando assinatura
+  // pode ter NF removida/editada por ADMIN e OPERACIONAL. Retorna null se permitido.
+  function ceMotivoBloqueioAlteracao(p){
+    const rom=ceOpAcharRomaneioExatoSeguro(p?.romaneio_id,p);
+    if(!rom)return null;
+    const st=String(rom.status||'aberto').toLowerCase();
+    if(st==='assinado')return 'Romaneio '+rom.id+' já foi assinado/finalizado. As NFs dele ficam preservadas no histórico e não podem ser editadas ou removidas.';
+    return null;
+  }
+  function ceOpAcharRomaneioExatoSeguro(ref,post){try{return ceOpAcharRomaneioExato(ref,post);}catch(e){return null;}}
+  window.ceMotivoBloqueioAlteracao=ceMotivoBloqueioAlteracao;
+
   async function ceOpExcluirPostagem(p){
     const id=p?.uuid||p?.id;if(!id)return;
+    const bloqueio=ceMotivoBloqueioAlteracao(p);
+    if(bloqueio)throw new Error(bloqueio);
     try{await ceOpReq('DELETE','romaneio_itens?postagem_id=eq.'+encodeURIComponent(id),undefined,'return=minimal')}catch(e){}
     await ceOpReq('DELETE','postagens?id=eq.'+encodeURIComponent(id),undefined,'return=minimal');
+    CE_SNAP.post.delete(id);
   }
   async function ceOpExcluirRomaneio(rom,apagarPosts){
     const rid=rom?.uuid||'';if(!rid)return;
+    if(String(rom.status||'').toLowerCase()==='assinado'&&String(window.CE_AUTH?.perfil?.perfil||'').toLowerCase()!=='admin')throw new Error('Romaneio '+rom.id+' já foi assinado/finalizado. Somente ADMIN pode excluí-lo.');
     if(apagarPosts){
       try{await ceOpReq('DELETE','romaneio_itens?romaneio_id=eq.'+encodeURIComponent(rid),undefined,'return=minimal')}catch(e){}
       await ceOpReq('DELETE','postagens?romaneio_id=eq.'+encodeURIComponent(rid),undefined,'return=minimal');
     }
     await ceOpReq('DELETE','romaneios?id=eq.'+encodeURIComponent(rid),undefined,'return=minimal');
+    CE_SNAP.rom.delete(rid);
   }
 
   // Ponte oficial para o Via Leitor: cria o romaneio na MESMA base nativa
@@ -3595,9 +3950,9 @@
     if(!transporte) throw new Error('Transportadora não informada');
 
     const empresa = filial==='1020' ? 'BB Baterias' : 'Equipatech';
-    counters.romaneio++;
+    const novoCodigo=await ceNovoCodigoRomaneio();
     const rom={
-      id:'RM-'+pad(counters.romaneio),
+      id:novoCodigo,
       motorista:transporte,
       transportadora:transporte,
       empresa,
@@ -3672,44 +4027,70 @@
   // Leitor nunca ganhava itens de verdade e por isso não aparecia na aba Romaneios.
   // IMPORTANTE: isto NUNCA mexe em rom.status — finalizar a bipagem só salva as NFs.
   // Quem fecha o romaneio de verdade é finalizarEAssinarRomaneio, na tela Romaneio.
-  window.ceAdicionarPostagensNaBaseNativa = async function(romaneioId, itens){
-    const alvo=String(romaneioId||'').trim();
-    let rom = romaneios.find(r=>
-      String(r.id||'').trim()===alvo ||
-      String(r.uuid||'').trim()===alvo ||
-      String(r.codigo||'').trim()===alvo
-    );
+  let ceSalvamentoPostagensEmAndamento = null;
 
-    // Se a memória da tela estiver desatualizada, busca o romaneio diretamente no Supabase.
-    if(!rom && alvo){
-      const filtro=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(alvo)
-        ? 'id=eq.'+encodeURIComponent(alvo)
-        : 'codigo=eq.'+encodeURIComponent(alvo);
-      const rows=await ceOpReq('GET','romaneios?select=*&'+filtro+'&limit=1');
-      const x=Array.isArray(rows)?rows[0]:null;
-      if(x){
-        rom={
-          id:x.codigo||x.id, uuid:x.id, codigo:x.codigo||'',
-          motorista:x.transportadora||'', transportadora:x.transportadora||'',
-          empresa:x.empresa||'', filial:x.filial||'',
-          data:x.data?new Date(x.data+'T12:00:00').toLocaleDateString('pt-BR'):'',
-          data_iso:x.data||'', itens:[], status:x.status||'aberto',
-          criado_em:x.criado_em||'', assinatura:x.assinatura||null,
-          assinado_em:x.assinado_em||null, motorista_nome:x.motorista_nome||'',
-          motorista_cpf:x.motorista_cpf||''
-        };
-        const pos=romaneios.findIndex(r=>String(r.uuid||'')===String(x.id));
-        if(pos>=0) romaneios[pos]=rom; else romaneios.push(rom);
-      }
+window.ceAdicionarPostagensNaBaseNativa = async function(romaneioId, itens){
+    if(ceSalvamentoPostagensEmAndamento){
+      console.warn('[POSTAGENS] Salvamento duplicado ignorado: já existe uma gravação em andamento.');
+      return ceSalvamentoPostagensEmAndamento;
     }
 
-    if(!rom) throw new Error('Romaneio '+romaneioId+' não encontrado no Supabase');
+    ceSalvamentoPostagensEmAndamento = (async()=>{
+    const rom = romaneios.find(r=>r.id===romaneioId);
+    if(!rom) throw new Error('Romaneio '+romaneioId+' não encontrado');
     if(!Array.isArray(itens) || !itens.length) return [];
 
     const transporteRomaneio = rom.transportadora || rom.motorista || '';
     const criadas = [];
 
-    for(const item of itens){
+    // Identidade operacional da postagem.
+    // Não usa somente a NF porque Correios pode ter a mesma NF em volumes
+    // diferentes, desde que os rastreios sejam diferentes.
+    const chavePostagem = (x)=>[
+      String(x?.nf||'').trim(),
+      String(x?.chave||x?.chave_nfe||'').replace(/\D/g,''),
+      String(x?.rastreio||'').trim().toUpperCase(),
+      String(x?.pedido||'').trim()
+    ].join('|');
+
+    // Remove repetição idêntica dentro do próprio lote.
+    const vistosLote = new Set();
+    const itensUnicos = itens.filter(item=>{
+      const k=chavePostagem(item);
+      if(vistosLote.has(k)){
+        console.warn('[POSTAGENS] Item repetido no mesmo lote ignorado:', item?.nf);
+        return false;
+      }
+      vistosLote.add(k);
+      return true;
+    });
+
+    // Também protege contra uma repetição já presente em memória no MESMO romaneio.
+    const existentes = new Set(
+      (postagens||[])
+        .filter(p=>String(p?.romaneio_id||'')===String(rom.id))
+        .map(chavePostagem)
+    );
+
+    for(const item of itensUnicos){
+      const identidade = chavePostagem(item);
+      if(existentes.has(identidade)){
+        console.warn('[POSTAGENS] Postagem já existente neste romaneio ignorada:', item?.nf);
+        continue;
+      }
+      existentes.add(identidade);
+
+      // V189: separação de filiais — NF da 1020 (BB Baterias) nunca entra em romaneio 0101/0102 (Equipatech), e vice-versa.
+      {
+        const grupo=f=>String(f||'').trim()==='1020'?'BB':(String(f||'').trim()?'EQ':'');
+        const gi=grupo(item.filial), gr=grupo(rom.filial);
+        if(gi && gr && gi!==gr){
+          console.warn('[FILIAL] NF '+(item.nf||'?')+' (filial '+item.filial+') recusada no romaneio '+rom.id+' (filial '+rom.filial+').');
+          (window.__ceFilialRecusadas=window.__ceFilialRecusadas||[]).push(item.nf||'?');
+          continue;
+        }
+      }
+
       counters.postagem++;
       const p = {
         id:'PST-' + pad(counters.postagem),
@@ -3724,7 +4105,8 @@
         embalador: item.embalador || '',
         volumes: item.volumes || 1,
         empresa: rom.empresa || item.empresa || '',
-        filial: rom.filial || item.filial || '',
+        // V189 (P0-7): a filial gravada é a da NF (XML); a do romaneio só entra se a NF não trouxer.
+        filial: item.filial || rom.filial || '',
         romaneio_id: rom.id,
         criado_em: item.criado_em || new Date().toISOString(),
         transporte_original_api: item.transporte_original || item.transporte || '',
@@ -3748,6 +4130,10 @@
       if(!rom.itens.includes(p.id)) rom.itens.push(p.id);
       criadas.push(p);
     }
+    if(window.__ceFilialRecusadas&&window.__ceFilialRecusadas.length){
+      const lista=window.__ceFilialRecusadas.splice(0);
+      try{showToast('NF(s) '+lista.join(', ')+' NÃO incluída(s): a filial da NF é diferente da filial do romaneio '+rom.id+'.');}catch(e){}
+    }
 
     try{
       await ceSalvarSomentePostagensNovas(criadas);
@@ -3761,8 +4147,16 @@
     }
     await saveCounters();
     renderAll();
+    try{ window.CE_VIA_REMOVER_LOCAL?.(criadas); }catch(e){}
     carregarResumoDiario();
     return criadas;
+    })();
+
+    try{
+      return await ceSalvamentoPostagensEmAndamento;
+    }finally{
+      ceSalvamentoPostagensEmAndamento = null;
+    }
   };
 
   // ---------- nav ----------
@@ -4198,6 +4592,10 @@
   }
 
   async function carregarResumoDiario(){
+    // V189 (Egress): esta rotina legada baixava até 5000 linhas de `xmls` a cada NF salva, a cada login e a cada troca de
+    // filial, e SEMPRE falhava logo depois (ReferenceError: cliente_nome is not defined), sem exibir nada.
+    // A listagem real é feita pela view `via_leitor` (Via Leitor). Mantida desligada para não gerar consulta inútil.
+    return;
     const filial=$('#resumo-filial').value;
     const status=$('#resumo-status');
     const btn=$('#btn-atualizar-resumo');
@@ -4428,27 +4826,9 @@
   });
   $('#resumo-data-label').textContent=new Date().toLocaleDateString('pt-BR');
 
-  let resumoAutoTimer = null;
-  function iniciarAtualizacaoAutomaticaResumo(){
-    if(resumoAutoTimer) clearInterval(resumoAutoTimer);
-    resumoAutoTimer = setInterval(()=>{
-      const view=$('#view-resumo');
-      const overlay=$('#startup-overlay');
-      if(view?.classList.contains('active') && overlay?.classList.contains('startup-hidden')){
-        carregarResumoDiario();
-      }
-    },60000);
-  }
-
-  document.addEventListener('visibilitychange',()=>{
-    if(document.hidden) return;
-    const view=$('#view-resumo');
-    const overlay=$('#startup-overlay');
-    if(view?.classList.contains('active') && overlay?.classList.contains('startup-hidden')){
-      carregarResumoDiario();
-    }
-  });
-
+  // V189 (Egress): o resumo legado (carregarResumoDiario) não é mais atualizado em segundo plano
+  // (timer de 60 s e visibilitychange removidos). Ele continua sendo carregado ao trocar o filtro de filial.
+  function iniciarAtualizacaoAutomaticaResumo(){ /* desativado na V189 */ }
   iniciarAtualizacaoAutomaticaResumo();
 
 
@@ -5856,8 +6236,10 @@
     const ref=ceLocalizarPostagemEditavel(id);
     if(!ref){showToast('Não foi possível localizar esta postagem.');return;}
     const base=ref.p||ref.h||{};
+    const bloqueio=ceMotivoBloqueioAlteracao(ref.p||base); // V189 (P0-3)
+    if(bloqueio){showToast(bloqueio);return;}
     ceModalOperacional({titulo:'Remover NF do romaneio',acaoTexto:'Remover',danger:true,
-      corpo:`<p style="margin:0;color:var(--text)">Remover a NF <b>${escapeHtml(base.nf||'—')}</b> deste romaneio?</p><p style="font-size:11px;color:var(--muted);margin-top:8px">A NF será retirada deste romaneio. O histórico de faturamento não será apagado.</p>`,
+      corpo:`<p style="margin:0;color:var(--text)">Remover a NF <b>${escapeHtml(base.nf||'—')}</b> deste romaneio?</p><p style="font-size:11px;color:var(--muted);margin-top:8px">A postagem desta NF será excluída do banco e a NF poderá ser bipada novamente. O faturamento (XML/NF) não é apagado.</p>`,
       onSave:async(ov,fechar)=>{
         if(ref.p){
           await ceOpExcluirPostagem(ref.p);
@@ -5874,6 +6256,8 @@
     const ref=ceLocalizarPostagemEditavel(id);
     if(!ref){showToast('Não foi possível localizar esta postagem.');return;}
     const p=ref.p||ref.h||{};
+    const bloqueio=ceMotivoBloqueioAlteracao(ref.p||p); // V189 (P0-3)
+    if(bloqueio){showToast(bloqueio);return;}
     const bipadores=ceColaboradoresPorTipo('BIPADOR');
     const embaladores=ceColaboradoresPorTipo('EMBALADOR');
     const transp=(window.CE_CFG?.transportadoras||[]).filter(t=>t.ativo!==false).map(t=>t.nome==='LOGGI'?'LOGGI - POA RS':t.nome).filter(Boolean);
@@ -6489,7 +6873,7 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
 
       const assinaturaUltimaPagina = pagina===totalPaginas-1 && rom.status==='assinado'
         ? `<div class="sig-preview" style="margin-top:12px;">
-            <img src="${rom.assinatura}" alt="assinatura">
+            ${rom.assinatura?`<img src="${rom.assinatura}" alt="assinatura">`:''}
             <div class="sig-meta">Retirada confirmada por <b>${escapeHtml(rom.motorista_nome||rom.assinado_por||'—')}</b>${rom.motorista_cpf ? '<br>CPF: <b>'+escapeHtml(rom.motorista_cpf)+'</b>' : ''}<br>em ${new Date(rom.assinado_em).toLocaleString('pt-BR')}</div>
           </div>`
         : '';
@@ -6588,6 +6972,8 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
 
   // Desenha o manifesto do romaneio dentro de `host`. modo: 'consulta' | 'assinatura'
   async function montarManifestRomaneio(rom, host, modo){
+    // V189: a assinatura não vem mais na carga geral; busca só deste romaneio, e só se já estiver assinado.
+    if(rom && String(rom.status||'').toLowerCase()==='assinado' && !rom.assinatura){ try{ await window.ceGarantirAssinatura(rom); }catch(e){} }
     if(!host) return;
     const nomeTransp = rom.transportadora||rom.motorista||'';
     const dadosTranspRomaneio = dadosTransportadoraRomaneio(nomeTransp);
@@ -6741,7 +7127,8 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
     `;
 
     // ---- ligações (sempre escopadas ao host) ----
-    host.querySelector('[data-rom-imprimir]')?.addEventListener('click', ()=>{
+    host.querySelector('[data-rom-imprimir]')?.addEventListener('click', async ()=>{
+      if(String(rom.status||'').toLowerCase()==='assinado' && !rom.assinatura){ try{ await window.ceGarantirAssinatura(rom); }catch(e){} }
       prepararImpressaoPaginada(rom);
       setTimeout(()=>window.print(),50);
     });
@@ -7180,6 +7567,7 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
     if(!rom) return;
     const canvas = $('#sigcanvas');
     rom.assinatura = canvas.toDataURL('image/png');
+    rom._sigDirty = true; // V189: só envia a assinatura ao banco quando ela é nova
     rom.assinado_por = nome;
     rom.motorista_nome = nome;
     rom.motorista_cpf = cpf;
@@ -7901,9 +8289,9 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
       }
     }
 
-    counters.romaneio++;
+    const novoCodigo=await ceNovoCodigoRomaneio();
     const rom={
-      id:'RM-'+pad(counters.romaneio),
+      id:novoCodigo,
       motorista:transporte,
       transportadora:transporte,
       empresa,
@@ -7936,28 +8324,57 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
     const assinado=String(rom.status||'').toLowerCase()==='assinado';
     const itens = itensDoRomaneio(rom);
 
-    if(!ehAdmin && (assinado || itens.length)){
-      showToast('Somente ADMIN pode excluir romaneio com NFs ou já finalizado.');
+    if(assinado){
+      // V189c: romaneio assinado só pode ser excluído por ADMIN, com confirmação digitada e cópia de segurança (JSON).
+      if(!ehAdmin){
+        showToast('Romaneio '+rom.id+' já foi assinado/finalizado. Somente ADMIN pode excluí-lo.');
+        return;
+      }
+      const digitado=window.prompt('ATENÇÃO: '+rom.id+' está ASSINADO (retirada confirmada).\n\nExcluir apaga o romaneio e as '+itens.length+' postagem(ns) dele do banco; as NFs voltam a poder ser bipadas.\nUma cópia de segurança (arquivo .json) será baixada antes.\n\nPara confirmar, digite o código do romaneio ('+rom.id+'):');
+      if(String(digitado||'').trim().toUpperCase()!==String(rom.id).toUpperCase()){
+        showToast('Exclusão cancelada: código não confere.');
+        return;
+      }
+      try{
+        const copia={gerado_em:new Date().toISOString(),romaneio:{...rom,assinatura:undefined},postagens:itens};
+        const blob=new Blob([JSON.stringify(copia,null,2)],{type:'application/json'});
+        const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='backup_'+rom.id+'_'+new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')+'.json';
+        document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+      }catch(e){
+        console.error('[BACKUP ROMANEIO]',e);
+        showToast('Não foi possível gerar a cópia de segurança. Exclusão cancelada.');
+        return;
+      }
+    }
+    if(!ehAdmin && itens.length){
+      showToast('Somente ADMIN pode excluir romaneio com NFs.');
       return;
     }
 
     const nomeRom = rom.transportadora || rom.motorista || rom.id;
     const confirmar=()=>new Promise(resolve=>{
       if(typeof window.cfgConfirmar==='function'){
-        window.cfgConfirmar('Excluir romaneio',`Excluir ${rom.id} · ${nomeRom}?${assinado?' Este romaneio já foi assinado. As NFs e postagens serão preservadas no histórico.':''}`,()=>resolve(true));
+        window.cfgConfirmar('Excluir romaneio',`Excluir ${rom.id} · ${nomeRom}?${itens.length?' As '+itens.length+' postagem(ns) deste romaneio serão EXCLUÍDAS do banco e as NFs poderão ser bipadas novamente.':''}`,()=>resolve(true));
         const fechar=()=>resolve(false);
         setTimeout(()=>document.getElementById('ce-cfg-modal-fechar')?.addEventListener('click',fechar,{once:true}),0);
       }else{
-        const ov=document.createElement('div');ov.className='modal-overlay';ov.style.zIndex='99999';ov.innerHTML=`<div class="modal-box" style="width:min(520px,94vw)"><div class="modal-head"><h3>Excluir romaneio</h3></div><div class="modal-body"><p>Excluir <b>${escapeHtml(rom.id)}</b> · ${escapeHtml(nomeRom)}?</p>${assinado?'<p>O romaneio já foi assinado. As NFs e postagens serão preservadas no histórico.</p>':''}</div><div class="modal-foot"><button class="btn btn-ghost" data-nao>Cancelar</button><button class="btn btn-danger" data-sim>Excluir romaneio</button></div></div>`;document.body.appendChild(ov);ov.querySelector('[data-nao]').onclick=()=>{ov.remove();resolve(false)};ov.querySelector('[data-sim]').onclick=()=>{ov.remove();resolve(true)};
+        const ov=document.createElement('div');ov.className='modal-overlay';ov.style.zIndex='99999';ov.innerHTML=`<div class="modal-box" style="width:min(520px,94vw)"><div class="modal-head"><h3>Excluir romaneio</h3></div><div class="modal-body"><p>Excluir <b>${escapeHtml(rom.id)}</b> · ${escapeHtml(nomeRom)}?</p>${itens.length?'<p>As '+itens.length+' postagem(ns) deste romaneio serão <b>excluídas</b> do banco e as NFs poderão ser bipadas novamente.</p>':''}</div><div class="modal-foot"><button class="btn btn-ghost" data-nao>Cancelar</button><button class="btn btn-danger" data-sim>Excluir romaneio</button></div></div>`;document.body.appendChild(ov);ov.querySelector('[data-nao]').onclick=()=>{ov.remove();resolve(false)};ov.querySelector('[data-sim]').onclick=()=>{ov.remove();resolve(true)};
       }
     });
     if(!(await confirmar())) return;
 
+    // V189: primeiro o banco; a memória só muda se o DELETE der certo (antes as NFs sumiam da tela mesmo com erro).
+    try{
+      await ceOpExcluirRomaneio(rom, ehAdmin && itens.length);
+    }catch(e){
+      console.error('[EXCLUIR ROMANEIO]',e);
+      showToast('Não foi possível excluir o romaneio: '+(e?.message||e));
+      return;
+    }
     if(ehAdmin && itens.length){
       const idsItens=new Set(itens.map(p=>String(p.id)));
       postagens=postagens.filter(p=>!idsItens.has(String(p.id)));
     }
-    await ceOpExcluirRomaneio(rom, ehAdmin && itens.length);
     romaneios = romaneios.filter(r=>r.id!==id);
 
     const estavaAtivoBipagem = romaneioBipagemAtivoId === id;
@@ -8429,6 +8846,7 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
   iniciarSelecaoInicial();
 
   setInterval(()=>{
+    if(document.hidden)return; // V189: não consulta a planilha com a aba escondida
     if(obterUrlConfigPlanilha()){
       carregarBipadosDaPlanilha({silencioso:true});
     }
@@ -8954,23 +9372,10 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
     return novo;
   }
 
-  window.addEventListener('load',()=>{
-    setTimeout(()=>{
-      const filtro=cloneSemEventos('via-exp-filtro');
-      const filial=cloneSemEventos('via-exp-filial');
-      const transporte=cloneSemEventos('via-exp-transporte');
-      const busca=cloneSemEventos('via-exp-busca');
-      const atualizar=cloneSemEventos('via-exp-atualizar');
-
-      filtro?.addEventListener('change',()=>{paginaAtual=0;buscar().catch(falha);});
-      filial?.addEventListener('change',render);
-      transporte?.addEventListener('change',render);
-      busca?.addEventListener('input',render);
-      atualizar?.addEventListener('click',()=>{paginaAtual=0;buscar().catch(falha);});
-
-      buscar().catch(falha);
-    },1200);
-  });
+  // V189 (Egress/bug): a chamada automática de buscar() ao carregar a página foi removida.
+  // Ela baixava uma página inteira de `xmls` com a chave anônima e SEMPRE falhava em seguida
+  // (ReferenceError: cliente_nome is not defined), apagando a tabela com uma mensagem de erro.
+  // A listagem do Via Leitor é feita pelo carregar() da view `via_leitor` (bloco mais abaixo).
 
   function falha(err){
     console.error('[VIA-ISOLADO]',err);
@@ -8981,7 +9386,7 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
   // Exposto para que outras telas (ex.: Configurações → Filtros → Clientes ignorados)
   // consigam recarregar ESTE renderer — o que realmente aparece na tela ("cache local") —
   // em vez de só um renderer antigo que não está mais visível.
-  window.CE_VIA_ISOLADO_RECARREGAR=function(){ paginaAtual=0; return buscar().catch(falha); };
+  window.CE_VIA_ISOLADO_RECARREGAR=function(){ return typeof window.CE_VIA_RECARREGAR==='function' ? window.CE_VIA_RECARREGAR() : undefined; };
 })();
 </script>
 
@@ -9315,6 +9720,11 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
     <div class="ce-op-scan"><label>Volume</label><input id="ce-op-volume" type="number" min="1" value="1"></div>
     <div class="ce-op-field"><label>Status</label><div class="ce-op-value" id="ce-op-status">Aguardando leitura</div></div>
    </div>
+   <div id="ce-v184-atribuicao" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0 10px">
+    <select id="ce-v184-colaborador" style="min-width:210px;height:34px"><option value="">Colaborador dos selecionados</option></select>
+    <button type="button" class="ce-op-btn" id="ce-v184-atribuir">Atribuir selecionados</button>
+    <span class="ce-op-info" id="ce-v184-resumo-salvo"></span>
+   </div>
    <div class="ce-op-gridwrap">
     <table class="ce-op-table">
      <thead><tr><th>NF</th><th>CHAVE / RASTREIO</th><th>PEDIDO</th><th>TRANSPORTE</th><th>EMBALADOR</th><th>VOLUME</th><th>STATUS</th></tr></thead>
@@ -9545,10 +9955,15 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
     if(!x) return '';
     // Aliases operacionais conhecidos: PAC/SEDEX pertencem à família CORREIOS.
     if(familiaCorreios(x)) return 'CORREIOS';
-    // Remove apenas complementos descritivos que não mudam a transportadora.
+    // V184: aliases operacionais sem alterar o nome original gravado.
     x=x.replace(/\s+/g,' ').trim();
-    if(/^LOGGI(?:\s*-?\s*POA\s*RS)?$/.test(x)) return 'LOGGI - POA RS';
+    if(/^TRD(?: TRANSPORTES?)?$/.test(x)) return 'TRD';
+    if(/^LOGGI(?:\s*-?\s*POA\s*RS)?$/.test(x)) return 'LOGGI';
     if(/^TROCA(?:\s+EXP\.?|\s+EXPRESSA)?$/.test(x)) return 'TROCA';
+    if(/^(MERCADO LIVRE|ME2|ENVIOS MARKET.*)$/.test(x)) return 'MERCADO LIVRE';
+    if(/^(MAGALU|MAGAZINE LUIZA|ENVIOS - MARKETPLACES|ENVIOS MARKETPLACES)$/.test(x)) return 'MAGALU';
+    if(/^(MOTOBOY|MOTO BOY|MOTOBOYS|MOTO BOYS)$/.test(x)) return 'MOTOBOY';
+    if(/^(TOTAL|TOTAL EXPRESS)$/.test(x)) return 'TOTAL EXPRESS';
     return x;
   }
   function mesmoTransporte(a,b){
@@ -9707,11 +10122,12 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
       '<td>'+ (item.transporte||'—') +'</td>'+
       '<td>—</td>'+
       '<td class="ce-volume-editavel" contenteditable="true" inputmode="numeric" title="Clique para alterar o volume">'+Math.max(1,parseInt($('ce-op-volume')?.value||item.volume||1,10)||1)+'</td>'+
-      '<td class="ce-status-cell">'+statusHtml+'</td>';
+      '<td class="ce-status-cell"><input type="checkbox" class="ce-v184-selecionar" title="Selecionar para atribuir colaborador" style="width:16px;height:16px;margin-right:7px;vertical-align:middle">'+statusHtml+'</td>';
     if(item.divergente) tr.querySelector('.ce-div-detalhes').onclick=()=>window.ceAbrirDivergencia(tr);
     else if(item.reenvioAceito) tr.querySelector('.ce-reenvio-detalhes').onclick=()=>window.ceAbrirReenvio?.(tr);
     tb.prepend(tr);
     $('ce-op-contador').textContent=linhas().length;
+    try{localStorage.setItem('ce_resumo_bipagem_'+String(tr.dataset.romaneio||''),JSON.stringify({total:linhas().filter(x=>x.dataset.naoSalvar!=='1').length,atualizado:new Date().toISOString()}));}catch(e){}
     $('ce-op-status').textContent=item.divergente
       ? 'DIVERGÊNCIA — '+(item.transporte||'SEM TRANSPORTE')+' → '+(item.transporteRomaneio||transporteRomaneio()||'SEM ROMANEIO')
       : 'NF '+item.nf+' adicionada';
@@ -9948,6 +10364,16 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
     const r=norm($('ce-op-rastreio')?.value);
     if(!r)return;
 
+    // V184: chave NF-e (44 dígitos) nunca pode ser aceita como rastreio.
+    const digitosRastreio=String(r).replace(/\D/g,'');
+    if(digitosRastreio.length===44){
+      $('ce-op-rastreio').value='';
+      $('ce-op-status').textContent='RASTREIO INVÁLIDO — foi lida uma chave NF-e';
+      alert('Este campo aceita somente o rastreio. A chave NF-e possui 44 dígitos e não pode ser usada como rastreio.');
+      setTimeout(()=>$('ce-op-rastreio')?.focus(),40);
+      return;
+    }
+
     // CORREIOS/PAC/SEDEX: mesma NF/chave é permitida em múltiplos volumes;
     // o que não pode repetir é o rastreio, nem na sessão nem nas postagens já salvas.
     if(rastreioJaUsado(r)){
@@ -9992,15 +10418,25 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
   // romaneio". Aqui só gravamos as NFs como postagens — o status do romaneio (ABERTO)
   // não muda, e ele NUNCA vai para Assinar Retirada a partir daqui. Quem fecha o
   // romaneio definitivamente é o botão "Finalizar e gerar romaneio" na tela Romaneio.
-  async function finalizarRomaneioColeta(){
+  let ceFinalizarRomaneioColetaEmAndamento = false;
+
+async function finalizarRomaneioColeta(){
+    if(ceFinalizarRomaneioColetaEmAndamento){
+      console.warn('[POSTAGENS] Clique duplicado em Salvar lote ignorado.');
+      return false;
+    }
+    ceFinalizarRomaneioColetaEmAndamento = true;
+
     const rom = window.ceRomaneioOperacao;
     const romaneioId = rom?.id || rom?.romaneio_id;
     if(!romaneioId){
       alert('Não há romaneio selecionado para finalizar.');
+      ceFinalizarRomaneioColetaEmAndamento = false;
       return false;
     }
     if(typeof window.ceAdicionarPostagensNaBaseNativa !== 'function'){
       alert('Não foi possível salvar: a base de dados do app não está disponível.');
+      ceFinalizarRomaneioColetaEmAndamento = false;
       return false;
     }
 
@@ -10009,6 +10445,7 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
     if(divPendente){
       window.ceAbrirDivergencia?.(divPendente);
       alert('Não é possível concluir.\nExistem divergências de transporte pendentes de confirmação.');
+      ceFinalizarRomaneioColetaEmAndamento = false;
       return false;
     }
 
@@ -10016,6 +10453,7 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
     const rows = linhas().filter(tr=>tr.dataset.naoSalvar!=='1');
     if(!rows.length){
       alert('Nenhuma postagem para salvar neste romaneio.');
+      ceFinalizarRomaneioColetaEmAndamento = false;
       return false;
     }
 
@@ -10032,15 +10470,9 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
       filial: tr.dataset.filial || '',
       bipador: tr.dataset.bipador || window.ceBipadorSessao || '',
       embalador: tr.dataset.embalador || '',
-      volumes: parseInt((tr.children[5]?.textContent || '').trim(), 10) || 1
+      volumes: parseInt((tr.children[5]?.textContent || '').trim(), 10) || 1,
+      criado_em: new Date().toISOString()
     }));
-
-    // V154: momento oficial da postagem = clique em "Salvar lote".
-    const ceMomentoSalvarLote = new Date().toISOString();
-    itens.forEach(item=>{
-      item.bipada_em = ceMomentoSalvarLote;
-      item.criado_em = ceMomentoSalvarLote;
-    });
 
     $('ce-op-status').textContent = 'Salvando '+itens.length+' postagem(ns) no romaneio...';
 
@@ -10058,14 +10490,17 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
         rom.finalizado_em=new Date().toISOString();
         if(typeof window.ceSalvarRomaneioRetira==='function') await window.ceSalvarRomaneioRetira(rom);
         $('ce-op-status').textContent='NF '+nfRetira+' registrada — aguardando assinatura na aba Assinar Retirada.';
+        ceFinalizarRomaneioColetaEmAndamento = false;
         return true;
       }
 
       $('ce-op-status').textContent = itens.length+' postagem(ns) salva(s) no romaneio '+romaneioId+' — ainda ABERTO.';
+      ceFinalizarRomaneioColetaEmAndamento = false;
       return true;
     }catch(e){
       alert('Não foi possível salvar as postagens no romaneio.\n'+(e?.message||e));
       $('ce-op-status').textContent = 'Falha ao salvar. Nada foi perdido — tente novamente.';
+      ceFinalizarRomaneioColetaEmAndamento = false;
       throw e; // interrompe o fechamento da janela: o operador não perde a sequência bipada
     }
   }
@@ -10217,7 +10652,7 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
   <div class="ce-res-cards">
    <div class="ce-res-card"><small>Romaneio</small><b id="ce-res-rom">—</b></div>
    <div class="ce-res-card"><small>Transportadora</small><b id="ce-res-transp">—</b></div>
-   <div class="ce-res-card"><small>Total bipado</small><b id="ce-res-total">0</b></div>
+   <div class="ce-res-card"><small>Total de NFs salvas e bipadas</small><b id="ce-res-total">0</b></div>
    <div class="ce-res-card"><small>Divergências</small><b id="ce-res-div">0</b></div>
    <div class="ce-res-card"><small>Não serão salvos</small><b id="ce-res-nao">0</b></div>
   </div>
@@ -10268,12 +10703,59 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
    atual.forEach(x=>mapa.set(chaveUnicaPostagem(x),x));
    return [...mapa.values()];
  }
- function abrir(){
-   const a=consolidar();
-   $('ce-res-rom').textContent=romId()||'—';$('ce-res-transp').textContent=$('ce-op-transportadora')?.textContent||'—';
-   $('ce-res-total').textContent=a.length;$('ce-res-div').textContent=a.filter(x=>x.divergencia).length;$('ce-res-nao').textContent=a.filter(x=>x.naoSalvar).length;
-   $('ce-res-tbody').innerHTML=a.length?a.map(x=>`<tr><td>${x.data}</td><td>${x.hora}</td><td><b>${x.nf}</b></td><td>${x.pedido||'—'}</td><td>${x.chave||'—'}</td><td>${x.rastreio||'—'}</td><td>${x.transporte||'—'}</td><td>${x.bipador||'—'}</td><td>${x.embalador||'—'}</td><td>${x.volume}</td><td>${x.status||'OK'}</td></tr>`).join(''):'<tr><td colspan="11" class="ce-res-empty">Nenhuma postagem registrada neste romaneio.</td></tr>';
+ function texto(x){return String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+ function dataHora(v){if(!v)return {data:'—',hora:'—'};const d=new Date(v);return Number.isNaN(d.getTime())?{data:'—',hora:'—'}:{data:d.toLocaleDateString('pt-BR'),hora:d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})};}
+ async function consultarSalvas(){
+   if(typeof window.CE_REST!=='function')throw Error('Conexão com Supabase indisponível.');
+   const r=window.ceRomaneioOperacao||{};
+   let uuid=String(r.uuid||r.romaneio_uuid||'').trim();
+   const id=romId();
+   if(!uuid&&/^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(id))uuid=id;
+   if(!uuid){
+     const rows=await window.CE_REST('romaneios?select=id,codigo&codigo=eq.'+encodeURIComponent(id)+'&limit=1');
+     uuid=String(rows?.[0]?.id||'');
+   }
+   if(!uuid)throw Error('Não foi possível localizar o romaneio no banco.');
+   const rows=await window.CE_REST('postagens?select=*&romaneio_id=eq.'+encodeURIComponent(uuid)+'&order=criado_em.asc&limit=10000');
+   if(!Array.isArray(rows))throw Error('A consulta das postagens não retornou uma lista.');
+   return rows.map(p=>{
+     const dt=dataHora(p.bipada_em||p.criado_em);
+     return {data:dt.data,hora:dt.hora,nf:p.nf||'',pedido:p.pedido||'',chave:p.chave_nfe||'',rastreio:p.rastreio||'',
+       transporte:p.transporte_original||p.transporte_romaneio||'',bipador:p.bipador||'',embalador:p.embalador||'',
+       volume:p.volume??1,divergencia:p.divergencia||'',naoSalvar:false,status:p.status||'Salva',salva:true,id:p.id||''};
+   });
+ }
+ function unir(salvas,atuais){
+   const mapa=new Map();
+   // A identidade do registro salvo é o ID do banco. Para leituras ainda não salvas,
+   // evita apenas a repetição exata da mesma chave/rastreio/volume na sessão.
+   salvas.forEach(x=>mapa.set('DB:'+x.id,x));
+   atuais.forEach(x=>{
+     const duplicada=salvas.some(y=>String(y.chave||'')===String(x.chave||'')&&String(y.nf||'')===String(x.nf||'')&&String(y.rastreio||'')===String(x.rastreio||'')&&String(y.volume||'')===String(x.volume||''));
+     if(!duplicada)mapa.set('ATUAL:'+String(x.chave||x.nf)+'|'+String(x.rastreio||'')+'|'+String(x.volume||''),{...x,salva:false});
+   });
+   return [...mapa.values()];
+ }
+ function render(a){
+   $('ce-res-total').textContent=a.length;
+   $('ce-res-div').textContent=a.filter(x=>x.divergencia).length;
+   $('ce-res-nao').textContent=a.filter(x=>x.naoSalvar).length;
+   $('ce-res-tbody').innerHTML=a.length?a.map(x=>`<tr><td>${texto(x.data)}</td><td>${texto(x.hora)}</td><td><b>${texto(x.nf)}</b></td><td>${texto(x.pedido||'—')}</td><td>${texto(x.chave||'—')}</td><td>${texto(x.rastreio||'—')}</td><td>${texto(x.transporte||'—')}</td><td>${texto(x.bipador||'—')}</td><td>${texto(x.embalador||'—')}</td><td>${texto(x.volume)}</td><td>${texto(x.salva?'Salva · ':'Bipada · ')}${texto(x.status||'Pendente')}</td></tr>`).join(''):'<tr><td colspan="11" class="ce-res-empty">Nenhuma NF salva ou bipada neste romaneio.</td></tr>';
+ }
+ async function abrir(){
+   $('ce-res-rom').textContent=romId()||'—';
+   $('ce-res-transp').textContent=$('ce-op-transportadora')?.textContent||'—';
    $('ce-res-overlay').classList.add('show');
+   $('ce-res-tbody').innerHTML='<tr><td colspan="11" class="ce-res-empty">Consultando postagens salvas...</td></tr>';
+   const atual=capturarSessao();
+   try{
+     const salvas=await consultarSalvas();
+     render(unir(salvas,atual));
+   }catch(e){
+     console.error('[RESUMO ROMANEIO]',e);
+     render(atual.map(x=>({...x,salva:false})));
+     $('ce-res-tbody').insertAdjacentHTML('afterbegin','<tr><td colspan="11" style="padding:10px;color:#a13b22;background:#fff2ed">Não foi possível consultar as NFs já salvas no Supabase: '+texto(e.message)+'. Exibindo somente as leituras desta sessão.</td></tr>');
+   }
  }
  $('ce-op-resumo')?.addEventListener('click',abrir);$('ce-res-x')?.addEventListener('click',()=>$('ce-res-overlay').classList.remove('show'));
 
@@ -10430,7 +10912,7 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
  }
  async function carregarRetiradas(){
    try{
-     const r=await fetch('https://njvcostescybgwbnipec.supabase.co/rest/v1/retiradas?select=id,postagem_id,nf,pedido,filial,cliente_nome,retirado_por,cpf,assinatura,colaborador,observacao,retirado_em&order=retirado_em.desc&limit=5000',{
+     const r=await fetch('https://njvcostescybgwbnipec.supabase.co/rest/v1/retiradas?select=id,postagem_id,nf,pedido,filial,cliente_nome,retirado_por,cpf,colaborador,observacao,retirado_em&order=retirado_em.desc&limit=5000',{
        headers:{apikey:SBKEY,Authorization:'Bearer '+SBKEY},cache:'no-store'
      });
      if(!r.ok){retiradasMap=new Map();return;}
@@ -10454,7 +10936,7 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
      for(let i=0;i<nfs.length;i+=100){
        const lote=nfs.slice(i,i+100);
        const q=new URLSearchParams();
-       q.set('select','*');
+       q.set('select','id,romaneio_id,empresa,filial,nf,chave_nfe,rastreio,pedido,cliente_nome,transporte_original,transporte_romaneio,volume,bipador,embalador,status,divergencia,bipada_em,criado_em,coleta_em');
        q.set('nf','in.('+lote.map(x=>'"'+x.replace(/"/g,'')+'"').join(',')+')');
        q.set('limit','5000');
        const r=await fetch('https://njvcostescybgwbnipec.supabase.co/rest/v1/postagens?'+q.toString(),{
@@ -11042,7 +11524,9 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
    ['ce-hp-rom','ce-hp-busca'].forEach(id=>{
      $(id).oninput=()=>{
        clearTimeout(timerBusca);
-       timerBusca=setTimeout(()=>{hpPagina=0;carregar(true);},350);
+       // V189: debounce de 600 ms e mínimo de 3 caracteres na pesquisa (cada busca dispara várias consultas).
+       if(id==='ce-hp-busca'){const v=($(id).value||'').trim();if(v.length>0&&v.length<3)return;}
+       timerBusca=setTimeout(()=>{hpPagina=0;carregar(true);},600);
      };
    });
    $('ce-hp-atualizar').onclick=()=>{hpPagina=0;carregar(true);};
@@ -11111,17 +11595,29 @@ main.main-content > .view.active{display:block;}
 (function(){
   // Navegação usa somente o estado já carregado em memória. Atualização de dados é independente da troca de abas.
   window.CE_MEMORIA_ABAS=true;
+  // V189 (Egress): antes disparava a cada 60 s mesmo com a aba escondida ou em outra tela.
+  // Agora: a cada 120 s, só se a aba do navegador está visível, logada e a tela Via Leitor está aberta.
+  const INTERVALO_MS=120000;
   let ultimoRefresh=Date.now();
-  setInterval(function(){
-    // Atualização silenciosa a cada 60s. Nunca é disparada pelo clique do menu.
-    if(Date.now()-ultimoRefresh<59000)return;
+  function viaLeitorVisivel(){
+    const h=document.getElementById('tbl-via-expedicao');
+    return !!h && h.offsetParent!==null;   // oculto por qualquer ancestral display:none => null
+  }
+  function tentar(){
+    if(document.hidden)return;
+    if(!window.CE_AUTH?.session?.access_token)return;
+    if(Date.now()-ultimoRefresh<INTERVALO_MS-1000)return;
+    if(!viaLeitorVisivel())return;
     ultimoRefresh=Date.now();
     try{
-      // Via Leitor: a rotina otimizada mantém memória + IndexedDB; atualiza a página corrente em segundo plano.
-      const btn=document.getElementById('via-exp-atualizar');
-      if(btn && typeof btn.click==='function') btn.click();
+      if(typeof window.CE_VIA_RECARREGAR==='function')window.CE_VIA_RECARREGAR({silencioso:true});
     }catch(e){}
-  },60000);
+  }
+  setInterval(tentar,30000);
+  // Ao voltar para a aba depois de muito tempo, atualiza uma vez (sem esperar o próximo ciclo).
+  document.addEventListener('visibilitychange',function(){
+    if(!document.hidden && Date.now()-ultimoRefresh>INTERVALO_MS*2)tentar();
+  });
 })();
 </script>
 
@@ -11203,9 +11699,15 @@ main.main-content > #ce-historico-postagens.ce-nav-visible{display:block!importa
  try{ /* [correção] antes isto escondia a tela de login do V10 ao carregar a página */ }catch(e){}
  let ceLoginFilial='';
  document.querySelectorAll('[data-ce-filial]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('[data-ce-filial]').forEach(x=>x.classList.remove('selected'));b.classList.add('selected');ceLoginFilial=b.dataset.ceFilial;})); window.CE_CFG={transportadoras:[],cortes:[],usuarios:[],filiais:[]};
- const emailFor=u=>{u=String(u||'').trim().toLowerCase();return u.includes('@')?u:'';};
+ // V189e: usuário sem '@' (ex.: BBDI) vira usuario@bbdi.com.br — o cadastro no Supabase Auth precisa usar esse e-mail.
+ const CE_LOGIN_DOMINIO='bbdi.com.br';
+ const emailFor=u=>{u=String(u||'').trim().toLowerCase();if(!u)return '';return u.includes('@')?u:(/^[a-z0-9._-]+$/.test(u)?u+'@'+CE_LOGIN_DOMINIO:'');};
  function authHeaders(){return {apikey:KEY,Authorization:'Bearer '+(window.CE_AUTH?.session?.access_token||KEY),'Content-Type':'application/json'};}
  async function rest(path,opt={},tentativa=0){
+   // V189g: escrita nas tabelas de configuração só para ADMIN (a regra definitiva precisa existir também no banco).
+   if(opt&&opt.method&&!/^(GET|HEAD)$/i.test(opt.method)&&/^(config_transportadoras|config_cortes|config_filiais|config_usuarios|config_feriados|config_clientes_ignorados)\b/.test(String(path))&&window.CE_AUTH?.perfil?.perfil!=='admin'){
+     throw new Error('Somente ADMIN pode alterar as configurações.');
+   }
    let r=await fetch(SB+'/rest/v1/'+path,{...opt,headers:{...authHeaders(),...(opt.headers||{})},cache:'no-store'});
    if(!r.ok){
      const erro=await r.text();
@@ -11244,6 +11746,21 @@ main.main-content > #ce-historico-postagens.ce-nav-visible{display:block!importa
    let ign=[];try{ign=await rest('config_clientes_ignorados?select=id,codigo_cliente,observacao,ativo&order=codigo_cliente.asc')}catch(e){}
    let fer=[];try{fer=await rest('config_feriados?select=id,data,descricao,uf,municipio,ativo,criado_em&order=data.asc')}catch(e){console.warn('[FERIADOS]',e)}
 window.CE_CFG={transportadoras:t||[],cortes:c||[],usuarios:u||[],filiais:f||[],clientes_ignorados:ign||[],feriados:fer||[]};
+// V189h: configuração vazia = sessão/permissão com problema (o banco devolve [] sem erro). Tenta renovar a sessão uma vez
+// e, se continuar vazia, mostra na tela o motivo provável (antes ficava tudo em branco, sem aviso).
+if(!(t||[]).length){
+  try{
+    if(!window.__ceCfgRetry && typeof window.CE_RENOVAR_SESSAO==='function'){
+      window.__ceCfgRetry=true;
+      if(await window.CE_RENOVAR_SESSAO()){setTimeout(()=>{window.__ceCfgRetry=false;carregarConfig().catch(()=>{});},300);return;}
+    }
+    let role='?';try{const tk=window.CE_AUTH?.session?.access_token||'';role=JSON.parse(atob(tk.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))).role||'?';}catch(_e){}
+    let bar=document.getElementById('ce-cfg-diag');
+    if(!bar){bar=document.createElement('div');bar.id='ce-cfg-diag';bar.style.cssText='position:fixed;left:50%;transform:translateX(-50%);top:8px;z-index:2147483000;background:#b42318;color:#fff;padding:10px 14px;border-radius:8px;font:12px/1.4 system-ui,sans-serif;max-width:92vw;box-shadow:0 6px 24px rgba(0,0,0,.3)';document.body.appendChild(bar);}
+    const __e=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));bar.innerHTML='<b>Configurações (transportadoras/cortes) não carregaram.</b> usuário: '+__e(window.CE_AUTH?.session?.user?.email||'sem sessão')+' · perfil: '+__e(window.CE_AUTH?.perfil?.perfil||'?')+' · papel do token: '+__e(role)+' · tente Sair e entrar de novo. <button type="button" style="margin-left:8px">fechar</button>';
+    bar.querySelector('button').onclick=()=>bar.remove();
+  }catch(_e){}
+}else{document.getElementById('ce-cfg-diag')?.remove();}
 try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
    // [removido] antes havia aqui um Set separado (window.CE_CLIENTES_IGNORADOS) com o código
    // '46324' fixo no código — window.aplicarFiltrosGlobais (ce-filtros-globais, no topo do
@@ -11372,6 +11889,7 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
  }
 
  async function ceCriarAcessoUsuario(nome,email){
+   if(window.CE_AUTH?.perfil?.perfil!=='admin')throw new Error('Somente ADMIN pode criar acessos.');
    const sess=window.CE_AUTH?.session;
    if(!sess?.access_token)throw new Error('Sessão não autenticada. Faça login novamente.');
    const endpoint=SB+'/functions/v1/swift-handler';
@@ -11469,7 +11987,7 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
    }
  }
 
- function aplicarSessao(){const p=window.CE_AUTH.perfil;if(!p)return;const fil=localStorage.getItem('expedicao_filial_inicial')||'';try{const ov=document.getElementById('startup-overlay');if(ov)ov.classList.add('startup-hidden');if(typeof aplicarFilialInicial==='function'&&fil)aplicarFilialInicial(fil);}catch(e){}$('ce-login-overlay').classList.add('ce-hidden');const actions=document.querySelector('.topbar-actions');if(actions&&!$('ce-user-chip')){const d=document.createElement('div');d.id='ce-user-chip';d.innerHTML=`<span>${p.usuario}${p.perfil==='admin'?' · ADMIN':''}</span><button class="ce-change-pass" id="ce-change-pass">Alterar senha</button><button class="ce-logout" id="ce-logout">Sair</button>`;actions.prepend(d);$('ce-change-pass').onclick=ceAbrirAlterarSenha;$('ce-logout').onclick=()=>{localStorage.removeItem(LS);location.reload();};}const gear=$('btn-abrir-configuracoes');if(gear)gear.style.display=p.perfil==='admin'?'':'none';}
+ function aplicarSessao(){const p=window.CE_AUTH.perfil;if(!p)return;const fil=localStorage.getItem('expedicao_filial_inicial')||'';try{const ov=document.getElementById('startup-overlay');if(ov)ov.classList.add('startup-hidden');if(typeof aplicarFilialInicial==='function'&&fil)aplicarFilialInicial(fil);}catch(e){}$('ce-login-overlay').classList.add('ce-hidden');const actions=document.querySelector('.topbar-actions');if(actions&&!$('ce-user-chip')){const d=document.createElement('div');d.id='ce-user-chip';d.innerHTML=`<span>${p.usuario}${p.perfil==='admin'?' · ADMIN':''}</span><button class="ce-change-pass" id="ce-change-pass">Alterar senha</button><button class="ce-logout" id="ce-logout">Sair</button>`;actions.prepend(d);$('ce-change-pass').onclick=ceAbrirAlterarSenha;$('ce-logout').onclick=()=>{localStorage.removeItem(LS);location.reload();};}const gear=$('btn-abrir-configuracoes');if(gear)gear.style.display='';}
  async function init(){
    window.CE_AUTH.session=null;window.CE_AUTH.perfil=null;
    const ov=document.getElementById('ce-login-overlay');if(ov)ov.classList.remove('ce-hidden');
@@ -11510,11 +12028,20 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
          if(window.CE_AUTH.perfil?.ativo){
            aplicarSessao();
            document.getElementById('startup-overlay')?.classList.add('ce-auth-ok');
-           window.CE_CONFIG_READY=carregarConfig();
-           await window.CE_CONFIG_READY;
+           // V189f: daqui em diante o usuário JÁ está autenticado. Falha ao carregar configuração/Via Leitor
+           // não pode apagar a sessão nem mandar de volta ao login.
+           try{
+             window.CE_CONFIG_READY=carregarConfig();
+             await window.CE_CONFIG_READY;
+           }catch(e){console.warn('[AUTH RESTORE] configuração não carregou (sessão mantida)',e);}
            try{if(typeof window.CE_VIA_RECARREGAR==='function')window.CE_VIA_RECARREGAR();else if(typeof window.ceViaLeitorCarregar==='function')window.ceViaLeitorCarregar();}catch(_e){}
            return;
          }
+       }
+       // Falha de rede na renovação: mantém a sessão salva para a próxima tentativa (não apaga).
+       if(!ok && window.CE_AUTH_FALHA_REDE){
+         window.CE_AUTH.session=null;window.CE_AUTH.perfil=null;
+         return;
        }
      }
    }catch(e){console.warn('[AUTH RESTORE]',e);}
@@ -11524,7 +12051,19 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
  $('ce-login-btn').onclick=login;
  const gl=$('ce-login-google');if(gl)gl.onclick=loginGoogle;$('ce-login-pass').addEventListener('keydown',e=>{if(e.key==='Enter')login()});
  // ADMIN
- async function abrirAdmin(){if(window.CE_AUTH.perfil?.perfil!=='admin')return;$('ce-admin-modal').classList.add('show');await window.CE_RECARREGAR_CONFIG();renderAdmin('transportadoras');}
+ async function abrirAdmin(){if(!window.CE_AUTH.perfil)return;$('ce-admin-modal').classList.add('show');await window.CE_RECARREGAR_CONFIG();renderAdmin('transportadoras');ceAdminAplicarLeitura();}
+ // V189g: OPERACIONAL visualiza todas as abas de Configurações, mas não altera nada (campos travados, botões de gravar/excluir ocultos).
+ function ceAdminEhAdmin(){return window.CE_AUTH?.perfil?.perfil==='admin';}
+ function ceAdminAplicarLeitura(){
+   const box=$('ce-admin-content');if(!box)return;
+   const body=box.parentElement;
+   let aviso=document.getElementById('ce-admin-ro');
+   if(ceAdminEhAdmin()){if(aviso)aviso.remove();return;}
+   if(!aviso&&body){aviso=document.createElement('div');aviso.id='ce-admin-ro';aviso.style.cssText='background:#fff7e6;border:1px solid #f5c36b;color:#7a4b00;border-radius:6px;padding:8px 12px;font-size:12px;font-weight:700;margin-bottom:10px';aviso.textContent='Somente visualização — apenas ADMIN altera as configurações.';body.insertBefore(aviso,box);}
+   box.querySelectorAll('input,select,textarea').forEach(el=>{el.disabled=true;});
+   box.querySelectorAll('button').forEach(b=>{b.style.display='none';});
+ }
+ try{const alvo=document.getElementById('ce-admin-content');if(alvo)new MutationObserver(()=>ceAdminAplicarLeitura()).observe(alvo,{childList:true});}catch(e){}
  function msg(t){$('ce-admin-msg').textContent=t||'';}
  function cfgFechar(){const o=$('ce-cfg-form-overlay');if(o)o.classList.remove('show');}
  function cfgAbrir({titulo,html,salvar,salvarTexto='Salvar',danger=false}){
@@ -11607,9 +12146,16 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
  }
  async function excluirTransportadora(btn){
    const tr=btn.closest('tr'),id=tr.dataset.tid,cid=tr.dataset.cid,nome=tr.querySelector('[data-f="nome"]').value.trim();
-   cfgConfirmar('Excluir transportadora',`Excluir definitivamente a transportadora ${nome}? Para preservar o histórico, prefira desmarcar ATIVO quando possível.`,async()=>{if(cid)await rest('config_cortes?id=eq.'+encodeURIComponent(cid),{method:'DELETE',headers:{Prefer:'return=minimal'}});await rest('config_transportadoras?id=eq.'+encodeURIComponent(id),{method:'DELETE',headers:{Prefer:'return=minimal'}});cfgFechar();await window.CE_RECARREGAR_CONFIG();renderAdmin('transportadoras');msg('Transportadora excluída.');});
+   cfgConfirmar('Excluir transportadora',`Excluir definitivamente a transportadora ${nome}? Para preservar o histórico, prefira desmarcar ATIVO quando possível.`,async()=>{try{if(cid)await ceCfgGravar('config_cortes?id=eq.'+encodeURIComponent(cid),'DELETE',undefined,'config_cortes');await ceCfgGravar('config_transportadoras?id=eq.'+encodeURIComponent(id),'DELETE',undefined,'config_transportadoras');cfgFechar();await window.CE_RECARREGAR_CONFIG();renderAdmin('transportadoras');msg('Transportadora excluída.');}catch(e){cfgFechar();msg('Erro ao excluir: '+(e?.message||e));}});
  }
- async function salvarTransportadora(btn){const tr=btn.closest('tr'),id=tr.dataset.tid,cid=tr.dataset.cid;let nome=tr.querySelector('[data-f="nome"]').value.trim();if(nome.toUpperCase()==='PAC'||nome.toUpperCase()==='SEDEX')nome='CORREIOS';const cnpj=tr.querySelector('[data-f="cnpj"]').value.trim(),tipo=tr.querySelector('[data-f="tipo"]').value,prazo=tr.querySelector('[data-f="prazo"]').value.trim(),rastreio=tr.querySelector('[data-f="rastreio"]').checked,ativo=tr.querySelector('[data-f="ativo"]').checked;if(nome==='LOGGI - POA RS')nome='LOGGI';try{await rest('config_transportadoras?id=eq.'+id,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({nome,nome_exibicao:nome==='LOGGI'?'LOGGI - POA RS':nome,cnpj,exige_rastreio:rastreio,ativo,atualizado_em:new Date().toISOString()})});const body={transportadora_id:Number(id),filial:null,tipo_regra:tipo,hora_corte:tipo==='HORARIO'?prazo+(/:\d\d$/.test(prazo)?':00':''):null,dias_uteis:tipo==='DIAS_UTEIS'?Number(prazo||0):null,ativo:true,atualizado_em:new Date().toISOString()};if(cid)await rest('config_cortes?id=eq.'+cid,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify(body)});else await rest('config_cortes',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify(body)});await window.CE_RECARREGAR_CONFIG();try{window.CE_VIA_RECARREGAR?.()}catch(e){}msg('Alteração salva no Supabase e prazos atualizados.');renderAdmin('transportadoras');}catch(e){msg('Erro: '+e.message)}}
+ // V189i: gravação de configuração CONFIRMADA — se o banco não alterar nenhuma linha (regra RLS silenciosa), mostra erro real
+ // em vez de "salvo com sucesso" (antes o PATCH/DELETE com return=minimal escondia o bloqueio).
+ async function ceCfgGravar(path,method,body,rotulo){
+   const r=await rest(path,{method,headers:{Prefer:'return=representation'},body:body===undefined?undefined:JSON.stringify(body)});
+   if(!Array.isArray(r)||!r.length)throw new Error('O banco não confirmou a alteração em '+(rotulo||path.split('?')[0])+'. Provável bloqueio de permissão (regra do Supabase): confira se este usuário é ADMIN no banco.');
+   return r;
+ }
+ async function salvarTransportadora(btn){const tr=btn.closest('tr'),id=tr.dataset.tid,cid=tr.dataset.cid;let nome=tr.querySelector('[data-f="nome"]').value.trim();if(nome.toUpperCase()==='PAC'||nome.toUpperCase()==='SEDEX')nome='CORREIOS';const cnpj=tr.querySelector('[data-f="cnpj"]').value.trim(),tipo=tr.querySelector('[data-f="tipo"]').value,prazo=tr.querySelector('[data-f="prazo"]').value.trim(),rastreio=tr.querySelector('[data-f="rastreio"]').checked,ativo=tr.querySelector('[data-f="ativo"]').checked;if(nome==='LOGGI - POA RS')nome='LOGGI';try{await ceCfgGravar('config_transportadoras?id=eq.'+id,'PATCH',{nome,nome_exibicao:nome==='LOGGI'?'LOGGI - POA RS':nome,cnpj,exige_rastreio:rastreio,ativo,atualizado_em:new Date().toISOString()},'config_transportadoras');const body={transportadora_id:Number(id),filial:null,tipo_regra:tipo,hora_corte:tipo==='HORARIO'?prazo+(/:\d\d$/.test(prazo)?':00':''):null,dias_uteis:tipo==='DIAS_UTEIS'?Number(prazo||0):null,ativo:true,atualizado_em:new Date().toISOString()};if(cid)await ceCfgGravar('config_cortes?id=eq.'+cid,'PATCH',body,'config_cortes');else await rest('config_cortes',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify(body)});await window.CE_RECARREGAR_CONFIG();try{window.CE_VIA_RECARREGAR?.()}catch(e){}msg('Alteração salva no Supabase e prazos atualizados.');renderAdmin('transportadoras');}catch(e){msg('Erro: '+e.message)}}
  async function salvarUsuario(btn){
    const tr=btn.closest('tr'),id=tr.dataset.uid;
    const nome=tr.querySelector('[data-f="nome"]').value.trim();
@@ -11686,7 +12232,7 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
      msg(acesso?.existente?'Colaborador salvo. A conta de acesso já existia no Supabase Auth.':'Colaborador criado. Senha inicial: BBDI@2026');
    }});
  }
- document.addEventListener('click',e=>{const gear=e.target.closest?.('#btn-abrir-configuracoes');if(gear&&window.CE_AUTH.perfil?.perfil==='admin'){e.preventDefault();e.stopImmediatePropagation();abrirAdmin();}},true);
+ document.addEventListener('click',e=>{const gear=e.target.closest?.('#btn-abrir-configuracoes');if(gear&&window.CE_AUTH.perfil){e.preventDefault();e.stopImmediatePropagation();abrirAdmin();}},true);
  $('ce-admin-close').onclick=()=>$('ce-admin-modal').classList.remove('show');$('ce-admin-modal').addEventListener('click',e=>{if(e.target.id==='ce-admin-modal')$('ce-admin-modal').classList.remove('show')});document.querySelectorAll('[data-adm]').forEach(b=>b.onclick=()=>renderAdmin(b.dataset.adm));
  init();
 })();
@@ -11767,6 +12313,9 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
 (function(){
  const SB='https://njvcostescybgwbnipec.supabase.co';
  const KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qdmNvc3Rlc2N5Ymd3Ym5pcGVjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxNzkxNzMsImV4cCI6MjEwNTc1NTE3M30.ZR9V23Fs-MzYznZCIRrTf2uXwc5oHiltb8hpmgJHADI';
+ // V189: data mínima do Via Leitor (início da operação). Para desligar o corte, defina como ''.
+ window.CE_VIA_DATA_MINIMA=window.CE_VIA_DATA_MINIMA||'2026-10-13';
+ window.CE_VIA_DIAS_ATRAS=window.CE_VIA_DIAS_ATRAS||30;
  const $=id=>document.getElementById(id);
  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const br=s=>{const m=String(s||'').match(/^(\d{4})-(\d{2})-(\d{2})/);return m?`${m[3]}/${m[2]}/${m[1]}`:(s||'—')};
@@ -11778,15 +12327,25 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
    if(!r.ok){const t=await r.text();throw new Error(`HTTP ${r.status} - ${t.slice(0,300)}`)}
    return r.json();
  }
- async function carregar(){
+ // V189: single-flight (uma consulta por vez) e modo silencioso (atualização automática não apaga a tabela).
+ let viaVoo=null;
+ function carregar(opts){
+   if(viaVoo)return viaVoo;
+   viaVoo=carregarInterno(opts||{}).finally(()=>{viaVoo=null;});
+   return viaVoo;
+ }
+ async function carregarInterno(opts){
+   const silencioso=!!opts.silencioso;
    try{ if(typeof window.ceRecarregarBaseOperacional==='function') await window.ceRecarregarBaseOperacional(); }catch(e){console.warn('[POSTAGENS STATUS] atualização operacional',e);}
 
    const host=$('tbl-via-expedicao');if(!host)return;
-   host.innerHTML='<div class="via-exp-empty">Carregando pendentes do Via Leitor...</div>';
+   if(!silencioso)host.innerHTML='<div class="via-exp-empty">Carregando pendentes do Via Leitor...</div>';
    try{
      const contexto=String(localStorage.getItem('expedicao_filial_inicial')||'').trim();
      const filiais=contexto==='1020'?'1020':contexto==='0101,0102'?'0101,0102':'0101,0102,1020';
-     const path=`via_leitor?select=filial,nf,pedido,cliente_codigo,cliente_nome,cpf_cnpj,transportadora,data_saida_entrada,data_autorizacao,hora_autorizacao,chave_nfe,data_limite,volume,total_unidades,valor_nf,peso,cidade,uf,data_emissao&filial=in.(${filiais})&order=data_saida_entrada.asc,nf.asc&limit=${TAM+1}&offset=${pagina*TAM}`;
+     // V189: início da operação — não exibe pedidos faturados antes desta data (nada é apagado; é só filtro de leitura).
+     const corte=window.CE_VIA_DATA_MINIMA?`&data_saida_entrada=gte.${encodeURIComponent(window.CE_VIA_DATA_MINIMA+'T00:00:00-03:00')}`:'';
+     const path=`via_leitor?select=filial,nf,pedido,cliente_codigo,cliente_nome,cpf_cnpj,transportadora,data_saida_entrada,data_autorizacao,hora_autorizacao,chave_nfe,data_limite,volume,total_unidades,valor_nf,peso,cidade,uf,data_emissao&filial=in.(${filiais})${corte}&order=data_saida_entrada.asc,nf.asc&limit=${TAM+1}&offset=${pagina*TAM}`;
      let dados=await get(path);
      temProxima=dados.length>TAM;
      if(temProxima)dados=dados.slice(0,TAM);
@@ -11798,6 +12357,7 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
      render();
    }catch(e){
      console.error('[VIA LEITOR VIEW]',e);
+     if(silencioso)return; // atualização automática que falhou: mantém o que já está na tela
      base=[];window.ceViaDadosAtuais=[];
      const c=$('via-exp-count');if(c)c.textContent='0';
      host.innerHTML=`<div class="via-exp-empty"><b>Não foi possível carregar os dados da VIEW Via Leitor.</b><br>${esc(e.message)}</div>`;
@@ -11855,6 +12415,22 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
    if(f&&f!=='todas')a=a.filter(x=>String(f).split(',').includes(String(x.filial)));
    if(t&&t!=='TODAS')a=a.filter(x=>normTr(x.transportadora)===t);
    if(q)a=a.filter(x=>`${x.nf} ${x.pedido} ${x.cliente_codigo} ${x.transportadora}`.toLowerCase().includes(q));
+
+   // V189b: Via Leitor = pedidos com DATA LIMITE de hoje ou anterior (até CE_VIA_DIAS_ATRAS dias para trás).
+   // Usa a MESMA data limite exibida na linha (regra de dias úteis inclusa). Data limite futura (ex.: amanhã) não aparece.
+   {
+     const fmt=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'});
+     const hoje=fmt.format(new Date());
+     const ini=fmt.format(new Date(Date.now()-(window.CE_VIA_DIAS_ATRAS||30)*86400000));
+     a=a.filter(x=>{
+       const obj={transporte:x.transportadora,filial:x.filial,data:x.data_saida_entrada,hora:x.hora_saida,data_limite:x.data_limite};
+       const ct=String(window.ceCorteTexto?.(x.transportadora,x.filial)||'').toLowerCase();
+       const uteis=ct.includes('útil')||ct.includes('uteis')||ct.includes('úteis');
+       const dl=String((uteis?(window.ceDataLimite?.(obj)||x.data_limite):(x.data_limite||window.ceDataLimite?.(obj)))||'').slice(0,10);
+       if(!/^\d{4}-\d{2}-\d{2}$/.test(dl))return true; // sem data limite reconhecível: não esconde
+       return dl<=hoje&&dl>=ini;
+     });
+   }
 
    // A VIEW public.via_leitor já entrega somente os pendentes operacionais
    // dos últimos 10 dias e remove o que já foi postado.
@@ -11930,7 +12506,21 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
      carregar();
    },true);
  }
- window.CE_VIA_RECARREGAR=function(){pagina=0;return carregar()};
+ window.CE_VIA_RECARREGAR=function(opts){if(!(opts&&opts.silencioso))pagina=0;return carregar(opts)};
+ // V189: depois de salvar NFs num romaneio, tira da lista na hora (sem consulta). A view confirma na próxima atualização.
+ window.CE_VIA_REMOVER_LOCAL=function(itens){
+   try{
+     const dig=v=>String(v==null?'':v).replace(/\D/g,'');
+     const sz=v=>dig(v).replace(/^0+/,'');
+     const chaves=new Set(),nfs=new Set();
+     (itens||[]).forEach(i=>{const c=dig(i.chave||i.chave_nfe);if(c.length>=40)chaves.add(c);const n=sz(i.nf);if(n)nfs.add(String(i.filial||'').trim()+'|'+n);});
+     if(!chaves.size&&!nfs.size)return;
+     const antes=base.length;
+     base=base.filter(x=>{const c=dig(x.chave_nfe);if(c&&chaves.has(c))return false;return !nfs.has(String(x.filial||'').trim()+'|'+sz(x.nf));});
+     window.ceViaDadosAtuais=base;
+     if(base.length!==antes)render();
+   }catch(e){console.warn('[VIA] remover local',e);}
+ };
  window.ceViaLeitorCarregar=window.CE_VIA_RECARREGAR;
  window.addEventListener('load',()=>{
    ligar();let n=0;
@@ -12184,6 +12774,7 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
   let lista=[];try{lista=await Promise.resolve(window.ceObterRomaneiosBaseNativa?.()||[]);}catch(e){}
   const rom=(Array.isArray(lista)?lista:[]).find(r=>String(r.id)===String(id));
   if(!rom){alert('Romaneio não encontrado nesta base.');return;}
+  try{await window.ceGarantirAssinatura?.(rom);}catch(e){}
   const itens=itensRom(id,rom).filter(x=>!x?.naoSalvar);
   const motorista=rom.motorista_nome||rom.nome_motorista||rom.motorista||'—';
   const html=`<div class="ce-ro-meta">
@@ -12479,51 +13070,369 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
 .ce-antiga-card{border-top:3px solid var(--primary,#1f6f5f)}
 #ce-antiga-preview-card{max-height:420px}
 </style>
+<style id="ce-imp-style">
+.ce-imp-card{padding:18px 20px}
+.ce-imp-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:16px;flex-wrap:wrap}
+.ce-imp-titulo{display:flex;gap:12px;align-items:flex-start;min-width:260px;flex:1}
+.ce-imp-titulo strong{font-size:15px;color:var(--text)}
+.ce-imp-titulo p{font-size:12px;color:var(--muted);margin:4px 0 0;line-height:1.5;max-width:720px}
+.ce-imp-ico{width:38px;height:38px;border-radius:9px;background:rgba(31,92,139,.12);color:var(--blue);display:grid;place-items:center;flex-shrink:0}
+.ce-imp-ico-verde{background:rgba(46,125,79,.13);color:var(--success)}
+.ce-imp-badges{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ce-imp-chip{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted);background:transparent;white-space:nowrap}
+.ce-imp-chip i{width:8px;height:8px;border-radius:50%;background:#98a2ad;display:inline-block}
+.ce-imp-chip-info{color:var(--blue);border-color:rgba(31,92,139,.35);background:rgba(31,92,139,.08)}
+.ce-imp-chip-ok{color:var(--success);border-color:rgba(46,125,79,.4);background:rgba(46,125,79,.1)}.ce-imp-chip-ok i{background:var(--success)}
+.ce-imp-chip-bad{color:var(--danger);border-color:rgba(178,58,46,.4);background:rgba(178,58,46,.08)}.ce-imp-chip-bad i{background:var(--danger)}
+.ce-imp-drop{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-align:center;padding:26px 16px;border:2px dashed var(--line);border-radius:12px;cursor:pointer;color:var(--muted);transition:border-color .15s,background .15s}
+.ce-imp-drop,.ce-imp-drop *{text-transform:none;letter-spacing:0}.ce-imp-drop{font-weight:400}.ce-imp-drop b{color:var(--text);font-size:14px;margin-top:4px}.ce-imp-drop span{font-size:12px}
+.ce-imp-drop svg{color:var(--blue)}
+.ce-imp-drop:hover,.ce-imp-drop:focus-visible,.ce-imp-drop.arrastando{border-color:var(--blue);background:rgba(31,92,139,.06);outline:none}
+.ce-imp-drop.tem-arquivo{border-style:solid;border-color:rgba(46,125,79,.55);background:rgba(46,125,79,.06)}
+.ce-imp-drop-compacto{padding:18px 16px}
+.ce-imp-drop input[type=file]{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.ce-imp-linha{display:flex;gap:18px;align-items:flex-end;flex-wrap:wrap;margin-top:14px}
+.ce-imp-campo{min-width:240px}.ce-imp-campo label{display:block;font-size:11px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+.ce-imp-campo select{width:100%;height:38px;border:1px solid var(--line);border-radius:8px;padding:0 10px;background:var(--card);color:var(--text);font:inherit;font-size:13px}
+.ce-imp-resumo-sel{font-size:13px;color:var(--text);font-weight:600;padding-bottom:8px}
+.ce-imp-progresso{margin-top:14px}
+.ce-imp-barra{height:8px;border-radius:999px;background:rgba(127,140,155,.25);overflow:hidden}
+.ce-imp-barra>div{height:100%;width:0;background:linear-gradient(90deg,var(--blue),#3b8fd0);border-radius:999px;transition:width .25s}
+.ce-imp-prog-txt{font-size:12px;color:var(--muted);margin-top:6px}
+.ce-imp-acoes{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:16px}
+.ce-imp-status{font-size:12px;color:var(--muted)}
+.ce-imp-stats{display:grid;grid-template-columns:repeat(5,minmax(110px,1fr));gap:12px;margin:14px 0}
+.ce-imp-stats[hidden],.ce-imp-progresso[hidden],.ce-imp-acoes [hidden]{display:none!important}.ce-imp-pane[hidden]{display:none!important}
+.ce-imp-abas{display:inline-flex;gap:4px;padding:4px;margin:2px 0 16px;border:1px solid var(--line);border-radius:10px;background:var(--card)}
+.ce-imp-abas button{display:inline-flex;align-items:center;gap:8px;border:0;background:transparent;color:var(--muted);font:inherit;font-size:13px;font-weight:700;padding:8px 16px;border-radius:7px;cursor:pointer}
+.ce-imp-abas button:hover{color:var(--text)}
+.ce-imp-abas button.ativo{background:var(--blue);color:#fff}
+@media(max-width:560px){.ce-imp-abas{display:flex}.ce-imp-abas button{flex:1;justify-content:center;padding:8px 10px}}
+.ce-imp-stats-3{grid-template-columns:repeat(3,minmax(120px,1fr));margin-top:14px}
+.ce-imp-stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;border-left:4px solid #98a2ad}
+.ce-imp-stat span{display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+.ce-imp-stat b{display:block;font-size:22px;color:var(--text);margin-top:4px;font-variant-numeric:tabular-nums}
+.ce-imp-stat.ce-ok{border-left-color:var(--success)}.ce-imp-stat.ce-info{border-left-color:var(--blue)}.ce-imp-stat.ce-warn{border-left-color:#c58a1d}.ce-imp-stat.ce-bad{border-left-color:var(--danger)}
+.ce-imp-resultado{padding:0;overflow:hidden}
+.ce-imp-res-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid var(--line)}
+.ce-imp-res-head strong{font-size:13px;margin-right:auto}
+.ce-imp-filtros{display:flex;gap:6px;flex-wrap:wrap}
+.ce-imp-filtros button{border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:999px;padding:4px 11px;font:inherit;font-size:11px;font-weight:700;cursor:pointer}
+.ce-imp-filtros button.ativo{background:var(--blue);border-color:var(--blue);color:#fff}
+.ce-imp-passos{list-style:none;display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px;padding:0}
+.ce-imp-passos li{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:var(--muted);padding:5px 12px 5px 6px;border:1px solid var(--line);border-radius:999px}
+.ce-imp-passos li i{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:11px;background:rgba(127,140,155,.25);color:var(--muted)}
+.ce-imp-passos li.ativo{color:var(--blue);border-color:rgba(31,92,139,.45)}.ce-imp-passos li.ativo i{background:var(--blue);color:#fff}
+.ce-imp-passos li.feito{color:var(--success);border-color:rgba(46,125,79,.45)}.ce-imp-passos li.feito i{background:var(--success);color:#fff}
+.ce-xml-result-table tbody tr:hover td{background:rgba(31,92,139,.05)}
+.ce-xml-result-table th{position:sticky;top:0;z-index:1}
+@media(max-width:760px){.ce-imp-stats{grid-template-columns:repeat(2,1fr)}.ce-imp-stats-3{grid-template-columns:repeat(3,1fr)}}
+</style>
 <script id="ce-xml-upload-script">
+/* V189j — Importar XML: envio em lotes de 50 (até 2.000 por seleção), progresso, cancelamento, filtros e CSV */
 (function(){
   const AGENTE='http://127.0.0.1:8766';
+  const LOTE=50;            // limite do Agente XML por requisição
+  const MAX_SELECAO=2000;   // limite por seleção na tela
+  const MAX_LINHAS=500;     // linhas desenhadas na tabela (o CSV leva tudo)
   const $=id=>document.getElementById(id);
-  function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-  function atualizarSelecao(){
-    const n=$('ce-xml-files')?.files?.length||0;
-    if($('ce-xml-status')) $('ce-xml-status').textContent=n?`${n} XML(s) selecionado(s).`:'Nenhum arquivo selecionado.';
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const fmt=n=>Number(n||0).toLocaleString('pt-BR');
+  const espera=ms=>new Promise(r=>setTimeout(r,ms));
+
+  let arquivos=[];     // File[] selecionados (sem duplicados)
+  let resultados=[];   // resultados acumulados de todos os lotes
+  let filtro='';
+  let enviando=false, cancelar=false;
+  let avisoSel='';
+
+  function chaveArq(f){return [f.name,f.size,f.lastModified].join('|')}
+  function tamanho(bytes){return bytes>=1048576?(bytes/1048576).toFixed(1)+' MB':Math.max(1,Math.round(bytes/1024))+' KB'}
+
+  /* ---------- seleção ---------- */
+  function adicionar(lista){
+    if(enviando)return;
+    const ja=new Set(arquivos.map(chaveArq));
+    let naoXml=0, repetidos=0, excedeu=0;
+    for(const f of [...lista]){
+      if(!/\.xml$/i.test(f.name||'')){naoXml++;continue}
+      const k=chaveArq(f);
+      if(ja.has(k)){repetidos++;continue}
+      if(arquivos.length>=MAX_SELECAO){excedeu++;continue}
+      ja.add(k);arquivos.push(f);
+    }
+    const av=[];
+    if(naoXml)av.push(`${fmt(naoXml)} ignorado(s) por não ser XML`);
+    if(repetidos)av.push(`${fmt(repetidos)} repetido(s) descartado(s)`);
+    if(excedeu)av.push(`${fmt(excedeu)} acima do limite de ${fmt(MAX_SELECAO)} ficaram de fora`);
+    avisoSel=av.join(' · ');
+    atualizarSelecao();
   }
-  function render(lista){
-    const tb=$('ce-xml-resultados'); if(!tb)return;
-    if(!lista?.length){tb.innerHTML='<tr><td colspan="6" class="empty">Nenhum resultado.</td></tr>';return}
-    tb.innerHTML=lista.map(x=>{
+  function atualizarSelecao(){
+    const n=arquivos.length;
+    const total=arquivos.reduce((s,f)=>s+(f.size||0),0);
+    const sel=$('ce-xml-selecao'), st=$('ce-xml-status'), btn=$('ce-xml-enviar'), drop=$('ce-xml-drop');
+    if(sel){
+      sel.innerHTML=n
+        ? `<b>${fmt(n)}</b> arquivo(s) · ${tamanho(total)} · ${fmt(Math.ceil(n/LOTE))} lote(s) de até ${LOTE}`+(avisoSel?`<br><small style="color:#b7791f;font-weight:600">${esc(avisoSel)}</small>`:'')
+        : 'Nenhum arquivo selecionado.'+(avisoSel?`<br><small style="color:#b7791f;font-weight:600">${esc(avisoSel)}</small>`:'');
+    }
+    if(st&&!enviando&&!resultados.length)st.textContent=n?'Pronto para importar.':'Nenhum arquivo selecionado.';
+    if(btn)btn.disabled=enviando||!n;
+    if(drop)drop.classList.toggle('tem-arquivo',n>0);
+  }
+
+  /* ---------- resultado ---------- */
+  function contar(){
+    const c={proc:resultados.length,imp:0,atu:0,ign:0,err:0};
+    for(const x of resultados){
+      const s=x.status||'erro';
+      if(s==='importado')c.imp++;else if(s==='atualizado')c.atu++;else if(s==='ignorado')c.ign++;else c.err++;
+    }
+    return c;
+  }
+  function atualizarStats(){
+    const c=contar(), box=$('ce-xml-stats');
+    if(box)box.hidden=!resultados.length;
+    const set=(id,v)=>{const e=$(id);if(e)e.textContent=fmt(v)};
+    set('ce-xml-n-proc',c.proc);set('ce-xml-n-imp',c.imp);set('ce-xml-n-atu',c.atu);set('ce-xml-n-ign',c.ign);set('ce-xml-n-err',c.err);
+    const b=$('ce-xml-csv');if(b)b.disabled=!resultados.length;
+  }
+  function filtrados(){
+    if(!filtro)return resultados;
+    if(filtro==='importado')return resultados.filter(x=>x.status==='importado'||x.status==='atualizado');
+    if(filtro==='erro')return resultados.filter(x=>(x.status||'erro')==='erro');
+    return resultados.filter(x=>x.status===filtro);
+  }
+  function render(){
+    const tb=$('ce-xml-resultados');if(!tb)return;
+    const lista=filtrados();
+    if(!resultados.length){tb.innerHTML='<tr><td colspan="6" class="empty">O resultado da importação aparecerá aqui.</td></tr>';return}
+    if(!lista.length){tb.innerHTML='<tr><td colspan="6" class="empty">Nenhum registro neste filtro.</td></tr>';return}
+    const vis=lista.slice(0,MAX_LINHAS);
+    tb.innerHTML=vis.map(x=>{
       const st=x.status||'erro', cls=st==='erro'?'ce-xml-erro':st==='ignorado'?'ce-xml-ignorado':'ce-xml-ok';
       return `<tr><td>${esc(x.arquivo)}</td><td>${esc(x.filial||'—')}</td><td><b>${esc(x.nf||'—')}</b></td><td style="font-family:monospace">${esc(x.chave||'—')}</td><td class="${cls}">${esc(st.toUpperCase())}</td><td>${esc(x.mensagem||'')}</td></tr>`;
-    }).join('');
+    }).join('')+(lista.length>MAX_LINHAS?`<tr><td colspan="6" class="empty">Mostrando ${fmt(MAX_LINHAS)} de ${fmt(lista.length)} registros. Use “Exportar CSV” para ver todos.</td></tr>`:'');
+  }
+  function csvCelula(v){
+    let s=String(v??'');
+    if(/^[=+\-@\t\r]/.test(s))s="'"+s; // evita fórmula ao abrir no Excel
+    return '"'+s.replace(/"/g,'""')+'"';
+  }
+  function exportarCsv(){
+    if(!resultados.length)return;
+    const linhas=[['Arquivo','Filial','NF','Chave','Status','Detalhe'].map(csvCelula).join(';')];
+    for(const x of resultados)linhas.push([x.arquivo,x.filial,x.nf,x.chave,x.status,x.mensagem].map(csvCelula).join(';'));
+    const blob=new Blob(['﻿'+linhas.join('\r\n')],{type:'text/csv;charset=utf-8'});
+    const d=new Date(), p=n=>String(n).padStart(2,'0');
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=`importacao_xml_${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}.csv`;
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+  }
+
+  /* ---------- agente ---------- */
+  async function checarAgente(){
+    const chip=$('ce-xml-agente');if(!chip)return false;
+    const txt=chip.querySelector('span');
+    try{
+      const ctl=new AbortController();const t=setTimeout(()=>ctl.abort(),3500);
+      const r=await fetch(AGENTE+'/health',{cache:'no-store',signal:ctl.signal});clearTimeout(t);
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok)throw new Error('HTTP '+r.status);
+      chip.className='ce-imp-chip ce-imp-chip-ok';
+      if(txt)txt.textContent='Agente conectado'+(j.versao?` · v${j.versao}`:'');
+      return true;
+    }catch(e){
+      chip.className='ce-imp-chip ce-imp-chip-bad';
+      if(txt)txt.textContent='Agente offline — abra o Agente XML';
+      return false;
+    }
+  }
+
+  /* ---------- envio ---------- */
+  function progresso(feitos,total,extra){
+    const box=$('ce-xml-prog'), fill=$('ce-xml-prog-fill'), txt=$('ce-xml-prog-txt');
+    if(box)box.hidden=false;
+    const pct=total?Math.round(feitos/total*100):0;
+    if(fill)fill.style.width=pct+'%';
+    if(txt)txt.textContent=`${fmt(feitos)} de ${fmt(total)} arquivo(s) · ${pct}%`+(extra?` · ${extra}`:'');
+  }
+  async function postLote(lote,filial){
+    let tentativaRede=0, tentativaOcupado=0;
+    for(;;){
+      const fd=new FormData();
+      lote.forEach(f=>fd.append('files',f,f.name));
+      if(filial)fd.append('filial',filial);
+      const ctl=new AbortController();const t=setTimeout(()=>ctl.abort(),180000);
+      try{
+        const resp=await fetch(AGENTE+'/api/xml/importar',{method:'POST',body:fd,cache:'no-store',signal:ctl.signal});
+        clearTimeout(t);
+        const j=await resp.json().catch(()=>({ok:false,erro:'Resposta inválida do Agente XML.'}));
+        if(resp.status===409&&tentativaOcupado<15){tentativaOcupado++;await espera(2000);continue} // agente ocupado com outro upload
+        if(!resp.ok)throw Object.assign(new Error(j.erro||('HTTP '+resp.status)),{http:true});
+        return j.resultados||[];
+      }catch(e){
+        clearTimeout(t);
+        if(e.http)throw e;
+        if(tentativaRede<1){tentativaRede++;await espera(1500);continue} // falha de rede: uma nova tentativa
+        throw Object.assign(new Error(e.name==='AbortError'?'Tempo esgotado aguardando o Agente XML.':'Sem conexão com o Agente XML.'),{rede:true});
+      }
+    }
   }
   async function enviar(){
-    const inp=$('ce-xml-files'), files=[...(inp?.files||[])];
-    if(!files.length){alert('Selecione pelo menos um arquivo XML.');return}
-    if(files.length>50){alert('O limite é de 50 XMLs por envio.');return}
-    const btn=$('ce-xml-enviar'); btn.disabled=true;
-    $('ce-xml-status').textContent=`Enviando ${files.length} XML(s)...`;
-    try{
-      const fd=new FormData();
-      files.forEach(f=>fd.append('files',f,f.name));
-      const filial=$('ce-xml-filial')?.value||'';
-      if(filial)fd.append('filial',filial);
-      const resp=await fetch(AGENTE+'/api/xml/importar',{method:'POST',body:fd,cache:'no-store'});
-      const j=await resp.json().catch(()=>({ok:false,erro:'Resposta inválida do Agente XML.'}));
-      if(!resp.ok)throw new Error(j.erro||('HTTP '+resp.status));
-      render(j.resultados||[]);
-      const r=j.resumo||{};
-      $('ce-xml-status').textContent=`${r.selecionados||files.length} selecionado(s) · ${r.importados||0} importado(s) · ${r.atualizados||0} atualizado(s) · ${r.ignorados||0} ignorado(s) · ${r.erros||0} erro(s)`;
-      // Atualiza Via Leitor em segundo plano para refletir os XMLs recém-gravados.
-      try{$('via-exp-atualizar')?.click()}catch(e){}
-    }catch(e){
-      $('ce-xml-status').textContent='Falha no upload: '+(e?.message||e);
-      alert('Não foi possível importar os XMLs.\n\n'+(e?.message||e)+'\n\nConfirme que o Agente XML V1.11 está aberto na porta 8766.');
-    }finally{btn.disabled=false}
+    if(enviando||!arquivos.length)return;
+    enviando=true;cancelar=false;resultados=[];filtro='';
+    document.querySelectorAll('#ce-xml-filtros button').forEach(b=>b.classList.toggle('ativo',!b.dataset.f));
+    const btn=$('ce-xml-enviar'), canc=$('ce-xml-cancelar'), lim=$('ce-xml-limpar'), st=$('ce-xml-status'), filial=$('ce-xml-filial')?.value||'';
+    btn.disabled=true;lim.disabled=true;canc.hidden=false;canc.disabled=false;canc.textContent='Cancelar envio';
+    atualizarStats();render();
+
+    const fila=arquivos.slice(), total=fila.length, naoEnviados=[];
+    let feitos=0, falhasSeguidas=0, interrompido='';
+    progresso(0,total);
+    for(let i=0;i<fila.length;i+=LOTE){
+      if(cancelar){interrompido='Envio cancelado.';naoEnviados.push(...fila.slice(i));break}
+      const lote=fila.slice(i,i+LOTE);
+      st.textContent=`Enviando lote ${Math.floor(i/LOTE)+1} de ${Math.ceil(total/LOTE)}…`;
+      try{
+        const res=await postLote(lote,filial);
+        resultados.push(...res);
+        falhasSeguidas=0;
+      }catch(e){
+        falhasSeguidas++;
+        for(const f of lote)resultados.push({arquivo:f.name,status:'erro',mensagem:'Não enviado: '+(e.message||e)});
+        naoEnviados.push(...lote);
+        if(e.rede&&falhasSeguidas>=2){interrompido='Agente XML não respondeu. O restante não foi enviado.';naoEnviados.push(...fila.slice(i+LOTE));break}
+      }
+      feitos=Math.min(i+LOTE,total);
+      progresso(feitos,total);atualizarStats();render();
+    }
+
+    const c=contar();
+    st.textContent=(interrompido?interrompido+' ':'')+`${fmt(c.proc)} processado(s) · ${fmt(c.imp)} importado(s) · ${fmt(c.atu)} atualizado(s) · ${fmt(c.ign)} ignorado(s) · ${fmt(c.err)} erro(s)`;
+    if(interrompido){progresso(c.proc,total,'interrompido')}
+    // mantém na seleção só o que não chegou ao agente, para reenviar com um clique
+    arquivos=interrompido||naoEnviados.length?naoEnviados.filter((f,ix,a)=>a.indexOf(f)===ix):[];
+    avisoSel='';
+    enviando=false;canc.hidden=true;lim.disabled=false;
+    atualizarSelecao();
+    if(!arquivos.length)checarAgente();
+    if(naoEnviados.length&&interrompido.startsWith('Agente')){
+      checarAgente();
+      alert('O envio foi interrompido.\n\n'+fmt(naoEnviados.length)+' arquivo(s) não chegaram ao Agente XML e continuam selecionados.\nConfirme que o Agente XML está aberto (porta 8766) e clique em Importar XML novamente.');
+    }
+    try{$('via-exp-atualizar')?.click()}catch(e){} // reflete os XMLs recém-gravados no Via Leitor
+  }
+  function limpar(){
+    if(enviando)return;
+    arquivos=[];resultados=[];filtro='';avisoSel='';
+    const f=$('ce-xml-files');if(f)f.value='';
+    const pr=$('ce-xml-prog');if(pr)pr.hidden=true;
+    document.querySelectorAll('#ce-xml-filtros button').forEach(b=>b.classList.toggle('ativo',!b.dataset.f));
+    atualizarSelecao();atualizarStats();render();
+  }
+
+  document.addEventListener('DOMContentLoaded',()=>{
+    const inp=$('ce-xml-files'), drop=$('ce-xml-drop');
+    inp?.addEventListener('change',()=>{adicionar(inp.files||[]);inp.value=''});
+    if(drop){
+      ['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();if(!enviando)drop.classList.add('arrastando')}));
+      ['dragleave','dragend'].forEach(ev=>drop.addEventListener(ev,()=>drop.classList.remove('arrastando')));
+      drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('arrastando');adicionar(e.dataTransfer?.files||[])});
+    }
+    $('ce-xml-enviar')?.addEventListener('click',enviar);
+    $('ce-xml-limpar')?.addEventListener('click',limpar);
+    $('ce-xml-cancelar')?.addEventListener('click',()=>{cancelar=true;const c=$('ce-xml-cancelar');c.disabled=true;c.textContent='Cancelando…';$('ce-xml-status').textContent='Cancelando após o lote em andamento…'});
+    $('ce-xml-csv')?.addEventListener('click',exportarCsv);
+    $('ce-xml-agente')?.addEventListener('click',checarAgente);
+    $('ce-xml-filtros')?.addEventListener('click',e=>{
+      const b=e.target.closest('button[data-f]');if(!b)return;
+      filtro=b.dataset.f||'';
+      document.querySelectorAll('#ce-xml-filtros button').forEach(x=>x.classList.toggle('ativo',x===b));
+      render();
+    });
+    atualizarSelecao();atualizarStats();
+    checarAgente();
+    setInterval(()=>{const v=$('view-importarxml');if(v&&v.classList.contains('active')&&!document.hidden&&!enviando)checarAgente()},20000);
+  });
+  window.addEventListener('beforeunload',e=>{if(enviando){e.preventDefault();e.returnValue=''}});
+})();
+</script>
+<script id="ce-planilha-ui-script">
+/* V189j — Planilha antiga: só interface (etapas, contadores, barra de progresso). A lógica de leitura/gravação não foi alterada. */
+(function(){
+  const $=id=>document.getElementById(id);
+  const TXT_PADRAO='Arraste a planilha aqui ou clique para selecionar';
+  function passos(ativo,feitos){
+    document.querySelectorAll('#ce-antiga-passos li').forEach(li=>{
+      const p=Number(li.dataset.p);
+      li.classList.toggle('feito',feitos.includes(p));
+      li.classList.toggle('ativo',p===ativo&&!feitos.includes(p));
+    });
+  }
+  function barra(pct,mostrar){
+    const box=$('ce-antiga-prog'), fill=$('ce-antiga-prog-fill');
+    if(box)box.hidden=!mostrar;
+    if(fill)fill.style.width=Math.max(0,Math.min(100,pct))+'%';
+  }
+  function contadores(ok,err){
+    if($('ce-antiga-n-ok'))$('ce-antiga-n-ok').textContent=Number(ok||0).toLocaleString('pt-BR');
+    if($('ce-antiga-n-err'))$('ce-antiga-n-err').textContent=Number(err||0).toLocaleString('pt-BR');
+  }
+  function zerar(){
+    contadores(0,0);barra(0,false);passos(temArquivo()?2:1,temArquivo()?[1]:[]);
+  }
+  function temArquivo(){return !!$('ce-antiga-file')?.files?.length}
+  function nomeArquivo(){
+    const f=$('ce-antiga-file')?.files?.[0], el=$('ce-antiga-nome'), drop=$('ce-antiga-drop');
+    if(el)el.textContent=f?`${f.name} · ${f.size>=1048576?(f.size/1048576).toFixed(1)+' MB':Math.max(1,Math.round(f.size/1024))+' KB'}`:TXT_PADRAO;
+    if(drop)drop.classList.toggle('tem-arquivo',!!f);
+  }
+  function lerStatus(txt){
+    txt=String(txt||'');
+    let m;
+    if(/Lendo planilha/i.test(txt)){passos(2,[1]);barra(0,false);return}
+    if((m=txt.match(/(\d[\d.]*)\s*registro\(s\)\s*·\s*(\d[\d.]*)\s*pronto\(s\)\s*·\s*(\d[\d.]*)\s*com erro/i))){
+      const ok=Number(m[2].replace(/\./g,'')), err=Number(m[3].replace(/\./g,''));
+      contadores(ok,err);barra(0,false);
+      passos(ok?3:2,ok?[1,2]:[1]);return;
+    }
+    if(/Verificando duplicidades/i.test(txt)){passos(3,[1,2]);barra(4,true);return}
+    if((m=txt.match(/Gravando\s+(\d[\d.]*)\s+de\s+(\d[\d.]*)/i))){
+      const a=Number(m[1].replace(/\./g,'')), b=Number(m[2].replace(/\./g,''));
+      passos(3,[1,2]);barra(b?a/b*100:0,true);return;
+    }
+    if(/novo\(s\)\s*·|Nada importado/i.test(txt)){barra(100,true);passos(0,[1,2,3]);return}
+    if(/Falha|Erro ao ler/i.test(txt)){barra(0,false);passos(temArquivo()?2:1,temArquivo()?[1]:[]);return}
+    if(/Nenhum arquivo analisado/i.test(txt)){zerar()}
   }
   document.addEventListener('DOMContentLoaded',()=>{
-    $('ce-xml-files')?.addEventListener('change',atualizarSelecao);
-    $('ce-xml-enviar')?.addEventListener('click',enviar);
-    $('ce-xml-limpar')?.addEventListener('click',()=>{if($('ce-xml-files'))$('ce-xml-files').value='';render([]);atualizarSelecao()});
+    const inp=$('ce-antiga-file'), drop=$('ce-antiga-drop'), st=$('ce-antiga-status');
+    inp?.addEventListener('change',()=>{nomeArquivo();contadores(0,0);barra(0,false);passos(temArquivo()?2:1,temArquivo()?[1]:[])});
+    if(drop){
+      ['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('arrastando')}));
+      ['dragleave','dragend'].forEach(ev=>drop.addEventListener(ev,()=>drop.classList.remove('arrastando')));
+      drop.addEventListener('drop',e=>{
+        e.preventDefault();drop.classList.remove('arrastando');
+        const fs=e.dataTransfer?.files;if(!fs||!fs.length||!inp)return;
+        try{const dt=new DataTransfer();dt.items.add(fs[0]);inp.files=dt.files;inp.dispatchEvent(new Event('change',{bubbles:true}))}catch(_){}
+      });
+    }
+    $('ce-antiga-limpar')?.addEventListener('click',()=>setTimeout(()=>{nomeArquivo();zerar()},0));
+    if(st)new MutationObserver(()=>lerStatus(st.textContent)).observe(st,{childList:true,characterData:true,subtree:true});
+    nomeArquivo();
+    // abas: abre sempre em "Importar XML"
+    const abas=$('ce-imp-abas');
+    abas?.addEventListener('click',e=>{
+      const b=e.target.closest('button[data-aba]');if(!b)return;
+      abas.querySelectorAll('button').forEach(x=>{const on=x===b;x.classList.toggle('ativo',on);x.setAttribute('aria-selected',on)});
+      const xml=$('ce-imp-pane-xml'), ant=$('ce-imp-pane-antiga');
+      if(xml)xml.hidden=b.dataset.aba!=='xml';
+      if(ant)ant.hidden=b.dataset.aba!=='antiga';
+    });
   });
 })();
 </script>
@@ -12699,7 +13608,7 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
       alert(`Importação concluída.\n\n${importados} novo(s)\n${atualizados} atualizado(s) para COLETADO\n${duplicadas} já coletado(s)\n\nOrigem: PLANILHA ANTIGA`);
       try{
         if(typeof window.ceRecarregarBaseOperacional==='function'){
-          await window.ceRecarregarBaseOperacional();
+          await window.ceRecarregarBaseOperacional({full:true,force:true}); // V189: após importação, recarga completa
         }
       }catch(e){}
       try{window.CE_VIA_RECARREGAR?.();}catch(e){}
@@ -12907,7 +13816,7 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
       for(let i=0;i<romIds.length;i+=100){
         const ids=romIds.slice(i,i+100).map(x=>'"'+x.replace(/"/g,'')+'"').join(',');
         try{
-          const part=await sb('romaneios?select=*&id=in.('+encodeURIComponent(ids)+')');
+          const part=await sb('romaneios?select=id,codigo,empresa,filial,transportadora,data,status,criado_em,atualizado_em,assinado_em,motorista_nome,motorista_cpf&id=in.('+encodeURIComponent(ids)+')');
           if(Array.isArray(part)) roms.push(...part);
         }catch(e){}
       }
@@ -13020,8 +13929,8 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
 // ═══════════════════════════════════════════════════════════════════════════
 const TZ='America/Sao_Paulo';
 const FILIAIS=['0101','0102','1020'];
-const INTERVALO_AUTO_MS=120000;      // atualização automática (2 min)
-const OBSOLETO_MS=45000;             // ao abrir a aba, recarrega se os dados tiverem mais que isso
+const INTERVALO_AUTO_MS=300000;      // V189: atualização automática a cada 5 min (era 2 min), só com a aba visível
+const OBSOLETO_MS=90000;             // ao abrir a aba, recarrega se os dados tiverem mais que isso
 const CAP_REGISTROS=30000;
 const COLS_POST='id,nf,chave_nfe,pedido,filial,volume,bipador,embalador,bipada_em,coleta_em,romaneio_id,status';
 const SEL_XML='filial,nf,pedido,chave_nfe,total_unidades,volume,data_saida_entrada,transportadora';
@@ -13198,7 +14107,7 @@ async function carregarDados(dataISO){
     paginado(`postagens?select=${COLS_POST}&bipada_em=gte.${ini}&bipada_em=lt.${fim}&order=bipada_em.asc,id.asc`,estado),
     paginado(`postagens?select=${COLS_POST}&coleta_em=gte.${ini}&order=coleta_em.asc,id.asc`,estado),
     paginado(`xmls?select=filial,nf,pedido,data_limite&filial=in.(${FILIAIS.join(',')})&data_limite=gte.${ini}&data_limite=lt.${fim}&order=data_limite.asc,filial.asc,nf.asc`,estado),
-    paginado(`via_leitor?select=filial,nf,pedido,data_limite&filial=in.(${FILIAIS.join(',')})&order=data_limite.asc,filial.asc,nf.asc`,estado)
+    paginado(`via_leitor?select=filial,nf,pedido,data_limite&filial=in.(${FILIAIS.join(',')})${window.CE_VIA_DATA_MINIMA?`&data_saida_entrada=gte.${encodeURIComponent(window.CE_VIA_DATA_MINIMA+'T00:00:00-03:00')}`:''}&order=data_limite.asc,filial.asc,nf.asc`,estado)
   ]);
   // XML das postagens que não estão entre os faturados do dia (chave NF-e primeiro; NF depois).
   const chavesFat=new Set(fat.map(x=>digitos(x.chave_nfe)).filter(Boolean));
@@ -13618,10 +14527,16 @@ function aoAbrir(){
   montarSecao();
   // Identidade pode ter mudado (novo login): zera o filtro de colaborador.
   const sel=$('ce-pn-colab');if(sel&&!ehAdmin()){sel.value='';}
-  if(!ST.dados||Date.now()-ST.ts>OBSOLETO_MS||ST.dataCarregada!==($('ce-pn-data')?.value||''))atualizar(false);
+  // V189: dia passado muda pouco (só coletas tardias) -> tolera dados de até 10 min; hoje segue com OBSOLETO_MS.
+  const dSel=$('ce-pn-data')?.value||'';
+  const limiteObsoleto=(dSel&&dSel!==hojeSP())?600000:OBSOLETO_MS;
+  if(!ST.dados||Date.now()-ST.ts>limiteObsoleto||ST.dataCarregada!==dSel)atualizar(false);
   else renderizar();
   if(!ST.timer)ST.timer=setInterval(()=>{
     if(document.hidden||!painelVisivel()||!window.CE_AUTH?.session)return;
+    // V189: atualização automática só para o dia de hoje; consultando dia passado, só o botão "Atualizar".
+    const dSel2=$('ce-pn-data')?.value||'';
+    if(dSel2&&dSel2!==hojeSP())return;
     atualizar(false);
   },INTERVALO_AUTO_MS);
 }
@@ -13638,6 +14553,416 @@ window.CE_PAINEL={SQL_METAS,construirModelo,janelaDia,offsetSP,normNome,_t:{carr
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',iniciar);else iniciar();
 })();
 </script>
+
+<!-- V185 — ajustes leves + modo escuro completo -->
+
+
+<style id="ce-v184-css">
+#ce-v184-theme{position:fixed;right:16px;bottom:16px;z-index:99999;border:1px solid #cbd5df;border-radius:18px;padding:7px 11px;background:#fff;color:#17212b;font-size:11px;font-weight:800;cursor:pointer}
+.ce-v184-processando{opacity:.65!important;cursor:not-allowed!important}
+.ce-v184-row-atribuida{outline:2px solid rgba(31,128,255,.22);outline-offset:-2px}
+
+/* =====================================================================
+   V186 — MODO ESCURO PREMIUM
+   Somente aparência. Escopo exclusivo: body.ce-v184-dark (tela apenas).
+   Camadas: fundo > superfície > elevado > hover. Acento azul-aço + ouro
+   discreto (já usado no menu). Semânticas suaves (ok / alerta / erro).
+   ===================================================================== */
+@media screen{
+
+/* ---------- 1. Fundação e tokens ---------- */
+html:has(body.ce-v184-dark){color-scheme:dark;background:#080d13}
+body.ce-v184-dark{
+  color-scheme:dark;
+  --d-bg:#0a1017;
+  --d-bg-2:#0d141c;
+  --d-surface:#111a24;
+  --d-surface-2:#16212e;
+  --d-surface-3:#1c2939;
+  --d-input:#0c141c;
+  --d-line:#223142;
+  --d-line-2:#2d4057;
+  --d-text:#e8eef5;
+  --d-text-2:#b4c1d0;
+  --d-muted:#8496a9;
+  --d-accent:#62afea;
+  --d-accent-2:#2f80c6;
+  --d-accent-soft:rgba(98,175,234,.14);
+  --d-gold:#d6b668;
+  --d-ok:#58cb92;   --d-ok-soft:rgba(88,203,146,.14);
+  --d-warn:#f2b762; --d-warn-soft:rgba(242,183,98,.13);
+  --d-bad:#f58f86;  --d-bad-soft:rgba(245,143,134,.13);
+  --d-shadow:0 1px 2px rgba(0,0,0,.35),0 6px 18px rgba(0,0,0,.22);
+  --d-shadow-lg:0 24px 70px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.04);
+
+  /* tokens do próprio sistema, remapeados para o escuro */
+  --paper:var(--d-bg);
+  --card:var(--d-surface);
+  --line:var(--d-line);
+  --text:var(--d-text);
+  --ink:var(--d-text);
+  --muted:var(--d-muted);
+  --blue:#2f80c6;
+  --blue-dark:#8cc7f3;
+  --orange:#f08240;
+  --success:var(--d-ok);
+  --success-bg:var(--d-ok-soft);
+  --danger:var(--d-bad);
+  --danger-bg:var(--d-bad-soft);
+
+  background-color:var(--d-bg)!important;
+  background-image:radial-gradient(1100px 520px at 85% -8%,rgba(47,128,198,.08),transparent 62%),radial-gradient(900px 480px at -10% 105%,rgba(214,182,104,.035),transparent 60%)!important;
+  background-attachment:fixed!important;
+  color:var(--d-text)!important;
+}
+body.ce-v184-dark :is(main,.page,.view,main.main-content){background:transparent!important;color:var(--d-text)!important}
+body.ce-v184-dark ::selection{background:rgba(98,175,234,.35);color:#fff}
+body.ce-v184-dark ::placeholder{color:#6b7e92!important;opacity:1}
+body.ce-v184-dark :focus-visible{outline-color:var(--d-accent)}
+body.ce-v184-dark hr{border-color:var(--d-line)}
+
+/* scrollbars discretas */
+body.ce-v184-dark *{scrollbar-width:thin;scrollbar-color:#2d4057 transparent}
+body.ce-v184-dark ::-webkit-scrollbar{width:10px;height:10px}
+body.ce-v184-dark ::-webkit-scrollbar-track{background:transparent}
+body.ce-v184-dark ::-webkit-scrollbar-thumb{background:#2a3b4f;border-radius:10px;border:2px solid transparent;background-clip:padding-box}
+body.ce-v184-dark ::-webkit-scrollbar-thumb:hover{background:#3b516b;background-clip:padding-box;border:2px solid transparent}
+body.ce-v184-dark ::-webkit-scrollbar-corner{background:transparent}
+
+/* botão de tema */
+body.ce-v184-dark #ce-v184-theme{background:var(--d-surface-2);color:var(--d-text);border-color:var(--d-line-2);box-shadow:0 8px 22px rgba(0,0,0,.5);transition:background .15s,border-color .15s}
+body.ce-v184-dark #ce-v184-theme:hover{background:var(--d-surface-3);border-color:var(--d-accent)}
+
+/* ---------- 2. Topbar, menu lateral, toast ---------- */
+body.ce-v184-dark header.topbar{background:linear-gradient(180deg,#0f1822,#0b121a)!important;border-bottom:1px solid var(--d-line)!important;box-shadow:0 1px 0 rgba(255,255,255,.02),0 8px 24px rgba(0,0,0,.35)}
+body.ce-v184-dark .brand-text .t2{color:#8aa0b5}
+body.ce-v184-dark .clock{color:#a7b7c7}
+body.ce-v184-dark .topbar-icon-btn{background:rgba(255,255,255,.04);border-color:var(--d-line-2)}
+body.ce-v184-dark .topbar-icon-btn:hover{background:rgba(98,175,234,.14);border-color:rgba(98,175,234,.45)}
+body.ce-v184-dark nav.tabs.main-nav{background:linear-gradient(180deg,#0c141d,#09101a)!important;border-right:1px solid var(--d-line)!important}
+body.ce-v184-dark nav.tabs.main-nav::before{color:#5d7188}
+body.ce-v184-dark nav.tabs.main-nav .tab-btn{color:#a9b7c6!important;transition:background .15s,color .15s}
+body.ce-v184-dark nav.tabs.main-nav .tab-btn:hover{background:rgba(255,255,255,.055)!important;color:#fff!important}
+body.ce-v184-dark nav.tabs.main-nav .tab-btn.active{background:linear-gradient(180deg,#dcbd72,#c9a85a)!important;color:#141a22!important;box-shadow:0 4px 14px rgba(214,182,104,.22)}
+body.ce-v184-dark nav.tabs.main-nav .count-pill{background:rgba(255,255,255,.09)!important;color:#c9d5e1!important}
+body.ce-v184-dark nav.tabs.main-nav .tab-btn.active .count-pill{background:rgba(20,26,34,.16)!important;color:#141a22!important}
+body.ce-v184-dark .toast{background:var(--d-surface-3);color:var(--d-text);border:1px solid var(--d-line-2);box-shadow:0 14px 36px rgba(0,0,0,.55)}
+
+/* ---------- 3. Títulos e tipografia ---------- */
+body.ce-v184-dark :is(.section-title h2,.dashboard-head-title h2,.summary-section-head h3,.via-leitor-head h2,.ce-hp-title h2,.ce-pn-title h2,.startup-title,.modal-head h3,.pasta-nome,.startup-option .name,.back-link){color:var(--d-text)!important}
+body.ce-v184-dark :is(.section-title .sub,.via-leitor-head .sub,.ce-hp-title p,.ce-pn-title p,.modal-sub,.empty){color:var(--d-muted)!important}
+body.ce-v184-dark .back-link{color:var(--d-accent)!important}
+body.ce-v184-dark label{color:var(--d-muted)}
+body.ce-v184-dark :is(.kpi-value,.sla-card .value,.summary-kpi-value,.transport-card-pro .name,.transport-card-pro .count){color:var(--d-text)!important}
+
+/* ---------- 4. Superfícies (cards, painéis, caixas) ---------- */
+body.ce-v184-dark :is(.card,.transport-card,.transport-card-pro,.summary-kpi,.summary-toolbar,.summary-pending-card,.pending-filter-bar,.romaneio-filtro-data,.romaneio-bipagem-box,.embalador-box,.embalador-editor,.config-item,.conferencia-card,.manifest,.operacao-destaque,.geral-bipado-resumo>div,.visualizar-postados-card,.divergencias-resumo,.romaneio-card,.startup-option,.ce-start-op,.ce-login-op,.ce-via-colfilters,.ce-pn-filtros,.ce-pn-fx,.ce-pn-bloco,.ce-hp-filtros,.ce-hp-box,.ce-op-gridwrap,.ce-res-card,.ce-ro-meta>div,.ce-ret-info,.ce-ret-view-sign,.table-wrap,.table-container,.geral-table-wrap,.geral-bipado-table-wrap,.tbl-visualizar-romaneio-table){
+  background-color:var(--d-surface)!important;border-color:var(--d-line)!important;color:var(--d-text)!important;
+}
+body.ce-v184-dark :is(.card,.transport-card,.transport-card-pro,.summary-kpi,.summary-toolbar,.summary-pending-card,.pending-filter-bar,.romaneio-filtro-data,.romaneio-bipagem-box,.embalador-box,.romaneio-card,.config-item,.manifest,.operacao-destaque,.ce-pn-filtros,.ce-pn-fx,.ce-pn-bloco,.ce-hp-filtros,.ce-via-colfilters){box-shadow:var(--d-shadow)}
+/* cartões com faixa de destaque: preservam o lado colorido */
+body.ce-v184-dark :is(.kpi-card,.ce-pn-emb,.ce-pn-meta){background-color:var(--d-surface)!important;border-top-color:var(--d-line)!important;border-right-color:var(--d-line)!important;border-bottom-color:var(--d-line)!important;box-shadow:var(--d-shadow);color:var(--d-text)}
+body.ce-v184-dark :is(.sla-card,.ce-pn-card){background-color:var(--d-surface)!important;border-left-color:var(--d-line)!important;border-right-color:var(--d-line)!important;border-bottom-color:var(--d-line)!important;box-shadow:var(--d-shadow);color:var(--d-text)}
+body.ce-v184-dark .kpi-card{border-left-color:var(--d-accent-2)}
+body.ce-v184-dark .kpi-card.orange{border-left-color:var(--orange)}
+body.ce-v184-dark .kpi-card.green{border-left-color:var(--d-ok)}
+body.ce-v184-dark .sla-card{border-top-color:var(--d-accent-2)}
+body.ce-v184-dark .sla-card.orange{border-top-color:var(--orange)}
+body.ce-v184-dark .ce-pn-card{border-top-color:var(--d-accent-2)}
+body.ce-v184-dark .ce-pn-card.exp{border-top-color:#2fa06c}
+body.ce-v184-dark .ce-pn-card.fat{border-top-color:var(--orange)}
+body.ce-v184-dark .ce-pn-emb{border-left-color:#9b72e0}
+body.ce-v184-dark .ce-pn-meta{border-left-color:var(--d-accent-2)}
+body.ce-v184-dark .ce-pn-meta.ok{background-color:rgba(88,203,146,.07)!important;border-left-color:#2fa06c}
+body.ce-v184-dark .ce-pn-meta.vazio{border-left-color:#3a4d62;color:var(--d-muted)}
+
+body.ce-v184-dark .romaneio-card{transition:border-color .15s,box-shadow .15s,background-color .15s}
+body.ce-v184-dark .romaneio-card:hover{border-color:var(--d-accent-2)!important;background-color:var(--d-surface-2)!important;box-shadow:0 8px 22px rgba(0,0,0,.4)}
+body.ce-v184-dark .romaneio-card.selected{border-color:var(--orange)!important;box-shadow:0 0 0 2px rgba(240,130,64,.2)}
+body.ce-v184-dark :is(.startup-option,.ce-start-op,.ce-login-op):hover{border-color:var(--d-accent-2)!important;background-color:var(--d-surface-2)!important}
+body.ce-v184-dark :is(.startup-option.selected,.ce-start-op.selected,.ce-login-op.selected){border-color:var(--orange)!important;background-color:rgba(240,130,64,.09)!important;box-shadow:0 0 0 2px rgba(240,130,64,.16)}
+body.ce-v184-dark :is(.ce-start-op b,.ce-login-op b){color:var(--d-text)!important}
+body.ce-v184-dark :is(.ce-start-op span,.ce-login-op span){color:var(--d-muted)!important}
+
+/* faixa "operação em destaque" */
+body.ce-v184-dark .operacao-destaque-transportadora{background-color:rgba(47,128,198,.12)!important;border-right-color:var(--d-accent-2)!important}
+body.ce-v184-dark .operacao-destaque-embalador{background-color:rgba(240,130,64,.07)!important}
+body.ce-v184-dark :is(.operacao-destaque-transportadora,.operacao-destaque-embalador) :is(strong,b,h3,h4,.nome,.valor){color:var(--d-text)!important}
+
+/* pastas (Postagens) */
+body.ce-v184-dark .pasta-card{background-color:#17202b!important;border-color:#33465c!important;color:var(--d-text)!important;box-shadow:0 2px 10px rgba(0,0,0,.3)}
+body.ce-v184-dark .pasta-card::before{background-color:#17202b!important;border-color:#33465c!important}
+body.ce-v184-dark .pasta-card:hover{border-color:var(--orange)!important;box-shadow:0 12px 26px rgba(0,0,0,.5)}
+body.ce-v184-dark .pasta-card.alerta{background-color:#2a1d14!important;border-color:var(--orange)!important;box-shadow:0 0 0 1px rgba(240,130,64,.28),0 8px 22px rgba(0,0,0,.4)}
+body.ce-v184-dark .pasta-card.alerta::before{background-color:#2a1d14!important;border-color:var(--orange)!important}
+body.ce-v184-dark .pasta-card.nova{background-color:rgba(47,128,198,.07)!important;border-color:#2f6ea3!important;color:var(--d-accent)!important;box-shadow:none}
+body.ce-v184-dark .pasta-card.nova:hover{background-color:rgba(47,128,198,.15)!important;border-color:var(--d-accent)!important}
+body.ce-v184-dark .transport-card-pro.alerta{background-color:#2a1d14!important;border-color:var(--orange)!important}
+body.ce-v184-dark :is(.pasta-card,.romaneio-card,.transport-card) :is(small,.sub,.pasta-sub,.pasta-meta,.meta){color:var(--d-muted)!important}
+body.ce-v184-dark :is(.pasta-alerta-solicitar,.romaneio-card-solicitar,.transport-card-pro .tag){background-color:rgba(242,183,98,.14)!important;color:var(--d-warn)!important;border:1px solid rgba(242,183,98,.28)}
+body.ce-v184-dark .pasta-excluir{color:var(--d-bad)}
+
+/* alertas / avisos / lotes */
+body.ce-v184-dark .solicitar-alerta{background-color:rgba(240,130,64,.1)!important;border-color:rgba(240,130,64,.6)!important;color:#f6c9a8!important}
+body.ce-v184-dark .lote-alerta{background-color:rgba(242,183,98,.1)!important;border-color:rgba(242,183,98,.35)!important;color:var(--d-warn)!important}
+body.ce-v184-dark :is(.ce-reenvio-alerta,.ce-dup-note,.confirm-modal-warning,.ce-pn-aviso){background-color:rgba(242,183,98,.1)!important;border-color:rgba(242,183,98,.32)!important;color:#f0cf96!important}
+body.ce-v184-dark .ce-pn-erro{background-color:var(--d-bad-soft)!important;border-color:rgba(245,143,134,.4)!important;color:#ffb4ad!important}
+
+/* ---------- 5. Formulários ---------- */
+body.ce-v184-dark :is(input,select,textarea):not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=button]):not([type=submit]){
+  background-color:var(--d-input)!important;color:var(--d-text)!important;border-color:var(--d-line-2)!important;
+  transition:border-color .15s,box-shadow .15s,background-color .15s;
+}
+body.ce-v184-dark :is(input,select,textarea):not([type=checkbox]):not([type=radio]):hover{border-color:#3b5470!important}
+body.ce-v184-dark :is(input,select,textarea):not([type=checkbox]):not([type=radio]):focus{border-color:var(--d-accent)!important;box-shadow:0 0 0 3px rgba(98,175,234,.18)!important;outline:none!important;background-color:#0e1822!important}
+body.ce-v184-dark :is(input,select,textarea):disabled{background-color:#0f1821!important;color:#6f8296!important;opacity:.85}
+body.ce-v184-dark select option,body.ce-v184-dark select optgroup{background-color:#121c27;color:var(--d-text)}
+body.ce-v184-dark input[type=date]::-webkit-calendar-picker-indicator,body.ce-v184-dark input[type=time]::-webkit-calendar-picker-indicator{filter:invert(.78) brightness(1.1);cursor:pointer}
+body.ce-v184-dark input[type=checkbox],body.ce-v184-dark input[type=radio]{accent-color:var(--d-accent-2)}
+body.ce-v184-dark input[type=file]::file-selector-button{background-color:var(--d-surface-3);color:var(--d-text);border:1px solid var(--d-line-2);border-radius:5px;cursor:pointer}
+body.ce-v184-dark input:-webkit-autofill{-webkit-box-shadow:0 0 0 40px #0c141c inset!important;-webkit-text-fill-color:var(--d-text)!important;caret-color:var(--d-text)}
+body.ce-v184-dark :is(.ce-pn-filtros,.ce-hp-campo,.ce-op-field,.ce-op-scan,.ce-cfg-field,.ce-ret-field,.ce-emb-modal,.field) :is(label,small){color:var(--d-muted)!important}
+body.ce-v184-dark :is(.ce-op-scan,.ce-emb-modal) input,body.ce-v184-dark #ce-bipagem-operacional #ce-op-rastreio-box.ativo input{border-width:2px!important;border-color:var(--d-accent-2)!important}
+body.ce-v184-dark :is(.ce-op-scan,.ce-emb-modal) input:focus{box-shadow:0 0 0 4px rgba(98,175,234,.2)!important;border-color:var(--d-accent)!important}
+body.ce-v184-dark :is(.ce-pn-filtros select:disabled){background-color:var(--d-surface-2)!important;color:var(--d-text-2)!important}
+body.ce-v184-dark :is(.ce-op-value){background-color:var(--d-surface-2)!important;border-color:var(--d-line-2)!important;color:var(--d-text)!important}
+body.ce-v184-dark .switch-track{background:#2a3a4d}
+body.ce-v184-dark .switch input:checked + .switch-track{background:var(--orange)}
+body.ce-v184-dark .switch-track::before{background:#f2f6fa}
+
+/* autocomplete / listas suspensas */
+body.ce-v184-dark :is(.colab-autocomplete-list,#embalador-lista){background-color:#14202c!important;border:1px solid var(--d-line-2)!important;box-shadow:0 18px 40px rgba(0,0,0,.55)!important}
+body.ce-v184-dark .colab-autocomplete-item{color:var(--d-text)!important}
+body.ce-v184-dark .colab-autocomplete-item:hover{background-color:var(--d-accent-soft)!important;color:#fff!important}
+
+/* ---------- 6. Botões ---------- */
+body.ce-v184-dark .btn-primary,body.ce-v184-dark :is(.ce-pn-btn,.ce-hp-atualizar,.ce-rom-open,.ce-rom-create,.ce-div-yes,#ceObsSalvar,.ce-op-btn.primary,.ce-cfg-primary,.ce-admin-save,#ce-login-btn){
+  background:linear-gradient(180deg,#3a8dd3,#2c78bb)!important;color:#fff!important;border-color:#2c78bb!important;box-shadow:0 1px 0 rgba(255,255,255,.12) inset,0 2px 8px rgba(0,0,0,.3);
+}
+body.ce-v184-dark .btn-primary:hover,body.ce-v184-dark :is(.ce-pn-btn,.ce-hp-atualizar,.ce-rom-open,.ce-rom-create,.ce-div-yes,#ceObsSalvar,.ce-op-btn.primary,.ce-cfg-primary,.ce-admin-save,#ce-login-btn):hover{filter:brightness(1.1)}
+body.ce-v184-dark .btn-orange{background:linear-gradient(180deg,#f58f4f,#e0702d)!important;color:#fff!important;box-shadow:0 1px 0 rgba(255,255,255,.14) inset,0 2px 8px rgba(0,0,0,.3)}
+body.ce-v184-dark .ce-hp-relatorio{background:linear-gradient(180deg,#27966a,#1c7b55)!important;color:#fff!important;box-shadow:0 1px 0 rgba(255,255,255,.12) inset}
+body.ce-v184-dark :is(.btn-ghost,.ce-op-btn:not(.primary),#ce-op-salvar-lote,.ce-admin-add,.ce-cfg-cancel,.ce-senha-actions button,.ce-ro-foot button,.ce-ret-cancel,.ce-rel-cancelar,.ce-div-no,.ce-sb-pager button,.ce-via-colfilters button,.ce-pn-tab,.ce-pn-seg button,.ce-google-btn,.ce-ret-btn,.ce-rast-mais,#ce-bip-cancelar){
+  background-color:var(--d-surface-2)!important;color:var(--d-text-2)!important;border-color:var(--d-line-2)!important;
+}
+body.ce-v184-dark :is(.btn-ghost,.ce-op-btn:not(.primary),#ce-op-salvar-lote,.ce-admin-add,.ce-cfg-cancel,.ce-senha-actions button,.ce-ro-foot button,.ce-ret-cancel,.ce-rel-cancelar,.ce-div-no,.ce-sb-pager button,.ce-via-colfilters button,.ce-pn-tab,.ce-pn-seg button,.ce-google-btn,.ce-ret-btn,.ce-rast-mais,#ce-bip-cancelar):hover{
+  background-color:var(--d-surface-3)!important;color:#fff!important;border-color:#456080!important;
+}
+body.ce-v184-dark :is(.ce-op-btn:not(.primary),#ce-op-salvar-lote,.ce-admin-add,.ce-ret-btn,.ce-rast-mais){color:var(--d-accent)!important;border-color:rgba(98,175,234,.4)!important}
+body.ce-v184-dark :is(.ce-op-btn:not(.primary),#ce-op-salvar-lote,.ce-admin-add,.ce-ret-btn,.ce-rast-mais):hover{background-color:var(--d-accent-soft)!important;color:#bfe0fa!important}
+body.ce-v184-dark .ce-ret-btn.ver{color:var(--d-ok)!important;border-color:rgba(88,203,146,.4)!important;background-color:var(--d-ok-soft)!important}
+body.ce-v184-dark .btn-danger{color:var(--d-bad)!important;border-color:rgba(245,143,134,.4)!important;background:transparent!important}
+body.ce-v184-dark .btn-danger:hover{background:var(--d-bad-soft)!important}
+body.ce-v184-dark :is(.ce-cfg-danger){background:linear-gradient(180deg,#d64545,#b63030)!important;color:#fff!important}
+body.ce-v184-dark :is(.ce-admin-delete){background-color:transparent!important;color:var(--d-bad)!important;border-color:rgba(245,143,134,.45)!important}
+body.ce-v184-dark :is(.ce-admin-close,.ce-cfg-form-close,.ce-ro-close,.ce-admin-tabs button,#ceObsExcluir,#ceObsTela .ce-quick button){background-color:var(--d-surface-3)!important;color:var(--d-text-2)!important;border-color:transparent}
+body.ce-v184-dark :is(.ce-admin-close,.ce-cfg-form-close,.ce-ro-close,.ce-admin-tabs button,#ceObsExcluir,#ceObsTela .ce-quick button):hover{background-color:#26364a!important;color:#fff!important}
+body.ce-v184-dark :is(.ce-admin-tabs button.active,.ce-pn-tab.on,.ce-pn-seg button.on,.via-leitor-btn.active){background:linear-gradient(180deg,#3a8dd3,#2c78bb)!important;border-color:#2c78bb!important;color:#fff!important}
+body.ce-v184-dark :is(.ce-div-detalhes,.ce-hp-rom-link,.ce-ret-limpar){color:var(--d-accent)!important}
+body.ce-v184-dark .ce-hp-rom-link:hover{color:#bfe0fa!important}
+body.ce-v184-dark :is(.ce-rom-x,.ce-op-close,.ce-res-x,#ceObsTela .ce-x){color:var(--d-text-2)}
+body.ce-v184-dark :is(.ce-rom-x,.ce-op-close,.ce-res-x,#ceObsTela .ce-x):hover{color:#fff}
+body.ce-v184-dark .btn:disabled{opacity:.4}
+body.ce-v184-dark .modal-close{color:var(--d-text-2)}
+
+/* ---------- 7. Tabelas ---------- */
+body.ce-v184-dark table{color:var(--d-text)}
+body.ce-v184-dark th{background-color:var(--d-surface-2)!important;color:#93a5b8!important;border-color:var(--d-line)!important;font-weight:700}
+body.ce-v184-dark td{border-color:var(--d-line)!important}
+body.ce-v184-dark tbody tr{transition:background-color .12s}
+body.ce-v184-dark tbody tr:nth-child(even){background-color:rgba(255,255,255,.018)}
+body.ce-v184-dark tbody tr:hover{background-color:rgba(98,175,234,.08)}
+body.ce-v184-dark :is(.divergencias-resumo th,.summary-pending-card thead th,.geral-table-wrap thead th,.geral-bipado-table-wrap thead th,.ce-ro-table th,.ce-res-table th,.ce-op-table th,.ce-hp-table th,.ce-xml-result-table th,.manifest-itens-postagens th,.ce-pn-t th){background-color:var(--d-surface-2)!important;color:#93a5b8!important;border-color:var(--d-line)!important}
+body.ce-v184-dark :where(.geral-bipado-table-wrap tbody td,.manifest-itens-postagens td,.ce-hp-table td,.ce-pn-t td,.ce-ro-table td,.ce-res-table td,.ce-op-table td,.ce-admin-table td,.ce-xml-result-table td){color:var(--d-text)!important}
+body.ce-v184-dark :is(.geral-bipado-table-wrap tbody td,.manifest-itens-postagens td,.ce-hp-table td,.ce-pn-t td,.ce-ro-table td,.ce-res-table td,.ce-op-table td,.ce-admin-table td,.ce-xml-result-table td){border-color:var(--d-line)!important;background-color:transparent}
+body.ce-v184-dark :is(.ce-hp-table tbody tr:nth-child(even),.manifest-itens-postagens tbody tr:nth-child(even),.tbl-visualizar-romaneio-table tbody tr:nth-child(even),.ce-pn-t tbody tr:nth-child(even),.via-exp-table tbody tr:nth-child(even)){background-color:rgba(255,255,255,.022)!important}
+body.ce-v184-dark :is(.ce-op-table tr:nth-child(even) td){background-color:rgba(255,255,255,.022)!important}
+body.ce-v184-dark :is(.geral-bipado-table-wrap tbody tr:hover,.tbl-visualizar-romaneio-table tbody tr:hover,.manifest-itens-postagens tbody tr:hover,.ce-hp-table tbody tr:hover,.ce-pn-t tbody tr:hover,.via-exp-table tbody tr:hover){background-color:rgba(98,175,234,.1)!important}
+body.ce-v184-dark :is(.ce-lote-salvo td){background-color:rgba(98,175,234,.08)!important}
+body.ce-v184-dark .ce-pn-t tr.me{background-color:rgba(88,203,146,.12)!important}
+body.ce-v184-dark .ce-pn-t tfoot td{background-color:var(--d-surface-2)!important;border-top:2px solid var(--d-line-2)!important;color:var(--d-text)!important}
+body.ce-v184-dark :is(.ce-pn-t .mb,.ce-pn-barra,.ce-pn-mbar,.ce-pn-fil .mini){background-color:#1d2b3b!important}
+body.ce-v184-dark .ce-pn-fxgrid>div{background-color:var(--d-surface-2)!important}
+body.ce-v184-dark .ce-pn-fil>div,body.ce-v184-dark .ce-pn-mf label{border-color:var(--d-line)!important;background-color:var(--d-bg-2)}
+body.ce-v184-dark .ce-pn-bloco-h{border-bottom-color:var(--d-line)!important}
+body.ce-v184-dark .ce-pn-seg{border-color:var(--d-line-2)!important}
+body.ce-v184-dark .ce-pn-tabs{border-bottom-color:var(--d-line)!important}
+body.ce-v184-dark .ce-pn-chip{background-color:var(--d-accent-soft)!important;color:#a9d6f6!important}
+body.ce-v184-dark .ce-pn-chip.adm{background-color:rgba(240,130,64,.15)!important;color:#f4b185!important}
+body.ce-v184-dark .ce-pn-sql{background-color:#070c12;color:#b9d3e6;border:1px solid var(--d-line)}
+body.ce-v184-dark .ce-pn-fxgrid .pct b{color:var(--d-ok)!important}
+body.ce-v184-dark .ce-pn-fxgrid .pen b{color:var(--d-bad)!important}
+/* textos escuros "fixos" do Painel / Histórico */
+body.ce-v184-dark :is(.ce-pn-card b,.ce-pn-fxgrid b,.ce-pn-fx h3,.ce-pn-fil b,.ce-pn-emb b,.ce-pn-bloco-h h3,.ce-pn-meta .top b,.ce-pn-subtitle,.ce-pn-mf label,.ce-res-card b,.geral-bipado-resumo b,.volume-texto,#itens-romaneio-ativo .volume-romaneio-texto,.ce-ro-head :is(h1,h2,h3,h4),.ce-ret-info b,.ce-ret-head h3,.ce-emb-modal h3,.ce-rel-card h3,.ce-rom-head h2,.ce-rom-sec h3,.ce-rom-name,.ce-cfg-form-head h3,.ce-login-start-card h2,.ce-login-card h2,.ce-gravar-sucesso-text,.ce-admin-head h2,#modal-entregador .modal-head h3){color:var(--d-text)!important}
+body.ce-v184-dark :is(.ce-pn-upd,.ce-pn-quem,.ce-pn-emb,.ce-pn-fil div,.ce-pn-mac,.ce-pn-meta .top,.ce-pn-filtros label,.ce-pn-card small,.ce-pn-fxgrid small,.ce-pn-meta small,.ce-hp-campo label,.ce-hp-legenda,.ce-op-field label,.ce-op-scan label,.ce-op-info,.ce-rom-sub,.ce-rom-meta,.ce-emb-modal p,.ce-emb-modal label,.ce-div-modal p,.ce-div-question,.ce-res-card small,.ce-ro-meta small,.ce-ro-note,.ce-ro-table th,.ce-ret-info small,.ce-cfg-field label,.ce-admin-msg,.ce-admin-table th,.ce-login-card p,.ce-obs-inline,#ceObsTela .ce-ref,.via-leitor-btn,.ce-pn-tab,.ce-pn-seg button){color:var(--d-text-2)!important}
+body.ce-v184-dark :is(.ce-pn-card em,.ce-pn-upd small,.ce-pn-nota,.ce-pn-vazio,.ce-pn-mf label span small,.ce-op-empty,.ce-hp-vazio,.ce-res-empty,.ce-rom-empty){color:var(--d-muted)!important}
+body.ce-v184-dark :is(.ce-pn-tab.on,.ce-pn-seg button.on,.via-leitor-btn.active,.ce-admin-tabs button.active){color:#fff!important}
+body.ce-v184-dark :is(.ce-hp-legenda,.ce-hp-title){color:var(--d-text-2)}
+body.ce-v184-dark .ce-hp-box{border-radius:8px;box-shadow:var(--d-shadow)}
+body.ce-v184-dark :is(#ce-historico-postagens,#ce-bipagem-operacional){background-color:transparent!important}
+body.ce-v184-dark .ce-hp-dot{box-shadow:0 0 0 3px rgba(255,255,255,.04)}
+
+/* ---------- 8. Selos, badges, status ---------- */
+body.ce-v184-dark .count-pill{background:rgba(255,255,255,.08)}
+body.ce-v184-dark .badge{border:1px solid transparent}
+body.ce-v184-dark :is(.badge-pendente,.badge-aberto){background-color:var(--d-warn-soft)!important;color:var(--d-warn)!important;border-color:rgba(242,183,98,.25)!important}
+body.ce-v184-dark .badge-romaneio{background-color:var(--d-accent-soft)!important;color:#a9d6f6!important;border-color:rgba(98,175,234,.25)!important}
+body.ce-v184-dark .badge-assinado{background-color:var(--d-ok-soft)!important;color:var(--d-ok)!important;border-color:rgba(88,203,146,.25)!important}
+body.ce-v184-dark .badge[style*="fff3cd" i]{background-color:var(--d-warn-soft)!important;color:var(--d-warn)!important;border-color:rgba(242,183,98,.3)!important}
+body.ce-v184-dark :is(.config-item-tag,.modal-item .tag-nova){background-color:var(--d-accent-soft)!important;color:#a9d6f6!important}
+body.ce-v184-dark .status-dentro{background-color:var(--d-ok-soft)!important;color:var(--d-ok)!important}
+body.ce-v184-dark .status-fora{background-color:var(--d-bad-soft)!important;color:var(--d-bad)!important}
+body.ce-v184-dark .gb-status{background-color:var(--d-ok-soft)!important;color:var(--d-ok)!important}
+body.ce-v184-dark .divergencias-count{background-color:var(--d-warn-soft)!important;color:var(--d-warn)!important}
+body.ce-v184-dark .summary-status-pill{background-color:var(--d-surface-2)!important;border-color:var(--d-line-2)!important;color:var(--d-text-2)!important}
+body.ce-v184-dark .summary-kpi-icon{background-color:var(--d-accent-soft)!important;color:var(--d-accent)!important}
+body.ce-v184-dark .summary-kpi.green .summary-kpi-icon{background-color:var(--d-ok-soft)!important;color:var(--d-ok)!important}
+body.ce-v184-dark .summary-kpi.orange .summary-kpi-icon{background-color:var(--d-warn-soft)!important;color:var(--d-warn)!important}
+body.ce-v184-dark .summary-kpi.red .summary-kpi-icon{background-color:var(--d-bad-soft)!important;color:var(--d-bad)!important}
+body.ce-v184-dark :is(.summary-kpi,.kpi-card,.sla-card) :is(.label,small,.summary-kpi-label,.kpi-label){color:var(--d-muted)!important}
+body.ce-v184-dark .transport-count{background:linear-gradient(180deg,#3a8dd3,#2c78bb);color:#fff}
+body.ce-v184-dark .stamp{border-color:var(--d-ok);color:var(--d-ok);background:rgba(10,16,23,.6)}
+body.ce-v184-dark .ce-op-ok,body.ce-v184-dark .ce-xml-ok,body.ce-v184-dark .ce-div-status.aceita{color:var(--d-ok)!important}
+body.ce-v184-dark .ce-op-alerta,body.ce-v184-dark .ce-div-status.pendente{color:var(--d-warn)!important}
+body.ce-v184-dark .linha-atrasada td{background-color:rgba(245,143,134,.07)!important}
+body.ce-v184-dark :is(.ce-reenvio-row td){background-color:rgba(242,183,98,.1)!important}
+body.ce-v184-dark :is(.ce-dup-row td,.ce-op-divergente td){background-color:rgba(245,143,134,.1)!important}
+body.ce-v184-dark .ce-dup-audit div{border-bottom-color:var(--d-line)!important}
+body.ce-v184-dark .ce-dup-audit div:nth-child(odd){background-color:var(--d-surface-2)!important}
+body.ce-v184-dark :is(.conferencia-card.erro){border-color:rgba(245,143,134,.5)!important;background-color:rgba(245,143,134,.07)!important}
+body.ce-v184-dark .conferencia-opcao{background-color:var(--d-surface-2)!important;color:var(--d-text-2)!important;border-color:var(--d-line-2)!important}
+body.ce-v184-dark .conferencia-opcao.ativo-sim{background-color:var(--d-ok-soft)!important;border-color:rgba(88,203,146,.55)!important;color:var(--d-ok)!important}
+body.ce-v184-dark .conferencia-opcao.ativo-nao{background-color:var(--d-bad-soft)!important;border-color:rgba(245,143,134,.55)!important;color:var(--d-bad)!important}
+body.ce-v184-dark .conferencia-decisao-previa.sim{background-color:var(--d-ok-soft)!important;border-color:rgba(88,203,146,.4)!important;color:var(--d-ok)!important}
+body.ce-v184-dark .conferencia-decisao-previa.nao{background-color:var(--d-bad-soft)!important;border-color:rgba(245,143,134,.4)!important;color:var(--d-bad)!important}
+
+/* ---------- 9. Modais e overlays ---------- */
+body.ce-v184-dark :is(.modal-overlay,.ce-rom-overlay,.ce-emb-overlay,.ce-div-overlay,.ce-res-overlay,.ce-ro-overlay,#ce-admin-modal,.ce-cfg-form-overlay){background-color:rgba(3,7,12,.72)!important}
+body.ce-v184-dark #ceObsTela{background-color:rgba(3,7,12,.78)!important}
+body.ce-v184-dark :is(.modal-box,.startup-box,.confirm-modal,.ce-rom-modal,.ce-emb-modal,.ce-div-modal,.ce-res-modal,.ce-rel-card,.ce-senha-box,.ce-admin-box,.ce-cfg-form-box,.ce-ro-modal,.ce-ret-card,.ce-login-card,.ce-login-start-card,.ce-op-window){
+  background-color:var(--d-surface)!important;color:var(--d-text)!important;border:1px solid var(--d-line-2)!important;box-shadow:var(--d-shadow-lg)!important;
+}
+body.ce-v184-dark :is(#ceObsTela .ce-card,#modal-entregador .modal-finalizar-padrao,#ce-gravar-sucesso .ce-gravar-sucesso-box){background-color:var(--d-surface)!important;color:var(--d-text)!important;border:1px solid var(--d-line-2)!important;box-shadow:var(--d-shadow-lg)!important}
+body.ce-v184-dark #ceObsTela .ce-head{background:linear-gradient(180deg,#16212e,#101a24)!important;border-bottom:1px solid var(--d-line)}
+body.ce-v184-dark #ceObsTela .ce-foot{border-top-color:var(--d-line)!important}
+body.ce-v184-dark #ceObsTexto{background-color:var(--d-input)!important;color:var(--d-text)!important;border-color:var(--d-line-2)!important}
+body.ce-v184-dark .ce-res-head,body.ce-v184-dark .ce-op-title{background:linear-gradient(180deg,#1b2a3a,#14202c)!important;color:#fff!important;border-bottom:1px solid var(--d-line-2)}
+body.ce-v184-dark :is(.modal-head,.ce-rom-head,.ce-ro-head,.ce-admin-head,.ce-cfg-form-head,.ce-admin-tabs,.ce-ro-foot,.modal-foot,.ce-cfg-form-actions,.ce-op-top){border-color:var(--d-line)!important}
+body.ce-v184-dark .modal-head[style*="background:#fff" i],body.ce-v184-dark .modal-foot[style*="background:#fff" i]{background-color:var(--d-surface)!important}
+body.ce-v184-dark :is(.confirm-modal-actions){background-color:var(--d-bg-2)!important;border-top-color:var(--d-line)!important}
+body.ce-v184-dark .confirm-modal-item{background-color:var(--d-surface-2)!important;border-color:var(--d-line)!important;color:var(--d-text)!important}
+body.ce-v184-dark .confirm-modal-icon{background-color:rgba(240,130,64,.14)!important;color:var(--orange)!important}
+body.ce-v184-dark .modal-item{background-color:var(--d-surface-2);border-color:var(--d-line);color:var(--d-text)}
+body.ce-v184-dark .modal-item:hover{background-color:var(--d-accent-soft)!important;border-color:var(--d-accent-2)!important}
+body.ce-v184-dark :is(.ce-rom-list,.ce-div-compare){border-color:var(--d-line)!important;background-color:var(--d-bg-2)}
+body.ce-v184-dark :is(.ce-rom-item,.ce-div-row){border-bottom-color:var(--d-line)!important}
+body.ce-v184-dark :is(.ce-rom-search,.ce-rom-select,.ce-hp-rel-data){background-color:var(--d-input)!important;color:var(--d-text)!important;border-color:var(--d-line-2)!important}
+body.ce-v184-dark #modal-entregador :is(select,input[type=text]){background-color:var(--d-input)!important;color:var(--d-text)!important;border-color:var(--d-line-2)!important}
+body.ce-v184-dark #modal-entregador .field label{color:var(--d-text-2)!important}
+body.ce-v184-dark #modal-entregador .finalizar-check{background-color:var(--d-surface-2)!important;border-color:var(--d-line-2)!important}
+body.ce-v184-dark #modal-entregador .finalizar-check span{color:var(--d-text-2)!important}
+body.ce-v184-dark #ce-gravar-sucesso .ce-gravar-sucesso-box{border-color:rgba(88,203,146,.35)!important}
+body.ce-v184-dark .ce-login-sep{color:var(--d-muted)}
+body.ce-v184-dark .ce-login-sep:before,body.ce-v184-dark .ce-login-sep:after{background:var(--d-line-2)}
+body.ce-v184-dark .ce-google-btn{background-color:var(--d-surface-2)!important;color:var(--d-text)!important}
+body.ce-v184-dark :is(.ce-login-erro,.ce-cfg-form-error){color:var(--d-bad)!important}
+body.ce-v184-dark :is(.ce-login-logo){background:linear-gradient(180deg,#3a8dd3,#2c78bb);box-shadow:0 8px 20px rgba(47,128,198,.3)}
+body.ce-v184-dark :is(.ce-admin-table th,.ce-admin-table td){border-bottom-color:var(--d-line)!important}
+body.ce-v184-dark .ce-admin-table :is(input,select){background-color:var(--d-input)!important;color:var(--d-text)!important;border-color:var(--d-line-2)!important}
+body.ce-v184-dark #ce-admin-modal [style*="color:#64748b" i]{color:var(--d-muted)!important}
+/* telas cheias de login / início (fundo) */
+body.ce-v184-dark :is(#ce-login-overlay,#startup-overlay){background:radial-gradient(900px 520px at 70% -10%,rgba(47,128,198,.14),transparent 60%),#080d13!important}
+body.ce-v184-dark .visualizar-postados-overlay{background-color:var(--d-bg)!important}
+
+/* ---------- 10. Romaneio (manifesto / assinatura) ---------- */
+body.ce-v184-dark .manifest{overflow:hidden}
+body.ce-v184-dark .manifest-head{background:linear-gradient(180deg,#16222f,#0f1822)!important;border-bottom:1px solid var(--d-line)}
+body.ce-v184-dark .sigpad-wrap{background-color:#f1f5f9!important;border-color:#5b7390!important}   /* área de assinatura permanece clara: traço escuro */
+body.ce-v184-dark .sig-preview img,body.ce-v184-dark .ce-ret-signbox{background-color:#f1f5f9!important;border-color:#5b7390!important}
+body.ce-v184-dark .ce-volume-editavel:focus{background-color:var(--d-surface-3)!important;box-shadow:inset 0 0 0 1px var(--d-accent)!important}
+
+/* ---------- 11. Via Leitor ---------- */
+body.ce-v184-dark .via-leitor-menu{background-color:var(--d-bg-2)!important;border-color:var(--d-line)!important}
+body.ce-v184-dark .via-leitor-btn:not(.active):hover{background-color:rgba(255,255,255,.05)}
+body.ce-v184-dark #tbl-via-hoje th,body.ce-v184-dark #tbl-via-geral th{color:#93a5b8!important}
+body.ce-v184-dark :is(#view-resumo,#view-resumo .via-exp-toolbar,#view-resumo .via-exp-filtros,#view-resumo .via-exp-grid,#view-resumo .via-exp-legenda){background-color:var(--d-surface)!important;color:var(--d-text)!important;border-color:var(--d-line)!important}
+body.ce-v184-dark #view-resumo{background-color:transparent!important}
+body.ce-v184-dark #view-resumo .via-exp-toolbar{background-color:var(--d-surface-2)!important}
+body.ce-v184-dark #view-resumo .via-exp-legenda{background-color:var(--d-bg-2)!important;color:var(--d-muted)!important}
+body.ce-v184-dark #view-resumo .via-exp-title strong{color:var(--d-text)!important}
+body.ce-v184-dark #view-resumo :is(.via-exp-title span,.via-exp-actions label,.via-exp-filtros label,.via-exp-total span,.via-exp-empty){color:var(--d-muted)!important}
+body.ce-v184-dark #view-resumo :is(.via-exp-actions select,.via-exp-filtros select,.via-exp-filtros input){background-color:var(--d-input)!important;color:var(--d-text)!important;border-color:var(--d-line-2)!important}
+body.ce-v184-dark #view-resumo :is(.via-exp-actions select option,.via-exp-filtros select option){background-color:#121c27!important;color:var(--d-text)!important}
+body.ce-v184-dark #view-resumo .via-exp-total{background-color:var(--d-accent-soft)!important;border-color:rgba(98,175,234,.28)!important}
+body.ce-v184-dark #view-resumo .via-exp-total strong{color:var(--d-accent)!important}
+body.ce-v184-dark #view-resumo .via-exp-table{background-color:var(--d-surface)!important;color:var(--d-text)!important}
+body.ce-v184-dark #view-resumo .via-exp-table :is(thead,th){background-color:var(--d-surface-2)!important;color:#93a5b8!important;border-color:var(--d-line)!important}
+body.ce-v184-dark #view-resumo .via-exp-table td{background-color:transparent!important;color:var(--d-text)!important;border-color:var(--d-line)!important}
+body.ce-v184-dark #view-resumo .via-exp-table tbody tr:nth-child(even) td{background-color:rgba(255,255,255,.022)!important}
+body.ce-v184-dark #view-resumo .via-exp-table tbody tr:hover td{background-color:rgba(98,175,234,.1)!important}
+body.ce-v184-dark #view-resumo .via-exp-table a{color:var(--d-accent)!important}
+body.ce-v184-dark #view-resumo .via-exp-table .mono{color:var(--d-text)!important}
+body.ce-v184-dark #view-resumo button.btn-ghost{background-color:var(--d-surface-2)!important;color:var(--d-text-2)!important;border-color:var(--d-line-2)!important}
+body.ce-v184-dark :is(.via-dot.late,.prazo-dot.fora){box-shadow:0 0 0 3px rgba(239,62,54,.18)}
+body.ce-v184-dark .via-exp-legenda,body.ce-v184-dark .ce-sb-pager{background-color:var(--d-bg-2)!important;border-color:var(--d-line)!important;color:var(--d-muted)!important}
+
+/* ---------- 12. Nodes com estilo inline gerado por JS ---------- */
+body.ce-v184-dark tr[style*="FFF1F1" i]{background-color:rgba(245,143,134,.12)!important}
+body.ce-v184-dark div[style*="#FFF7F7" i]{background-color:var(--d-bad-soft)!important;border-color:rgba(245,143,134,.4)!important;color:var(--d-text)!important}
+body.ce-v184-dark div[style*="background:#FEE4E2" i]{background-color:var(--d-bad-soft)!important;border-color:rgba(245,143,134,.4)!important;color:#ffb4ad!important}
+body.ce-v184-dark div[style*="background:#f5f7f8" i]{background-color:var(--d-surface-2)!important;color:var(--d-text-2)!important}
+body.ce-v184-dark button[style*="background:#FEF3F2" i]{background-color:var(--d-bad-soft)!important;color:#ffb4ad!important;border-color:rgba(245,143,134,.45)!important}
+body.ce-v184-dark button[style*="background:#fff;" i]:not(.btn){background-color:var(--d-surface-2)!important;border-color:var(--d-line-2)!important}
+body.ce-v184-dark [style*="color:#64748b" i],body.ce-v184-dark [style*="color:#667085" i],body.ce-v184-dark [style*="color:#475467" i],body.ce-v184-dark [style*="color:#475569" i],body.ce-v184-dark [style*="color:#64707b" i],body.ce-v184-dark [style*="color:#5b6670" i],body.ce-v184-dark [style*="color:#788893" i],body.ce-v184-dark [style*="color:#657785" i],body.ce-v184-dark [style*="color:#7a8a95" i],body.ce-v184-dark [style*="color:#6b7c8c" i],body.ce-v184-dark [style*="color:#94a3b8" i]{color:var(--d-muted)!important}
+body.ce-v184-dark [style*="color:#b42318" i]:not(button),body.ce-v184-dark [style*="color:#c62828" i]:not(button),body.ce-v184-dark [style*="color:#9b1c1c" i],body.ce-v184-dark [style*="color:#a61b1b" i],body.ce-v184-dark [style*="color:#9f1d1d" i],body.ce-v184-dark [style*="color:#912018" i],body.ce-v184-dark [style*="color:#7a271a" i],body.ce-v184-dark [style*="color:#7a1111" i]{color:var(--d-bad)!important}
+body.ce-v184-dark [style*="color:#8a5a00" i]{color:var(--d-warn)!important}
+body.ce-v184-dark [style*="color:#102536" i],body.ce-v184-dark [style*="color:#172b38" i],body.ce-v184-dark [style*="color:#1a2430" i]{color:var(--d-text)!important}
+
+/* ---------- 13. Mínimos: bordas finas, cantos e transições ---------- */
+body.ce-v184-dark :is(.card,.romaneio-card,.kpi-card,.sla-card,.summary-kpi,.ce-pn-card,.pasta-card){transition:border-color .15s,box-shadow .2s,transform .15s,background-color .15s}
+body.ce-v184-dark :is(.ce-hp-title,.ce-pn-title){border-bottom:0}
+body.ce-v184-dark .empty .big{filter:grayscale(.3) brightness(.9)}
+}
+</style>
+<button type="button" id="ce-v184-theme">Modo escuro</button>
+<script id="ce-v184-js">
+(function(){
+ 'use strict';
+ const $=id=>document.getElementById(id);
+ function aplicarTema(t){document.body.classList.toggle('ce-v184-dark',t==='dark');const b=$('ce-v184-theme');if(b)b.textContent=t==='dark'?'Modo claro':'Modo escuro';try{localStorage.setItem('ce_tema',t)}catch(e){}}
+ function preparar(){
+   const b=$('ce-v184-theme'); if(b&&!b.dataset.ok){b.dataset.ok='1';b.onclick=()=>aplicarTema(document.body.classList.contains('ce-v184-dark')?'light':'dark')}
+   let t='light';try{t=localStorage.getItem('ce_tema')||'light'}catch(e){} aplicarTema(t);
+   const sel=$('ce-v184-colaborador');
+   if(sel){
+     const nomes=[...new Set([...(window.CONFIG_TESTE_OPERADORES?.embaladores||[]),...(window.CONFIG_TESTE_OPERADORES?.bipadores||[])])];
+     sel.innerHTML='<option value="">Colaborador dos selecionados</option>'+nomes.map(n=>'<option value="'+String(n).replace(/"/g,'&quot;')+'">'+n+'</option>').join('');
+   }
+   const atr=$('ce-v184-atribuir'); if(atr&&!atr.dataset.ok){atr.dataset.ok='1';atr.onclick=()=>{
+     const nome=sel?.value||''; if(!nome){alert('Selecione o colaborador.');return}
+     const rows=[...document.querySelectorAll('#ce-op-tbody tr')].filter(tr=>tr.querySelector('.ce-v184-selecionar')?.checked);
+     if(!rows.length){alert('Selecione pelo menos um pedido.');return}
+     rows.forEach(tr=>{tr.dataset.embalador=nome;const td=tr.children[4];if(td)td.textContent=nome;const cb=tr.querySelector('.ce-v184-selecionar');if(cb)cb.checked=false;tr.classList.add('ce-v184-row-atribuida')});
+     const st=$('ce-op-status');if(st)st.textContent=rows.length+' pedido(s) atribuídos a '+nome;
+   }}
+ }
+ document.addEventListener('DOMContentLoaded',preparar);
+ window.addEventListener('load',preparar,{once:true});
+ // Atualiza controles somente quando a tela de bipagem é aberta, sem timer/observer.
+ const old=window.ceAbrirBipagemOperacional;
+ if(typeof old==='function') window.ceAbrirBipagemOperacional=function(r,b){const v=old.apply(this,arguments);preparar();try{const k='ce_resumo_bipagem_'+String(r?.id||r?.romaneio_id||r?.codigo||r?.numero||'');const x=JSON.parse(localStorage.getItem(k)||'null');const el=$('ce-v184-resumo-salvo');if(el)el.textContent=x?.total?('Último resumo salvo: '+x.total+' postagem(ns)'):'';}catch(e){}return v};
+})();
+</script>
+
+
+<style id="ce-v187-atribuicao-layout">
+/* Ajuste pontual: seletor de colaborador cortado na bipagem de postagens. */
+#ce-bipagem-operacional #ce-v184-atribuicao{display:flex!important;align-items:center!important;gap:8px!important;flex-wrap:wrap!important;margin:10px 0 12px!important;}
+#ce-bipagem-operacional #ce-v184-colaborador{display:block!important;flex:0 1 300px!important;width:300px!important;max-width:100%!important;min-width:210px!important;height:40px!important;min-height:40px!important;line-height:normal!important;padding:0 34px 0 12px!important;box-sizing:border-box!important;overflow:visible!important;text-overflow:ellipsis!important;vertical-align:middle!important;font-size:13px!important;}
+#ce-bipagem-operacional #ce-v184-atribuir{height:40px!important;min-height:40px!important;align-self:center!important;}
+#ce-bipagem-operacional #ce-v184-resumo-salvo{min-width:0!important;}
+</style>
+<div id="ce-build-badge" title="Versão do arquivo em uso" style="position:fixed;left:6px;bottom:4px;z-index:2147483600;font:10px/1 system-ui,sans-serif;color:#64748b;background:rgba(255,255,255,.75);padding:2px 6px;border-radius:4px;pointer-events:none">V189 · build k · 14/10 10:55</div>
 </body>
 </html>
 
