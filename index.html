@@ -1,5 +1,16 @@
 <!DOCTYPE html>
 <!-- V178: Histórico consulta postagens diretamente no Supabase por NF+filial para definir coletado -->
+<!-- V197: Painel da Operação — o filtro COLABORADOR agora é livre para todos os usuários (antes ficava travado no nome do login, ex.: "Operador BBDI"); cada pessoa escolhe o próprio nome e a escolha fica lembrada neste navegador. Definir metas continua só para ADMIN -->
+<!-- V196: corrige o erro "Romaneio ... está assinado e não aceita novas NFs" na RETIRA com assinatura manual (grava as postagens ANTES de marcar o romaneio como assinado) -->
+<!-- V195: bipagem não depende mais do agente local (127.0.0.1:8765, que só existe no PC do administrador): consulta XMLS → VIEW via_leitor → agente local (opcional); mensagem de erro explica a causa -->
+<!-- V194: Registrar Retira — ao salvar pergunta "Gerar romaneio?": SIM = cliente assina no celular (aba Assinar Retirada); NÃO = finaliza a coleta e fica como ASSINATURA MANUAL (assinada na NF) -->
+<!-- V193: Via Leitor — o filtro "Filtrar coluna / Contém" saiu; entrou o filtro de STATUS (Todos / Atrasados / No prazo) -->
+<!-- V192: comparação de transportadora por "contém": se um nome contém o outro (JAMEF / JAMEF ENCOMENDAS URGENTES; ENVIOS - MARKET / ENVIOS - MARKETPLACES) não há divergência -->
+<!-- V191b: Histórico de Postagens ganhou a coluna OBSERVAÇÃO (a mesma observação do Via Leitor), logo após COLETA -->
+<!-- V191: transportadora LOGGI com rastreio automático = BB + filial + pedido + 1LG (ex.: BB01016014551LG) — preenchido na bipagem, sem bipar -->
+<!-- V190: NF com status Cancelado (banco de Cancelamentos) aparece como "Cancelado" no Histórico de Postagens e some do Via Leitor (view via_leitor filtrada no banco — bloco 13) -->
+<!-- V189m: Histórico Geral completa postagens pelo XML (chave NF-e) e não exibe mais a filial '0101,0102' do romaneio -->
+<!-- V189l: impressão do romaneio (página em branco) corrigida; romaneio confere os itens no banco ao abrir/imprimir/assinar -->
 <!-- V189k: Importar XML e Planilha antiga em abas (abre em XML) -->
 <!-- V189j: Importar XML e Planilha Antiga com layout profissional; XML em lotes de 50 (até 2.000 por seleção) -->
 <!-- V189i: Configurações do ADMIN confirmam a gravação (erro real quando o banco bloqueia) -->
@@ -3583,7 +3594,7 @@
     if(!rom.uuid)rom.uuid=ceOpUUID();
     if(!p.uuid)p.uuid=ceOpUUID();
     return {
-      id:p.uuid,romaneio_id:rom.uuid,empresa:p.empresa||rom.empresa||'',filial:String(p.filial||rom.filial||''),
+      id:p.uuid,romaneio_id:rom.uuid,empresa:p.empresa||rom.empresa||'',filial:String(p.filial||(/^(0101|0102|1020)$/.test(String(rom.filial||'').trim())?String(rom.filial).trim():'')),
       nf:String(p.nf||''),chave_nfe:String(p.chave||p.chave_nfe||'').replace(/\D/g,'')||null,
       rastreio:String(p.rastreio||'').trim()||null,pedido:String(p.pedido||'').trim()||null,
       cliente_nome:p.cliente_nome||null,
@@ -3817,6 +3828,49 @@
       return a;
     }catch(e){console.warn('[ASSINATURA] falha ao buscar',e);return null;}
   };
+  // V189l: confere no banco os itens de UM romaneio (consulta pequena) e atualiza a memória.
+  // Evita que a tela de assinatura/impressão de outro computador mostre menos NFs (ex.: 53 em vez de 54)
+  // por causa do intervalo da carga incremental.
+  window.ceSincronizarItensRomaneio=ceSyncItensRomaneio;
+  async function ceSyncItensRomaneio(rom){
+    if(!rom||!rom.uuid)return {ok:true,mudou:false,total:rom?itensDoRomaneio(rom).length:0};
+    try{
+      const lote=await ceOpPaginar('postagens?select='+CE_POST_COLS+'&romaneio_id=eq.'+encodeURIComponent(rom.uuid)+'&order=criado_em.asc,id.asc');
+      let mudou=false;const doBanco=new Set();
+      if(!Array.isArray(rom.itens))rom.itens=[];
+      for(const x of lote){
+        doBanco.add(x.id);
+        const novo=ceMapPost(x,rom);
+        const idx=postagens.findIndex(p=>p.id===x.id||p.uuid===x.id);
+        if(idx>=0){
+          const velho=postagens[idx];
+          if(cePostSujo(velho))continue;                  // alteração local pendente
+          let igual=false;try{igual=CE_SNAP.post.get(x.id)===ceStable(ceOpPostDb(novo));}catch(e){}
+          if(igual&&String(velho.romaneio_id||'').trim()===String(rom.id||'').trim())continue;
+          Object.assign(velho,novo,{id:velho.id});
+          if(!rom.itens.includes(velho.id))rom.itens.push(velho.id);
+          ceMarcarPostLimpo(velho);mudou=true;
+        }else{
+          postagens.push(novo);
+          if(!rom.itens.includes(x.id))rom.itens.push(x.id);
+          ceMarcarPostLimpo(novo);mudou=true;
+        }
+      }
+      // estava neste romaneio na memória, não está mais no banco (removida/movida por outro usuário) e não é pendência local
+      const ridT=String(rom.id||'').trim();
+      const sairam=postagens.filter(p=>String(p.romaneio_id||'').trim()===ridT&&p.uuid&&!doBanco.has(p.uuid)&&!cePostSujo(p));
+      if(sairam.length){
+        const ids=new Set(sairam.map(p=>p.id));
+        postagens=postagens.filter(p=>!ids.has(p.id));
+        rom.itens=rom.itens.filter(i=>!ids.has(i));
+        mudou=true;
+      }
+      return {ok:true,mudou,total:itensDoRomaneio(rom).length};
+    }catch(e){
+      console.warn('[ROMANEIO] não foi possível conferir os itens no banco',e);
+      return {ok:false,mudou:false,total:itensDoRomaneio(rom).length,erro:e.message||String(e)};
+    }
+  }
   // <img data-ce-sig="UUID"> é preenchida automaticamente quando aparece na tela.
   (function(){
     async function hidratar(img){
@@ -3994,6 +4048,32 @@
     renderAll();
   };
 
+  // V194: RETIRA sem romaneio para assinar no celular — finaliza a coleta com ASSINATURA MANUAL (o cliente assinou na NF).
+  window.ceFinalizarRetiraManual = async function(romIn){
+    if(!romIn) return;
+    // usa o romaneio que já está na base (é nele que estão os itens bipados)
+    const rom=romaneios.find(r=>r.id===romIn.id)||romIn;
+    const agora=new Date().toISOString();
+    // 1) postagens primeiro, com o romaneio ainda ABERTO (o banco recusa gravar postagem em romaneio assinado)
+    itensDoRomaneio(rom).forEach(p=>{ if(!p.coleta_em) p.coleta_em=agora; });
+    if(!rom.coleta_em) rom.coleta_em=agora;
+    if(!romaneios.includes(rom)) romaneios.push(rom);
+    await savePostagens();
+    // 2) só depois marca o romaneio como assinado (assinatura manual)
+    Object.assign(rom,{
+      assinatura_manual:true,
+      motorista_nome:'ASSINATURA MANUAL',
+      assinado_por:'ASSINATURA MANUAL',
+      retirado_por:'ASSINATURA MANUAL',
+      retirado_em:agora,
+      assinado_em:agora,
+      status:'assinado'
+    });
+    if(romIn!==rom) Object.assign(romIn,{status:'assinado',assinado_em:agora,motorista_nome:'ASSINATURA MANUAL'});
+    await saveRomaneios();
+    renderAll();
+  };
+
   // Consulta oficial da base nativa usada pela bipagem operacional.
   // Permite detectar uma chave que já foi SALVA anteriormente no romaneio,
   // mesmo quando ela não está mais visível na sessão atual.
@@ -4065,6 +4145,26 @@ window.ceAdicionarPostagensNaBaseNativa = async function(romaneioId, itens){
       return true;
     });
 
+    // V189m: a filial (e os dados do cliente) vêm SEMPRE do XML da NF, pela chave NF-e.
+    // Se o item chegou sem filial única válida (ex.: veio o escopo '0101,0102'), ou sem pedido/cliente, completa pelo XML.
+    try{
+      const filialOk=f=>/^(0101|0102|1020)$/.test(String(f||'').trim());
+      const faltam=itensUnicos.filter(i=>{const c=String(i.chave||i.chave_nfe||'').replace(/\D/g,'');return c.length===44&&(!filialOk(i.filial)||!i.pedido||!(i.cliente_nome||i.nome_cliente));});
+      const chs=[...new Set(faltam.map(i=>String(i.chave||i.chave_nfe).replace(/\D/g,'')))];
+      for(let i=0;i<chs.length;i+=40){
+        const lote=chs.slice(i,i+40);
+        const xs=await ceOpReq('GET','xmls?select=filial,pedido,cliente_nome,chave_nfe&chave_nfe=in.('+lote.map(c=>'"'+c+'"').join(',')+')&limit=100');
+        for(const x of (Array.isArray(xs)?xs:[])){
+          const c=String(x.chave_nfe||'').replace(/\D/g,'');
+          faltam.filter(it=>String(it.chave||it.chave_nfe).replace(/\D/g,'')===c).forEach(it=>{
+            if(!filialOk(it.filial)&&filialOk(x.filial))it.filial=String(x.filial).trim();
+            if(!it.pedido&&x.pedido)it.pedido=x.pedido;
+            if(!(it.cliente_nome||it.nome_cliente)&&x.cliente_nome)it.cliente_nome=x.cliente_nome;
+          });
+        }
+      }
+    }catch(e){console.warn('[POSTAGENS] não foi possível completar pelo XML',e);}
+
     // Também protege contra uma repetição já presente em memória no MESMO romaneio.
     const existentes = new Set(
       (postagens||[])
@@ -4106,7 +4206,7 @@ window.ceAdicionarPostagensNaBaseNativa = async function(romaneioId, itens){
         volumes: item.volumes || 1,
         empresa: rom.empresa || item.empresa || '',
         // V189 (P0-7): a filial gravada é a da NF (XML); a do romaneio só entra se a NF não trouxer.
-        filial: item.filial || rom.filial || '',
+        filial: /^(0101|0102|1020)$/.test(String(item.filial||'').trim()) ? String(item.filial).trim() : (/^(0101|0102|1020)$/.test(String(rom.filial||'').trim()) ? String(rom.filial).trim() : ''),
         romaneio_id: rom.id,
         criado_em: item.criado_em || new Date().toISOString(),
         transporte_original_api: item.transporte_original || item.transporte || '',
@@ -5158,8 +5258,17 @@ window.ceAdicionarPostagensNaBaseNativa = async function(romaneioId, itens){
     return t;
   }
 
+  // V192 — o nome da transportadora não precisa ser idêntico: se um nome CONTÉM o outro
+  // (ex.: JAMEF / JAMEF ENCOMENDAS URGENTES, ENVIOS - MARKET / ENVIOS - MARKETPLACES) é a mesma.
+  function ceTranspContem(a,b){
+    const n=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,' ').trim();
+    const x=n(a), y=n(b);
+    if(!x||!y) return false;
+    const [c,l]=x.length<=y.length?[x,y]:[y,x];
+    return c.length>=3 && l.includes(c);
+  }
   function transportesIguais(a,b){
-    return normalizarGrupoTransporte(a)===normalizarGrupoTransporte(b);
+    return normalizarGrupoTransporte(a)===normalizarGrupoTransporte(b) || ceTranspContem(a,b);
   }
 
   function transporteExigeRastreio(nome){
@@ -6846,6 +6955,9 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
   function prepararImpressaoPaginada(rom){
     const container = $('#print-pages');
     if(!container || !rom) return;
+    // V189l: o CSS de impressão esconde todos os filhos diretos do <body> exceto #print-pages.
+    // Se ele estiver dentro de outro bloco (ex.: .app-shell), some junto e a página sai em branco.
+    if(container.parentElement!==document.body) document.body.appendChild(container);
 
     const itens = itensDoRomaneio(rom);
     const itensPorPagina = 18;
@@ -7129,6 +7241,7 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
     // ---- ligações (sempre escopadas ao host) ----
     host.querySelector('[data-rom-imprimir]')?.addEventListener('click', async ()=>{
       if(String(rom.status||'').toLowerCase()==='assinado' && !rom.assinatura){ try{ await window.ceGarantirAssinatura(rom); }catch(e){} }
+      try{ const s=await ceSyncItensRomaneio(rom); if(s.ok&&s.mudou){ ceRecalcContadores(); atualizarRomaneioAberto(); } }catch(e){}
       prepararImpressaoPaginada(rom);
       setTimeout(()=>window.print(),50);
     });
@@ -7199,6 +7312,14 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
       montarManifestRomaneio(rom, $('#romaneio-manifest-holder'), 'consulta');
     }
     try{ window.scrollTo({top:0}); }catch(_){}
+    // V189l: confere os itens no banco e, se houver diferença, redesenha com a lista correta
+    ceSyncItensRomaneio(rom).then(s=>{
+      if(s.ok&&s.mudou&&romaneioAtivoId===romId){
+        try{ceRecalcContadores();}catch(_){}
+        atualizarRomaneioAberto();
+        try{showToast('Romaneio atualizado do banco: '+s.total+' NF(s).');}catch(_){}
+      }
+    });
     return true;
   }
   window.CE_ABRIR_ROMANEIO_OFICIAL = abrirRomaneio;
@@ -7565,6 +7686,17 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
     if(String(cpf||'').replace(/\D/g,'').length!==11){ showToast('CPF deve conter 11 números'); $('#sig-cpf').focus(); return; }
     if(!sigHasStroke){ showToast('Assinatura é obrigatória'); return; }
     if(!rom) return;
+    // V189l: antes de assinar, confere no banco se a lista de NFs está completa
+    {
+      const antes=itensDoRomaneio(rom).length;
+      const s=await ceSyncItensRomaneio(rom);
+      if(s.ok&&s.mudou){
+        try{ceRecalcContadores();}catch(_){}
+        atualizarRomaneioAberto();
+        alert('A lista deste romaneio foi atualizada: tinha '+antes+' NF(s) na tela e o banco tem '+s.total+'.\n\nConfira a lista e confirme a retirada novamente.');
+        return;
+      }
+    }
     const canvas = $('#sigcanvas');
     rom.assinatura = canvas.toDataURL('image/png');
     rom._sigDirty = true; // V189: só envia a assinatura ao banco quando ela é nova
@@ -9891,6 +10023,7 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
   const $=id=>document.getElementById(id);
   let pendenteRastreio=null;
   let cacheConsulta=null;
+  let erroXmls='';
   let ceViaRef=null, ceViaLen=-1, ceViaPorChave=new Map(), ceViaPorNF=new Map();
 
   function atualizarIndiceVia(){
@@ -9946,6 +10079,16 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
       return nome===alvo||base===alvo||nome.includes(alvo)||alvo.includes(nome)||base.includes(alvo)||alvo.includes(base);
     })||null;
   }
+  // V191 — LOGGI: o rastreio é gerado automaticamente = "BB" + filial (4 dígitos) + pedido + "1LG".
+  // Ex.: filial 0101, pedido 601455 -> BB01016014551LG
+  function ehLoggi(t){ return /\bLOGGI\b/.test(canon(t)); }
+  function rastreioLoggiAuto(item){
+    if(!ehLoggi(item?.transporte)) return '';
+    const fil=String(item?.filial||'').replace(/\D/g,'');
+    const ped=String(item?.pedido||'').toUpperCase().replace(/[^0-9A-Z]/g,'');
+    if(!fil || !ped) return '';
+    return 'BB'+fil.padStart(4,'0')+ped+'1LG';
+  }
   function exigeRastreioNF(t){
     const cfg=configTransportadoraNF(t);
     return cfg ? cfg.exige_rastreio===true : false;
@@ -9966,13 +10109,23 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
     if(/^(TOTAL|TOTAL EXPRESS)$/.test(x)) return 'TOTAL EXPRESS';
     return x;
   }
+  // V192 — o nome da transportadora não precisa ser idêntico: se um nome CONTÉM o outro
+  // (ex.: JAMEF / JAMEF ENCOMENDAS URGENTES, ENVIOS - MARKET / ENVIOS - MARKETPLACES) é a mesma.
+  function ceTranspContemOp(a,b){
+    const n=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,' ').trim();
+    const x=n(a), y=n(b);
+    if(!x||!y) return false;
+    const [c,l]=x.length<=y.length?[x,y]:[y,x];
+    return c.length>=3 && l.includes(c);
+  }
   function mesmoTransporte(a,b){
     const A=transporteComparavel(a), B=transporteComparavel(b);
     // Se um dos lados estiver vazio, não inventa divergência: a consulta precisa trazer os dois valores.
     if(!A||!B) return true;
-    return A===B;
+    return A===B || ceTranspContemOp(a,b);
   }
   async function consultar(chave,nf){
+    erroXmls='';
     // 1) Caminho rápido: dados XMLS que o Via Leitor já carregou em memória.
     try{
       atualizarIndiceVia();
@@ -10008,13 +10161,44 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
       }
     }catch(e){
       console.warn('[BIPAGEM XMLS DIRETO]',e);
+      erroXmls=String(e?.message||e).slice(0,160);
+    }
+
+    // 2b) V195: se a tabela XMLS não respondeu (ou não tem a NF), tenta a VIEW via_leitor — a mesma
+    // que alimenta a tela Via Leitor e que qualquer computador consegue ler.
+    try{
+      const base=window.CE_SUPABASE_URL || 'https://njvcostescybgwbnipec.supabase.co';
+      const anon=window.CE_SUPABASE_ANON_KEY || window.SUPABASE_ANON || '';
+      if(anon){
+        const qs=new URLSearchParams();
+        qs.set('select','filial,nf,pedido,cliente_codigo,cliente_nome,transportadora,chave_nfe,volume,total_unidades');
+        qs.set('chave_nfe','eq.'+chave);
+        qs.set('limit','1');
+        const resp=await fetch(`${base}/rest/v1/via_leitor?${qs.toString()}`,{headers:{apikey:anon,Authorization:'Bearer '+anon},cache:'no-store'});
+        if(resp.ok){
+          const a=await resp.json();
+          if(Array.isArray(a)&&a[0]){
+            const item=dadosPedido(a[0]);
+            console.log('[BIPAGEM VIA_LEITOR] NF',item.nf,'volume:',item.volume);
+            return item;
+          }
+        }
+      }
+    }catch(e){
+      console.warn('[BIPAGEM VIA_LEITOR]',e);
     }
 
     // 3) Último fallback legado: agente Master. Mantido apenas para não bloquear
     // uma NF ausente da XMLS. Neste caso o volume pode não existir e ficará 1.
     if(!cacheConsulta){
       const filiais='0101,0102,1020';
-      const resp=await fetch('http://127.0.0.1:8765/api/pedidos?filial='+encodeURIComponent(filiais),{cache:'no-store'});
+      let resp;
+      try{
+        resp=await fetch('http://127.0.0.1:8765/api/pedidos?filial='+encodeURIComponent(filiais),{cache:'no-store'});
+      }catch(e){
+        // V195: agente local só existe no computador do administrador — não é falha do operador.
+        throw new Error('NF '+nf+' não encontrada na base de XMLs'+(erroXmls?' (consulta: '+erroXmls+')':'')+'.\n\nSe o XML desta NF ainda não foi importado, aguarde a sincronização e bipe de novo.\nSe continuar, avise o responsável (print desta mensagem).');
+      }
       if(!resp.ok) throw new Error('Agente local HTTP '+resp.status);
       const j=await resp.json();
       cacheConsulta=Array.isArray(j)?j:(j.pedidos||j.data||[]);
@@ -10240,6 +10424,20 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
         item.duplicidadeAnterior=duplicidade;
       }
 
+      // V191 — LOGGI: preenche o rastreio sozinho (BB + filial + pedido + 1LG), sem precisar bipar.
+      // O código passa pela MESMA validação do rastreio bipado: se já foi usado (nesta sessão ou nas postagens salvas)
+      // NÃO é aceito — a NF não entra (sessão: ocorrência de rastreio duplicado; salvo: alerta "RASTREIO JÁ UTILIZADO").
+      const rastLoggi=rastreioLoggiAuto(item);
+      if(rastLoggi){
+        pendenteRastreio={item,correios:false};
+        const campoRast=$('ce-op-rastreio');
+        if(campoRast) campoRast.value=rastLoggi;
+        await processarRastreio();
+        const stOp=$('ce-op-status');
+        if(stOp && stOp.textContent.indexOf('NF '+item.nf+' adicionada')===0) stOp.textContent='NF '+item.nf+' adicionada · rastreio LOGGI automático '+rastLoggi;
+        return;
+      }
+
       if(precisa){
         pendenteRastreio={item,correios};
         $('ce-op-rastreio-label').textContent=correios?'Bipar rastreio Correios':'Bipar rastreio';
@@ -10251,7 +10449,7 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
 
       incluir(item);
     }catch(e){
-      alert('Não foi possível consultar a NF no agente local.\n'+(e?.message||e));
+      alert('Não foi possível consultar a NF.\n'+(e?.message||e));
       limparLeitura();
     }finally{
       ceChavesEmProcessamento.delete(chave);
@@ -10486,8 +10684,17 @@ async function finalizarRomaneioColeta(){
         rom.filial=itens[0]?.filial||rom.filial||'';
         rom.bipador_retira=itens[0]?.bipador||window.ceBipadorSessao||'';
         rom.entregue_por='';
-        rom.status='aguardando_assinatura';
         rom.finalizado_em=new Date().toISOString();
+        // V194: "Gerar romaneio?" — SIM: cliente assina no celular | NÃO: assinatura manual na NF
+        const gerarRom=await (window.ceEscolherGerarRomaneioRetira?window.ceEscolherGerarRomaneioRetira(nfRetira):Promise.resolve(true));
+        if(!gerarRom && typeof window.ceFinalizarRetiraManual==='function'){
+          // (o status 'assinado' é aplicado DENTRO de ceFinalizarRetiraManual, depois de gravar as postagens)
+          await window.ceFinalizarRetiraManual(rom);
+          $('ce-op-status').textContent='NF '+nfRetira+' finalizada — assinatura MANUAL (assinada na NF).';
+          ceFinalizarRomaneioColetaEmAndamento = false;
+          return true;
+        }
+        rom.status='aguardando_assinatura';
         if(typeof window.ceSalvarRomaneioRetira==='function') await window.ceSalvarRomaneioRetira(rom);
         $('ce-op-status').textContent='NF '+nfRetira+' registrada — aguardando assinatura na aba Assinar Retirada.';
         ceFinalizarRomaneioColetaEmAndamento = false;
@@ -10516,6 +10723,36 @@ async function finalizarRomaneioColeta(){
 .ce-reenvio-row td{background:#fff8e8!important}
 .ce-reenvio-alerta{background:#fff4e5;border:1px solid #f0c98b;border-radius:5px;padding:11px 12px;font-size:11px;font-weight:700;color:#7a4c09;margin:12px 0}
 </style>
+<style>
+.ce-rg-opts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 6px}
+.ce-rg-opt{text-align:left;border:1px solid #c8d0d5;background:#fff;border-radius:8px;padding:12px 14px;cursor:pointer;font-family:inherit}
+.ce-rg-opt:hover{border-color:#0877c9;background:#f4f9fd}
+.ce-rg-opt b{display:block;font-size:14px;color:#17303f;margin-bottom:4px}.ce-rg-opt span{display:block;font-size:11px;line-height:1.4;color:#657481;font-weight:600}
+.ce-rg-opt.sim{border-color:#0877c9}.ce-rg-opt.sim b{color:#0877c9}
+@media(max-width:560px){.ce-rg-opts{grid-template-columns:1fr}}
+</style>
+<div id="ce-retira-gerar-overlay" class="ce-div-overlay"><div class="ce-div-modal" style="width:min(560px,94vw)">
+<h3>Gerar romaneio?</h3><p>Retirada da NF <b id="ce-rg-nf">—</b> salva. Como o cliente vai assinar?</p>
+<div class="ce-rg-opts">
+ <button type="button" class="ce-rg-opt sim" id="ce-rg-sim"><b>Sim, gerar romaneio</b><span>O cliente assina no celular, na aba Assinar Retirada.</span></button>
+ <button type="button" class="ce-rg-opt" id="ce-rg-nao"><b>Não, assinatura manual</b><span>Só finaliza a coleta. Fica como assinatura manual (assinada na NF).</span></button>
+</div>
+</div></div>
+<script>
+(function(){
+ const $=id=>document.getElementById(id); let resolver=null;
+ function fechar(v){const r=resolver;resolver=null;$('ce-retira-gerar-overlay').classList.remove('show');if(r)r(v)}
+ // Resolve true = gerar romaneio (assinatura no celular) | false = assinatura manual
+ window.ceEscolherGerarRomaneioRetira=function(nf){
+  if(resolver)return Promise.resolve(true);
+  $('ce-rg-nf').textContent=nf||'—';
+  $('ce-retira-gerar-overlay').classList.add('show');
+  return new Promise(r=>resolver=r);
+ };
+ $('ce-rg-sim').onclick=()=>fechar(true);
+ $('ce-rg-nao').onclick=()=>fechar(false);
+})();
+</script>
 <div id="ce-reenvio-overlay" class="ce-div-overlay"><div class="ce-div-modal" style="width:min(560px,92vw)">
 <h3>⚠ Divergência — chave NF-e já utilizada</h3>
 <p>Esta chave já aparece em uma postagem. Pode ser um reenvio legítimo.</p>
@@ -10818,9 +11055,10 @@ async function finalizarRomaneioColeta(){
 .ce-rel-acoes{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}.ce-rel-acoes button{height:34px;border-radius:5px;padding:0 15px;font-weight:800;cursor:pointer}
 .ce-rel-cancelar{border:1px solid #c6d0d5;background:#fff;color:#344b5a}.ce-rel-baixar{border:0;background:#146c43;color:#fff}
 
+.ce-hp-table td.ce-hp-obs{max-width:320px;overflow:hidden;text-overflow:ellipsis}
 .ce-hp-box{height:calc(100vh - 220px);overflow:auto;background:#fff;border:1px solid #cbd4d8}.ce-hp-table{width:100%;border-collapse:collapse;white-space:nowrap;font-size:9px}
 .ce-hp-table th{position:sticky;top:0;z-index:2;background:#dfe4e6;border:1px solid #c5cdd1;padding:6px 7px;text-align:left;color:#314654;font-size:8px}.ce-hp-table td{border-bottom:1px solid #e0e4e5;padding:5px 7px;color:#172b38}.ce-hp-table tbody tr:nth-child(even){background:#f3f4f4}
-.ce-hp-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}.ce-hp-verde{background:#28b779}.ce-hp-amarelo{background:#e9b62f}.ce-hp-vermelho{background:#e94b4b}.ce-hp-status{font-weight:800}
+.ce-hp-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}.ce-hp-verde{background:#28b779}.ce-hp-amarelo{background:#e9b62f}.ce-hp-vermelho{background:#e94b4b}.ce-hp-cancelado{background:#6b7280}.ce-hp-canc_cnt{background:#2563eb}.ce-hp-canc_bft{background:#7c3aed}.ce-hp-canc_ag{background:#ea580c}.ce-hp-status{font-weight:800}
 .ce-hp-legenda{display:flex;gap:18px;padding:7px 2px;font-size:9px;color:#61727d}.ce-hp-vazio{text-align:center!important;padding:45px!important;color:#71828d}
 </style>
 <script>
@@ -10874,6 +11112,7 @@ async function finalizarRomaneioColeta(){
  const horaCache=ts=>{try{return new Date(ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});}catch(e){return'';}};
  let dados=[];
  let retiradasMap=new Map();
+ let canceladosSet=new Map(); // 'filial|NF sem zeros' -> status do cancelamento (Aguardando CNT / Aguardando Pagto BFT / Cancelado)
  let rastreiosPorNF=new Map();
  let postagensHistoricoDiretas=new Map();
  let hpPagina=0; const HP_TAM=200; let hpTemProxima=false; let hpCarregado=false,hpCarregando=null;
@@ -10895,6 +11134,8 @@ async function finalizarRomaneioColeta(){
  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  function roms(){try{return window.ceObterRomaneiosBaseNativa?.()||[]}catch(e){return[]}}
  function hist(id){try{return JSON.parse(null||'[]')}catch(e){return[]}}
+ // V189m: só aceita uma filial única válida (nunca o escopo '0101,0102' do romaneio/operação)
+ function filialValida(v){const t=String(v||'').trim();return /^(0101|0102|1020)$/.test(t)?t:'';}
  function salvos(){
    // V136 — fonte oficial: postagens carregadas do Supabase.
    // r.itens contém apenas IDs; não pode mais ser tratado como objeto de NF.
@@ -10909,6 +11150,15 @@ async function finalizarRomaneioColeta(){
        const r=romPorCodigo.get(rid)||romPorUuid.get(rid)||null;
        return {...x,_rom:r||{}};
      });
+ }
+ async function carregarCancelados(){
+   try{
+     const r=await fetch('https://njvcostescybgwbnipec.supabase.co/rest/v1/v_cancelamentos_painel?select=filial,nf_norm,status&limit=10000',{headers:{apikey:SBKEY,Authorization:'Bearer '+SBKEY},cache:'no-store'});
+     if(!r.ok){canceladosSet=new Map();return;}
+     const a=await r.json(), peso={'Cancelado':3,'Aguardando Pagto BFT':2,'Aguardando CNT':1,'Aguardando Cancelamento':1};
+     canceladosSet=new Map();
+     (a||[]).forEach(x=>{const k=String(x.filial||'').trim()+'|'+String(x.nf_norm||'');const at=canceladosSet.get(k);if(!at||(peso[x.status]||0)>(peso[at]||0))canceladosSet.set(k,x.status);});
+   }catch(e){console.warn('[CANCELADOS]',e);canceladosSet=new Map();}
  }
  async function carregarRetiradas(){
    try{
@@ -10999,7 +11249,14 @@ async function finalizarRomaneioColeta(){
    if(direto&&!a.some(v=>canon(v)===canon(direto)))a.push(direto);
    return a;
  }
- function status(s,nf){
+ function status(s,nf,fil){
+   if(fil){
+     const cs=canceladosSet.get(String(fil).trim()+'|'+String(nf||'').replace(/\D/g,'').replace(/^0+/,''));
+     if(cs==='Cancelado')return ['cancelado','Cancelado'];
+     if(cs==='Aguardando Pagto BFT')return ['canc_bft','Aguardando Pagto BFT'];
+     if(cs==='Aguardando Cancelamento')return ['canc_ag','Aguardando Cancelamento'];
+     if(cs)return ['canc_cnt','Aguardando CNT'];
+   }
    if(retiradasMap.has(norm(nf)))return ['vermelho','Retirado'];
    if(!s)return ['verde','Aguardando postagem'];
    const r=s._rom||{};
@@ -11013,6 +11270,14 @@ async function finalizarRomaneioColeta(){
      return ['vermelho','Expedido / coletado'];
    }
    return ['amarelo','Postado — aguardando coleta'];
+ }
+ // Observação do Via Leitor (tabela observacoes_expedicao) por filial + NF.
+ function obsDaLinha(api,s){
+   try{
+     const nf=NF(api)||s?.nf||'';
+     const fil=FIL(api)||filialValida(s?.filial)||filialValida(s?._rom?.filial)||'';
+     return window.CE_OBS?.porNF?.(fil,nf)||'';
+   }catch(e){return ''}
  }
  function render(){
    const sv=salvos(), sm=new Map(sv.map(x=>[norm(x.nf),x]));
@@ -11046,8 +11311,8 @@ async function finalizarRomaneioColeta(){
    const fs=$('ce-hp-status')?.value||'', ff=$('ce-hp-filial')?.value||'', ft=($('ce-hp-transp')?.value||'').toLowerCase(), fr=($('ce-hp-rom')?.value||'').toLowerCase(), q=($('ce-hp-busca')?.value||'').toLowerCase();
    const canonFiltroTransp=v=>{const t=String(v||'').trim().replace(/\s+/g,' '),u=t.toUpperCase();if(u==='LOGGI'||u.startsWith('LOGGI -'))return 'loggi';if(u==='MOTOBOYS'||u==='MOTO BOYS'||u==='MOTO BOY')return 'motoboy';if(u==='ME2'||u==='MERCADO LIVRE')return 'mercado livre';if(u==='MAGALU'||u==='ENVIOS - MARKETPLACES'||u==='ENVIOS-MARKETPLACES'||u==='ENVIOS MARKETPLACES')return 'magalu';return t.toLowerCase();};
    rows=rows.filter(({api,s})=>{
-     const st=status(s,NF(api)||s?.nf||'');
-     const f=FIL(api)||s?._rom?.filial||s?.filial||'';
+     const f=FIL(api)||filialValida(s?.filial)||filialValida(s?._rom?.filial)||'';
+     const st=status(s,NF(api)||s?.nf||'',f);
      const tr=TRA(api)||s?.transporte||s?._rom?.transportadora||s?._rom?.motorista||'';
      const rom=s?._rom?.id||s?.romaneio_id||'';
      const nf=NF(api)||s?.nf||'';
@@ -11056,7 +11321,7 @@ async function finalizarRomaneioColeta(){
      const nomeCli=NCLI(api)||s?.cliente_nome||s?.nome_cliente||'';
      const chave=CHA(api)||s?.chave||s?.chave_nfe||'';
      const rast=rastreiosDaLinha(api,s).join(' ');
-     const txt=[nf,ped,cli,nomeCli,chave,rast,tr,rom].join(' ').toLowerCase();
+     const txt=[nf,ped,cli,nomeCli,chave,rast,tr,rom,obsDaLinha(api,s)].join(' ').toLowerCase();
      return (!fs||st[0]===fs)
        && (!ff||String(f)===ff)
        && (!ft||canonFiltroTransp(tr)===canonFiltroTransp(ft))
@@ -11065,7 +11330,7 @@ async function finalizarRomaneioColeta(){
    });
    $('ce-hp-total').textContent=rows.length+' registro(s)';
    $('ce-hp-body').innerHTML=rows.length?rows.map(({api,s})=>{
-     const st=status(s,NF(api)||s?.nf||''), r=s?._rom||{}, f=FIL(api)||r.filial||'', tr=TRA(api)||s?.transporte||r.transportadora||r.motorista||'';
+     const r=s?._rom||{}, f=FIL(api)||filialValida(s?.filial)||filialValida(r.filial)||'', st=status(s,NF(api)||s?.nf||'',f), tr=TRA(api)||s?.transporte||r.transportadora||r.motorista||'';
      return `<tr><td><span class="ce-hp-dot ce-hp-${st[0]}"></span><span class="ce-hp-status">${st[1]}</span></td>
      <td>${esc(f||'—')}</td><td><b>${esc((()=>{const v=String(NF(api)||s?.nf||'').replace(/\D/g,'');return v?v.padStart(9,'0'):'—';})())}</b></td><td>${esc(PED(api)||s?.pedido||'—')}</td>
      <td>${esc(CLI(api)||s?.cliente_codigo||s?.cod_cliente||s?.codigo_cliente||s?.cliente||'—')}</td><td class="ce-post-cliente" title="${esc(NCLI(api)||s?.cliente_nome||s?.nome_cliente||r.cliente_nome||r.cliente||'')}">${esc(NCLI(api)||s?.cliente_nome||s?.nome_cliente||r.cliente_nome||r.cliente||'—')}</td><td>${esc(CHA(api)||s?.chave||s?.chave_nfe||'—')}</td>${(()=>{
@@ -11098,14 +11363,17 @@ async function finalizarRomaneioColeta(){
        }
        return r.id?((String(r.status||'').toLowerCase()==='assinado'||!!r.assinado_em)?`<button type="button" class="ce-hp-rom-link" data-rom="${esc(r.id)}">${esc(r.id)}</button>`:`<b>${esc(r.id)}</b>`):'—';
      })()}</td>
-     <td>${esc(dataHoraBR(r.coleta_em||r.finalizado_em||s?.coleta_em||'—'))}</td></tr>`;
-   }).join(''):'<tr><td colspan="20" class="ce-hp-vazio">Nenhum registro encontrado.</td></tr>';
+     <td>${esc(dataHoraBR(r.coleta_em||r.finalizado_em||s?.coleta_em||'—'))}</td>
+     <td class="ce-hp-obs" title="${esc(obsDaLinha(api,s))}">${esc(obsDaLinha(api,s)||'—')}</td></tr>`;
+   }).join(''):'<tr><td colspan="21" class="ce-hp-vazio">Nenhum registro encontrado.</td></tr>';
    let pg=$('ce-hp-pager');
    if(!pg){pg=document.createElement('div');pg.id='ce-hp-pager';pg.className='ce-sb-pager';$('ce-hp-body')?.closest('.ce-hp-box')?.after(pg);}
    if(pg){pg.innerHTML=`<button id="hp-pg-ant" ${hpPagina===0?'disabled':''}>‹ Anterior</button><span>Página ${hpPagina+1} · até ${HP_TAM} registros · histórico completo do Supabase</span><button id="hp-pg-prox" ${hpTemProxima?'':'disabled'}>Próxima ›</button>`;
      $('hp-pg-ant')?.addEventListener('click',()=>{if(hpPagina>0){hpPagina--;carregar();}});
      $('hp-pg-prox')?.addEventListener('click',()=>{if(hpTemProxima){hpPagina++;carregar();}});}
  }
+ // Quando as observações carregam/mudam (Via Leitor), repinta a coluna OBSERVAÇÃO do histórico se ele estiver aberto.
+ window.addEventListener('ce-obs-atualizadas',()=>{try{if($('ce-hp-body')&&$('ce-historico-postagens')?.style.display==='block')render();}catch(e){console.warn('[HISTÓRICO OBS]',e)}});
  async function carregar(forcar=false){
    if(hpCarregando && !forcar) return hpCarregando;
    hpCarregando=(async()=>{
@@ -11117,6 +11385,7 @@ async function finalizarRomaneioColeta(){
      }
    }catch(e){console.warn('[HISTÓRICO] Falha ao recarregar postagens',e);}
    await carregarRetiradas();
+   await carregarCancelados();
    const assinaturaConsulta=[
      hpPagina,
      $('ce-hp-filial')?.value||'',
@@ -11124,7 +11393,7 @@ async function finalizarRomaneioColeta(){
      $('ce-hp-rom')?.value||'',
      $('ce-hp-busca')?.value||''
    ].join('|');
-   const cacheKey='historico_geral_v38:'+assinaturaConsulta;
+   const cacheKey='historico_geral_v39:'+assinaturaConsulta;
    const cache=await cacheGet(cacheKey);
    if(cache?.dados?.length){dados=cache.dados;hpTemProxima=!!cache.temProxima;await carregarPostagensHistoricoDireto(dados);await carregarRastreiosPostagens(dados.map(NF));render();const st=$('ce-hp-cache');if(st)st.textContent=`Cache ${horaCache(cache.ts)} · atualizando...`;}
    try{
@@ -11158,6 +11427,13 @@ async function finalizarRomaneioColeta(){
      // Quando há filtro por romaneio, primeiro localiza as NFs no histórico
      // permanente de postagens e depois restringe os faturados a essas NFs.
      if(rom){
+       // V189m: postagens.romaneio_id é UUID (o filtro ilike no banco falha); usa as postagens já carregadas do romaneio digitado
+       const locaisRom=salvos().filter(x=>String(x.romaneio_id||x._rom?.id||'').toLowerCase().includes(rom.toLowerCase()));
+       const nfsLocais=[...new Set(locaisRom.flatMap(x=>{const n=String(x.nf||'').replace(/\D/g,'');return n?[n,n.replace(/^0+/,''),n.padStart(9,'0')]:[]}))];
+       if(nfsLocais.length){
+         qs.set('nf','in.('+nfsLocais.map(x=>'"'+x+'"').join(',')+')');
+         qs.set('limit','2000');
+       }else
        try{
          const rq=new URLSearchParams();
          rq.set('select','nf');
@@ -11220,7 +11496,9 @@ async function finalizarRomaneioColeta(){
      // Isso evita perder filial, pedido, cliente, chave, data/hora de faturamento e data limite após a assinatura.
      try{
        const presentes=new Set(todos.map(x=>norm(x.nf)));
-       const faltantes=[...new Set(salvos().map(x=>String(x.nf||'').replace(/\D/g,'')).filter(n=>n&&!presentes.has(norm(n))))].slice(0,500);
+       // V189m: com filtro de romaneio, completa primeiro as NFs DESSE romaneio (antes entrava só o que coubesse nas 500 primeiras da base toda)
+       const fonteSalvos=rom?salvos().filter(x=>String(x.romaneio_id||x._rom?.id||'').toLowerCase().includes(rom.toLowerCase())):salvos();
+       const faltantes=[...new Set(fonteSalvos.flatMap(x=>{const n=String(x.nf||'').replace(/\D/g,'');return n&&!presentes.has(norm(n))?[n,n.replace(/^0+/,''),n.padStart(9,'0')]:[]}))].slice(0,1500);
        for(let i=0;i<faltantes.length;i+=100){
          const lote=faltantes.slice(i,i+100);
          if(!lote.length)continue;
@@ -11232,6 +11510,23 @@ async function finalizarRomaneioColeta(){
          if(er.ok){const ex=await er.json();for(const x of ex||[]){if(!presentes.has(norm(x.nf))){todos.push(x);presentes.add(norm(x.nf));}}}
        }
      }catch(e){console.warn('[HISTÓRICO COMPLEMENTO XMLS]',e);}
+     // V189m: a CHAVE NF-e é a identidade. Postagens cuja NF não casou com o XML (formato do número, filial gravada errada)
+     // são completadas pela chave: filial, cliente, pedido, transportadora e datas passam a vir do XML.
+     try{
+       const chPres=new Set(todos.map(x=>String(x.chave_nfe||'').replace(/\D/g,'')).filter(Boolean));
+       const nfPres=new Set(todos.map(x=>norm(x.nf)));
+       const fonte=rom?salvos().filter(x=>String(x.romaneio_id||x._rom?.id||'').toLowerCase().includes(rom.toLowerCase())):salvos();
+       const faltChaves=[...new Set(fonte.map(x=>String(x.chave||x.chave_nfe||'').replace(/\D/g,'')).filter(c=>c.length===44&&!chPres.has(c)))].slice(0,800);
+       for(let i=0;i<faltChaves.length;i+=40){
+         const lote=faltChaves.slice(i,i+40);
+         const qc=new URLSearchParams();
+         qc.set('select','filial,nf,pedido,cliente_codigo,cliente_nome,transportadora,data_emissao,data_saida_entrada,data_autorizacao,chave_nfe,data_limite,volume');
+         qc.set('chave_nfe','in.('+lote.map(c=>'"'+c+'"').join(',')+')');
+         qc.set('limit','500');
+         const cr=await fetch(API+'?'+qc.toString(),{headers:{apikey:SBKEY,Authorization:'Bearer '+SBKEY},cache:'no-store'});
+         if(cr.ok){for(const x of await cr.json()||[]){const c=String(x.chave_nfe||'').replace(/\D/g,'');if(c&&!chPres.has(c)){todos.push(x);chPres.add(c);}}}
+       }
+     }catch(e){console.warn('[HISTÓRICO COMPLEMENTO POR CHAVE]',e);}
      // V122: normaliza/enriquece cada linha diretamente com XMLS.
      // A chave NF-e é a identidade principal; NF+filial é o fallback.
      const xmlPorChave=new Map(), xmlPorFilialNF=new Map();
@@ -11506,14 +11801,14 @@ async function finalizarRomaneioColeta(){
    const main=document.querySelector('main')||document.body, s=document.createElement('section');s.id='ce-historico-postagens';
    s.innerHTML=`<div class="ce-hp-title"><div><h2>Postagens — Histórico geral</h2><p>Histórico completo do Supabase · sem limite de data</p></div><div style="text-align:right"><b id="ce-hp-total">0 registro(s)</b><div id="ce-hp-cache" style="font-size:9px;color:#657785;margin-top:3px">Cache local</div></div></div>
    <div class="ce-hp-filtros">
-   <div class="ce-hp-campo"><label>STATUS</label><select id="ce-hp-status"><option value="">Todos</option><option value="verde">Aguardando postagem</option><option value="amarelo">Postado — aguardando coleta</option><option value="vermelho">Expedido / coletado</option></select></div>
+   <div class="ce-hp-campo"><label>STATUS</label><select id="ce-hp-status"><option value="">Todos</option><option value="verde">Aguardando postagem</option><option value="amarelo">Postado — aguardando coleta</option><option value="vermelho">Expedido / coletado</option><option value="canc_cnt">Aguardando CNT</option><option value="canc_ag">Aguardando Cancelamento</option><option value="canc_bft">Aguardando Pagto BFT</option><option value="cancelado">Cancelado</option></select></div>
    <div class="ce-hp-campo"><label>FILIAL</label><select id="ce-hp-filial"><option value="">Todas</option><option>0101</option><option>0102</option><option>1020</option></select></div>
    <div class="ce-hp-campo"><label>TRANSPORTADORA</label><select id="ce-hp-transp"><option value="">Todas</option></select></div>
    <div class="ce-hp-campo"><label>ROMANEIO</label><input id="ce-hp-rom" placeholder="RM-000..."></div>
    <div class="ce-hp-campo"><label>PESQUISAR</label><input id="ce-hp-busca" placeholder="NF, pedido, cliente, chave..."></div>
    <button id="ce-hp-atualizar" class="ce-hp-atualizar">Atualizar</button><div class="ce-hp-rel-wrap"><input type="date" id="ce-rel-data" class="ce-hp-rel-data" title="Data da coleta"><button id="ce-hp-relatorio" class="ce-hp-relatorio" type="button">Gerar relatório</button></div></div>
-   <div class="ce-hp-box"><table class="ce-hp-table"><thead><tr><th>STATUS</th><th>FILIAL</th><th>NF</th><th>PEDIDO</th><th>CÓD. CLIENTE</th><th>CLIENTE</th><th>CHAVE NF-e</th><th>RASTREIO 1</th><th>RASTREIO 2</th><th>RASTREIO 3</th><th>TRANSPORTADORA</th><th>DATA FAT.</th><th>HORA FAT.</th><th>DATA LIMITE</th><th>DATA POSTAGEM</th><th>HORA</th><th>BIPADOR</th><th>EMBALADOR</th><th>VOLUME</th><th>ROMANEIO / RETIRADA</th><th>COLETA</th></tr></thead><tbody id="ce-hp-body"></tbody></table></div>
-   <div class="ce-hp-legenda"><span><i class="ce-hp-dot ce-hp-verde"></i>Aguardando postagem</span><span><i class="ce-hp-dot ce-hp-amarelo"></i>Postado — aguardando coleta</span><span><i class="ce-hp-dot ce-hp-vermelho"></i>Expedido / coletado</span></div>
+   <div class="ce-hp-box"><table class="ce-hp-table"><thead><tr><th>STATUS</th><th>FILIAL</th><th>NF</th><th>PEDIDO</th><th>CÓD. CLIENTE</th><th>CLIENTE</th><th>CHAVE NF-e</th><th>RASTREIO 1</th><th>RASTREIO 2</th><th>RASTREIO 3</th><th>TRANSPORTADORA</th><th>DATA FAT.</th><th>HORA FAT.</th><th>DATA LIMITE</th><th>DATA POSTAGEM</th><th>HORA</th><th>BIPADOR</th><th>EMBALADOR</th><th>VOLUME</th><th>ROMANEIO / RETIRADA</th><th>COLETA</th><th>OBSERVAÇÃO</th></tr></thead><tbody id="ce-hp-body"></tbody></table></div>
+   <div class="ce-hp-legenda"><span><i class="ce-hp-dot ce-hp-verde"></i>Aguardando postagem</span><span><i class="ce-hp-dot ce-hp-amarelo"></i>Postado — aguardando coleta</span><span><i class="ce-hp-dot ce-hp-vermelho"></i>Expedido / coletado</span><span><i class="ce-hp-dot ce-hp-canc_cnt"></i>Cancelamento — Aguardando CNT</span><span><i class="ce-hp-dot ce-hp-canc_ag"></i>Cancelamento — Aguardando Cancelamento</span><span><i class="ce-hp-dot ce-hp-canc_bft"></i>Cancelamento — Aguardando Pagto BFT</span><span><i class="ce-hp-dot ce-hp-cancelado"></i>Cancelado</span></div>
    </div>`;
    main.appendChild(s);
    $('ce-hp-status').onchange=render;
@@ -12370,8 +12665,7 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
    s.innerHTML='<option value="">Todas</option>'+nomes.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('');
    if(nomes.includes(atual))s.value=atual;
  }
- let ceViaColuna='';
- let ceViaValor='';
+ let ceViaStatus=''; // V193: '' = todos | 'atrasado' | 'prazo'
  let ceViaSort='data_saida_entrada';
  let ceViaSortDir=1;
  function ceViaValorCampo(x,campo){
@@ -12386,7 +12680,16 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
    if(campo==='volume'||campo==='total_unidades'){const n=Number(String(v??'').replace(',','.'));return Number.isFinite(n)?n:0}
    return String(v??'').trim().toLocaleLowerCase('pt-BR');
  }
- // Filtro por coluna: fica na mesma linha de Filial/Transportadora/Pesquisar, criado uma única vez
+ // V193: mesma regra da bolinha/tempo restante exibidos na linha
+ function ceViaAtrasadoItem(x){
+   const obj={transporte:x.transportadora,filial:x.filial,data:x.data_saida_entrada,hora:x.hora_saida,data_limite:x.data_limite};
+   const corteTexto=String(window.ceCorteTexto?.(x.transportadora,x.filial)||'').toLowerCase();
+   const uteis=corteTexto.includes('útil')||corteTexto.includes('uteis')||corteTexto.includes('úteis');
+   const dl=uteis?(window.ceDataLimite?.(obj)||x.data_limite||''):(x.data_limite||window.ceDataLimite?.(obj)||'');
+   const tempo=window.ceTempoRestante?.({...obj,data_limite:dl})||'—';
+   return String(tempo).toUpperCase()==='ATRASADO';
+ }
+ // Filtro de status: fica na mesma linha de Filial/Transportadora/Pesquisar, criado uma única vez
  // (não é refeito a cada render, então o campo "Contém" não perde o foco enquanto se digita).
  function garantirFiltroColuna(){
    const barra=document.querySelector('.via-exp-filtros');
@@ -12395,15 +12698,13 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
    if(!bloco){
      bloco=document.createElement('div');
      bloco.className='ce-via-colfilters';bloco.id='ce-via-colfilters-bar';
-     bloco.innerHTML='<div><label>FILTRAR COLUNA</label><select id="ce-via-coluna"><option value="">Selecione...</option><option value="filial">Filial</option><option value="nf">NF</option><option value="pedido">Pedido</option><option value="cliente_codigo">Cliente</option><option value="transportadora">Transporte</option><option value="total_unidades">Qtd.</option><option value="volume">Volume</option><option value="data_saida_entrada">Data fat.</option><option value="data_limite">Data limite</option></select></div><div><label>CONTÉM</label><input id="ce-via-valor" placeholder="Digite para filtrar" autocomplete="off"></div><button type="button" id="ce-via-limpar">Limpar</button><span class="ce-via-hint">Clique no cabeçalho para ordenar · padrão: mais antigos primeiro</span>';
+     bloco.innerHTML='<div><label>STATUS</label><select id="ce-via-status"><option value="">Todos</option><option value="atrasado">Atrasados</option><option value="prazo">No prazo</option></select></div><button type="button" id="ce-via-limpar">Limpar</button><span class="ce-via-hint">Clique no cabeçalho para ordenar · padrão: mais antigos primeiro</span>';
      barra.insertBefore(bloco,barra.querySelector('.via-exp-total'));
-     $('ce-via-coluna').addEventListener('change',e=>{ceViaColuna=e.target.value;render()});
-     $('ce-via-valor').addEventListener('input',e=>{ceViaValor=e.target.value;render()});
-     $('ce-via-limpar').addEventListener('click',()=>{ceViaColuna='';ceViaValor='';ceViaSort='data_saida_entrada';ceViaSortDir=1;render()});
+     $('ce-via-status').addEventListener('change',e=>{ceViaStatus=e.target.value;render()});
+     $('ce-via-limpar').addEventListener('click',()=>{ceViaStatus='';ceViaSort='data_saida_entrada';ceViaSortDir=1;render()});
    }
-   const col=$('ce-via-coluna'),val=$('ce-via-valor');
-   if(col&&col.value!==ceViaColuna)col.value=ceViaColuna;
-   if(val&&val.value!==ceViaValor)val.value=ceViaValor;
+   const st=$('ce-via-status');
+   if(st&&st.value!==ceViaStatus)st.value=ceViaStatus;
  }
  function render(){
    const host=$('tbl-via-expedicao');if(!host)return;
@@ -12436,10 +12737,9 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
    // dos últimos 10 dias e remove o que já foi postado.
    // Não aplicar um segundo corte por data aqui, para não esconder NFs válidas.
 
-   // Filtro por coluna e ordenação operacional. O padrão é faturamento mais antigo primeiro.
-   if(ceViaColuna && ceViaValor){
-     const busca=String(ceViaValor).trim().toLocaleLowerCase('pt-BR');
-     a=a.filter(x=>String(ceViaValorCampo(x,ceViaColuna)??'').toLocaleLowerCase('pt-BR').includes(busca));
+   // Filtro de status (V193) e ordenação operacional. O padrão é faturamento mais antigo primeiro.
+   if(ceViaStatus){
+     a=a.filter(x=>ceViaAtrasadoItem(x)===(ceViaStatus==='atrasado'));
    }
    if(ceViaSort){
      a.sort((x,y)=>{
@@ -12641,7 +12941,28 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
 
 <script id="ce-v20-observacao-js">
 (function(){
- let atual='', obs={};
+ let atual='', obs={}, idxNF=null;
+ const normNF=n=>String(n||'').replace(/\D/g,'').replace(/^0+/,'');
+ function indice(){
+   if(!idxNF){
+     idxNF=new Map();
+     for(const k in obs){
+       const [f,nf]=k.split('|'),n=normNF(nf);
+       if(!idxNF.has(n))idxNF.set(n,[]);
+       idxNF.get(n).push({f:String(f||''),v:obs[k]});
+     }
+   }
+   return idxNF;
+ }
+ // Observação por filial + NF (NF comparada sem zeros à esquerda). Usada pelo Histórico de Postagens.
+ function porNF(filial,nf){
+   const lista=indice().get(normNF(nf))||[];
+   if(!lista.length)return '';
+   const fil=String(filial||'').replace(/\D/g,'');
+   if(/^\d{4}$/.test(fil)){const x=lista.find(e=>e.f===fil);return x?x.v:'';}
+   return lista.length===1?lista[0].v:'';
+ }
+ function avisarAtualizacao(){try{window.dispatchEvent(new Event('ce-obs-atualizadas'))}catch(e){}}
 
  async function api(path,opt={}){
    if(typeof window.CE_REST!=='function') throw new Error('Supabase ainda não está conectado.');
@@ -12669,7 +12990,8 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
      const a=await api('observacoes_expedicao?select=filial,nf,pedido,observacao');
      obs={};
      (a||[]).forEach(x=>obs[`${x.filial}|${x.nf}|${x.pedido||''}`]=x.observacao||'');
-     pintar();
+     idxNF=null;
+     pintar();avisarAtualizacao();
    }catch(e){console.error('[OBS]',e)}
  }
  async function gravar(valor){
@@ -12686,7 +13008,8 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
      await api(`observacoes_expedicao?filial=eq.${encodeURIComponent(filial)}&nf=eq.${encodeURIComponent(nf)}`,{method:'DELETE',headers:{Prefer:'return=minimal'}});
      delete obs[atual];
    }
-   pintar();fechar();
+   idxNF=null;
+   pintar();fechar();avisarAtualizacao();
  }
 
  // Capturing listener: catches the pencil BEFORE table/row handlers can swallow the click.
@@ -12710,7 +13033,7 @@ try{preencherTransportadoras?.();renderListaTransportadorasModal?.();}catch(e){}
  };
 
  let n=0,t=setInterval(()=>{n++;if(window.CE_AUTH?.session?.access_token&&typeof window.CE_REST==='function'){clearInterval(t);carregar()}else if(n>240)clearInterval(t)},250);
- window.CE_OBS={get:k=>String(obs[k]||'')};
+ window.CE_OBS={get:k=>String(obs[k]||''),porNF};
  window.CE_RECARREGAR_OBSERVACOES=carregar;
 })();
 </script>
@@ -14195,10 +14518,9 @@ function predUsuario(){
   return k=>!!k&&k!=='—'&&(k===n||(k.length>=3&&(k.includes(n)||n.includes(k))));
 }
 function contexto(){
-  const admin=ehAdmin(),sel=$('ce-pn-colab')?.value||'';
+  const sel=$('ce-pn-colab')?.value||'';
   let pred=null;
-  if(!admin)pred=predUsuario();
-  else if(sel)pred=k=>k===sel;
+  if(sel)pred=k=>k===sel;
   return {janela:ST.dados.janela,predBip:pred,predEmb:pred};
 }
 function css(){
@@ -14286,7 +14608,7 @@ function montarSecao(){
   $('ce-pn-data').onchange=()=>atualizar(true);
   $('ce-pn-filial').onchange=()=>renderizar();
   $('ce-pn-transporte').onchange=()=>renderizar();
-  $('ce-pn-colab').onchange=()=>renderizar();
+  $('ce-pn-colab').onchange=()=>{ST.colabEscolhido=true;try{localStorage.setItem('ce_pn_colab',$('ce-pn-colab').value||'');}catch(e){}renderizar();};
   $('ce-pn-corpo').addEventListener('input',e=>{const i=e.target.closest('input[data-pn-meta]');if(i)ST.rascunho[i.dataset.pnMeta]=i.value;});
   document.querySelectorAll('[data-pn-aba]').forEach(b=>b.onclick=()=>{ST.aba=b.dataset.pnAba||'operacao';document.querySelectorAll('[data-pn-aba]').forEach(x=>x.classList.toggle('on',x===b));renderizar();});
   $('ce-pn-corpo').addEventListener('click',e=>{
@@ -14309,16 +14631,19 @@ function montarSecao(){
 }
 function popularColaboradores(m){
   const sel=$('ce-pn-colab');if(!sel)return;
-  const admin=ehAdmin();
-  if(!admin){
-    sel.innerHTML=`<option value="">${esc(nomeUsuario()||'Usuário logado')}</option>`;sel.value='';sel.disabled=true;return;
-  }
+  // V197: filtro livre para todos (login compartilhado "Operador BBDI" não representa uma pessoa)
   sel.disabled=false;
-  const atual=sel.value,mapa=new Map();
+  let atual=sel.value;const mapa=new Map();
   [...m.bip,...m.emb].forEach(x=>{if(x.chave!=='—')mapa.set(x.chave,x.nome);});
   try{const c=window.CONFIG_TESTE_OPERADORES||{};[...(c.bipadores||[]),...(c.embaladores||[])].forEach(n=>{const k=normNome(n);if(k&&!mapa.has(k))mapa.set(k,String(n));});}catch(e){}
   const itens=[...mapa.entries()].sort((a,b)=>a[1].localeCompare(b[1],'pt-BR'));
   sel.innerHTML='<option value="">Todos</option>'+itens.map(([k,n])=>`<option value="${esc(k)}">${esc(n)}</option>`).join('');
+  if(!atual&&!ST.colabEscolhido){
+    // 1ª vez: usa a escolha lembrada neste navegador; senão, o nome do login (se bater com um colaborador)
+    let lembrado='';try{lembrado=localStorage.getItem('ce_pn_colab')||'';}catch(e){}
+    if(lembrado&&itens.some(([k])=>k===lembrado))atual=lembrado;
+    else if(!ehAdmin()){const p=predUsuario();const m=itens.filter(([k])=>p(k));if(m.length===1)atual=m[0][0];}
+  }
   sel.value=itens.some(([k])=>k===atual)?atual:'';
 }
 function ordenar(lista,o){
@@ -14350,7 +14675,7 @@ function blocoMeta(admin,ctx2,pedidos,selNome,mm){
   }
   if(!(meta>0)){
     if(aplicaEquipe)return '';
-    return `<div class="ce-pn-meta vazio">${titulo}: ainda não definida${admin?'. Use “Definir metas” abaixo.':'. Peça ao administrador para definir sua meta.'}</div>`;
+    return `<div class="ce-pn-meta vazio">${titulo}: ainda não definida${ehAdmin()?'. Use “Definir metas” abaixo.':'. Peça ao administrador para definir a meta.'}</div>`;
   }
   const pct=feito/meta*100,falta=Math.max(0,meta-feito),ok=pct>=100;
   return `<div class="ce-pn-meta${ok?' ok':''}"><div class="top"><span>${titulo}${aplicaEquipe?' <small style="display:inline;font-weight:400">(soma de quem tem meta)</small>':''}</span><b>${fmtN(feito)} / ${fmtN(meta)} pedidos · ${fmtPct(pct)}</b></div>
@@ -14383,7 +14708,8 @@ function renderizar(){
   const msg=$('ce-pn-msg');
   msg.innerHTML=ST.erro?`<div class="ce-pn-erro">Erro ao carregar o painel: ${esc(ST.erro)}</div>`:'';
   if(!ST.dados){corpo.innerHTML=ST.erro?'':'<div class="ce-pn-vazio">Carregando...</div>';return;}
-  const admin=ehAdmin();
+  const admin=true;          // V197: visão/filtro livre para todos
+  const souAdmin=ehAdmin();  // só ADMIN define metas
   const f={filial:$('ce-pn-filial')?.value||''};
   const canonTransporte=v=>{
     let t=String(v||'SEM TRANSPORTADORA').trim().toUpperCase();
@@ -14435,7 +14761,7 @@ function renderizar(){
 <div class="ce-pn-tw"><table class="ce-pn-t"><thead><tr><th style="text-align:left">TRANSPORTE</th><th>FATURADOS</th></tr></thead><tbody>${faturadosTransporte.length?faturadosTransporte.map(([tr,q])=>`<tr><td>${esc(tr)}</td><td><b>${fmtN(q)}</b></td></tr>`).join(''):`<tr><td colspan="2" class="ce-pn-vazio">Nenhum faturado encontrado na data selecionada.</td></tr>`}</tbody><tfoot><tr><td>TOTAL</td><td>${fmtN(totalTransporte)}</td></tr></tfoot></table></div></div>`;
   const selNome=admin?($('ce-pn-colab').selectedOptions[0]?.textContent||'Todos'):nomeUsuario();
   const quem=admin
-    ?`<span class="ce-pn-chip adm">ADMIN</span> ${ctx2.predBip?'Visão individual: <b>'+esc(selNome)+'</b>':'Operação completa'}`
+    ?`<span class="ce-pn-chip${souAdmin?' adm':''}">${souAdmin?'ADMIN':esc(nomeUsuario()||'Usuário')}</span> ${ctx2.predBip?'Visão individual: <b>'+esc(selNome)+'</b>':'Operação completa'}`
     :`<span class="ce-pn-chip">${esc(nomeUsuario()||'Usuário')}</span> Seus números do dia selecionado`;
   const aviso=[];
   if(ST.dados.truncado)aviso.push('Limite de registros atingido: os totais podem estar incompletos.');
@@ -14492,7 +14818,7 @@ ${blocoTransportes}
 <div class="ce-pn-subtitle">Painel dos Colaboradores</div>
 ${blocoMeta(admin,ctx2,c.pedidos,selNome,mm)}
 ${`<div class="ce-pn-emb"><span>📦 <b>Embalagem${admin&&ctx2.predBip?' · '+esc(selNome):(admin?' · toda a operação':' · você')}</b></span><span>Pedidos embalados: <b>${fmtN(emb.pedidos)}</b></span><span>Unidades embaladas: <b>${fmtN(emb.unidades)}</b></span><span>Expedidos: <b>${fmtN(emb.exp)}</b></span></div>`}
-${tabProd}${tabCmp}${admin?blocoEditorMetas(mm):''}`;
+${tabProd}${tabCmp}${souAdmin?blocoEditorMetas(mm):''}`;
   corpo.innerHTML=`
 <div class="ce-pn-quem">${quem}</div>
 ${aviso.map(a=>`<div class="ce-pn-aviso">${a}</div>`).join('')}
@@ -14526,7 +14852,8 @@ const painelVisivel=()=>{const s=$('view-painel');return !!s&&s.classList.contai
 function aoAbrir(){
   montarSecao();
   // Identidade pode ter mudado (novo login): zera o filtro de colaborador.
-  const sel=$('ce-pn-colab');if(sel&&!ehAdmin()){sel.value='';}
+  // V197: só zera o filtro se quem está logado mudou (a escolha de colaborador é mantida entre aberturas)
+  {const q=nomeUsuario()+'|'+(perfil()?.perfil||'');if(ST.quemLogado&&ST.quemLogado!==q){const sel=$('ce-pn-colab');if(sel)sel.value='';ST.colabEscolhido=false;}ST.quemLogado=q;}
   // V189: dia passado muda pouco (só coletas tardias) -> tolera dados de até 10 min; hoje segue com OBSOLETO_MS.
   const dSel=$('ce-pn-data')?.value||'';
   const limiteObsoleto=(dSel&&dSel!==hojeSP())?600000:OBSOLETO_MS;
@@ -14962,7 +15289,7 @@ body.ce-v184-dark .empty .big{filter:grayscale(.3) brightness(.9)}
 #ce-bipagem-operacional #ce-v184-atribuir{height:40px!important;min-height:40px!important;align-self:center!important;}
 #ce-bipagem-operacional #ce-v184-resumo-salvo{min-width:0!important;}
 </style>
-<div id="ce-build-badge" title="Versão do arquivo em uso" style="position:fixed;left:6px;bottom:4px;z-index:2147483600;font:10px/1 system-ui,sans-serif;color:#64748b;background:rgba(255,255,255,.75);padding:2px 6px;border-radius:4px;pointer-events:none">V189 · build k · 14/10 10:55</div>
+<div id="ce-build-badge" title="Versão do arquivo em uso" style="position:fixed;left:6px;bottom:4px;z-index:2147483600;font:10px/1 system-ui,sans-serif;color:#64748b;background:rgba(255,255,255,.75);padding:2px 6px;border-radius:4px;pointer-events:none">V189 · build m2 · 14/10 14:30</div>
 </body>
 </html>
 
