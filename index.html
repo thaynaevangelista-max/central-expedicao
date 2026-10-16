@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <!-- V178: Histórico consulta postagens diretamente no Supabase por NF+filial para definir coletado -->
+<!-- V198: a consulta da NF na bipagem tem tempo limite (8 s por fonte, 30 s no total): se a internet/Supabase não responde, mostra o erro em vez de ficar eternamente em "Consultando NF…"; o agente local (127.0.0.1) só é usado se ativado no PC (localStorage ce_agente_local=1) -->
 <!-- V197: Painel da Operação — o filtro COLABORADOR agora é livre para todos os usuários (antes ficava travado no nome do login, ex.: "Operador BBDI"); cada pessoa escolhe o próprio nome e a escolha fica lembrada neste navegador. Definir metas continua só para ADMIN -->
 <!-- V196: corrige o erro "Romaneio ... está assinado e não aceita novas NFs" na RETIRA com assinatura manual (grava as postagens ANTES de marcar o romaneio como assinado) -->
 <!-- V195: bipagem não depende mais do agente local (127.0.0.1:8765, que só existe no PC do administrador): consulta XMLS → VIEW via_leitor → agente local (opcional); mensagem de erro explica a causa -->
@@ -10024,6 +10025,14 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
   let pendenteRastreio=null;
   let cacheConsulta=null;
   let erroXmls='';
+  // V198: fetch com tempo limite — sem isso, uma rede lenta deixa a bipagem presa em "Consultando NF…".
+  async function ceFetchTimeout(url,opts,ms){
+    const ctrl=new AbortController();
+    const t=setTimeout(()=>ctrl.abort(),ms||8000);
+    try{ return await fetch(url,{...(opts||{}),signal:ctrl.signal}); }
+    catch(e){ if(e&&e.name==='AbortError') throw new Error('tempo esgotado ('+Math.round((ms||8000)/1000)+'s) — sem resposta do servidor'); throw e; }
+    finally{ clearTimeout(t); }
+  }
   let ceViaRef=null, ceViaLen=-1, ceViaPorChave=new Map(), ceViaPorNF=new Map();
 
   function atualizarIndiceVia(){
@@ -10147,10 +10156,10 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
         qs.set('select','filial,nf,pedido,cliente_codigo,cliente_nome,transportadora,chave_nfe,volume,total_unidades');
         qs.set('chave_nfe','eq.'+chave);
         qs.set('limit','1');
-        const resp=await fetch(`${base}/rest/v1/xmls?${qs.toString()}`,{
+        const resp=await ceFetchTimeout(`${base}/rest/v1/xmls?${qs.toString()}`,{
           headers:{apikey:anon,Authorization:'Bearer '+anon},
           cache:'no-store'
-        });
+        },8000);
         if(!resp.ok) throw new Error('XMLS HTTP '+resp.status+' - '+await resp.text());
         const a=await resp.json();
         if(Array.isArray(a) && a[0]){
@@ -10174,7 +10183,7 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
         qs.set('select','filial,nf,pedido,cliente_codigo,cliente_nome,transportadora,chave_nfe,volume,total_unidades');
         qs.set('chave_nfe','eq.'+chave);
         qs.set('limit','1');
-        const resp=await fetch(`${base}/rest/v1/via_leitor?${qs.toString()}`,{headers:{apikey:anon,Authorization:'Bearer '+anon},cache:'no-store'});
+        const resp=await ceFetchTimeout(`${base}/rest/v1/via_leitor?${qs.toString()}`,{headers:{apikey:anon,Authorization:'Bearer '+anon},cache:'no-store'},8000);
         if(resp.ok){
           const a=await resp.json();
           if(Array.isArray(a)&&a[0]){
@@ -10186,18 +10195,24 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
       }
     }catch(e){
       console.warn('[BIPAGEM VIA_LEITOR]',e);
+      if(!erroXmls) erroXmls='via_leitor: '+String(e?.message||e).slice(0,120);
     }
 
     // 3) Último fallback legado: agente Master. Mantido apenas para não bloquear
     // uma NF ausente da XMLS. Neste caso o volume pode não existir e ficará 1.
     if(!cacheConsulta){
+      // V198: o agente local só existe no PC do administrador. Nos demais, não tenta (evita travar/avisar permissão de rede local).
+      let agenteAtivo=false;
+      try{agenteAtivo=localStorage.getItem('ce_agente_local')==='1'}catch(e){}
+      if(!agenteAtivo){
+        throw new Error('NF '+nf+' não encontrada na base de XMLs'+(erroXmls?' (consulta: '+erroXmls+')':'')+'.\n\nSe o XML desta NF ainda não foi importado, aguarde a sincronização e bipe de novo.\nSe aparecer "tempo esgotado" ou "Failed to fetch", confira a internet deste computador.\nSe continuar, avise o responsável (print desta mensagem).');
+      }
       const filiais='0101,0102,1020';
       let resp;
       try{
-        resp=await fetch('http://127.0.0.1:8765/api/pedidos?filial='+encodeURIComponent(filiais),{cache:'no-store'});
+        resp=await ceFetchTimeout('http://127.0.0.1:8765/api/pedidos?filial='+encodeURIComponent(filiais),{cache:'no-store'},5000);
       }catch(e){
-        // V195: agente local só existe no computador do administrador — não é falha do operador.
-        throw new Error('NF '+nf+' não encontrada na base de XMLs'+(erroXmls?' (consulta: '+erroXmls+')':'')+'.\n\nSe o XML desta NF ainda não foi importado, aguarde a sincronização e bipe de novo.\nSe continuar, avise o responsável (print desta mensagem).');
+        throw new Error('NF '+nf+' não encontrada na base de XMLs'+(erroXmls?' (consulta: '+erroXmls+')':'')+' e o agente local não respondeu.');
       }
       if(!resp.ok) throw new Error('Agente local HTTP '+resp.status);
       const j=await resp.json();
@@ -10349,9 +10364,12 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
     }
 
     try{
-      const item=await consultar(chave,nf);
+      const item=await Promise.race([
+        consultar(chave,nf),
+        new Promise((_,rej)=>setTimeout(()=>rej(new Error('A consulta demorou mais de 30 segundos e foi cancelada. Confira a internet e bipe novamente.')),30000))
+      ]);
       if(!item){
-        alert('NF '+nf+' não encontrada nos dados do agente local.');
+        alert('NF '+nf+' não encontrada na base de XMLs.');
         limparLeitura(); return;
       }
       item.chave=chave;
@@ -10450,6 +10468,7 @@ $$('[data-ciencia-transporte]',host).forEach(btn=>{
       incluir(item);
     }catch(e){
       alert('Não foi possível consultar a NF.\n'+(e?.message||e));
+      try{$('ce-op-status').textContent='Erro na consulta da NF '+nf+' — bipe novamente'}catch(_){}
       limparLeitura();
     }finally{
       ceChavesEmProcessamento.delete(chave);
